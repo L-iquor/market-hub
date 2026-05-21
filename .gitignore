@@ -1,0 +1,21 @@
+# 密钥和环境变量
+.env
+
+# 依赖
+node_modules/
+
+# 运行时输出
+logs/
+output/
+
+# 运行时状态
+debt-tracker-state.json
+_tmp_*.json
+_test.txt
+*.lock
+
+# Claude Code 本地设置
+.claude/
+
+# 临时文件
+*.log

@@ -1,0 +1,2979 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每天烈刻 · AI市场部</title>
+<style>
+:root {
+  --bg: #0d0d0f; --bg2: #141416; --bg3: #1c1c1f; --bg4: #222226;
+  --border: #2a2a2e; --border2: #333338;
+  --text: #f0f0f0; --muted: #888; --dim: #555;
+  --gold: #d4a843; --gold2: #e8c068; --gold3: rgba(212,168,67,.12);
+  --green: #4ade80; --red: #f87171; --blue: #60a5fa;
+  --radius: 10px; --radius-sm: 6px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+  line-height: 1.65; min-height: 100vh;
+}
+
+/* ── 顶栏 ── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 28px; border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+.brand { display:flex; align-items:center; gap:12px; }
+.badge {
+  background: linear-gradient(135deg,#d4a843,#f0c060); color:#000;
+  font-weight:700; font-size:13px; padding:4px 10px; border-radius:5px; letter-spacing:1px;
+}
+.brand-name { font-size:17px; font-weight:600; }
+.brand-sub { font-size:11px; color:var(--muted); margin-top:1px; }
+.status-pill {
+  display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted);
+  background: var(--bg3); padding:6px 14px; border-radius:20px; border:1px solid var(--border);
+}
+.dot { width:7px; height:7px; border-radius:50%; background:var(--dim); }
+.dot.ok { background:var(--green); }
+.dot.busy { background:var(--gold); animation:pulse 1.2s infinite; }
+.dot.err { background:var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── Tab 导航 ── */
+.tab-nav {
+  display: flex; gap: 0; border-bottom: 1px solid var(--border);
+  background: var(--bg2); padding: 0 28px;
+}
+.tab-btn {
+  padding: 12px 20px; border: none; background: none;
+  color: var(--muted); font-size: 13px; font-weight: 500;
+  cursor: pointer; border-bottom: 2px solid transparent;
+  transition: all .15s; margin-bottom: -1px;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--gold2); border-bottom-color: var(--gold); }
+
+/* ── 撰写台布局 ── */
+.layout {
+  display: grid; grid-template-columns: 320px 1fr;
+  gap: 0; height: calc(100vh - 128px);
+}
+.sidebar {
+  background: var(--bg2); border-right: 1px solid var(--border);
+  padding: 24px 20px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 20px;
+}
+.main { padding: 24px 28px; overflow-y: auto; display:flex; flex-direction:column; gap:20px; }
+
+/* ── 侧栏通用 ── */
+.section-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px; }
+.field-group { display:flex; flex-direction:column; gap:6px; }
+label { font-size:13px; color:var(--muted); }
+.chip-row { display:flex; flex-wrap:wrap; gap:6px; }
+.chip {
+  padding:5px 11px; border-radius:16px; font-size:12px; cursor:pointer;
+  border: 1px solid var(--border); background:var(--bg3); color:var(--text);
+  transition: all .15s;
+}
+.chip:hover { border-color:var(--gold); }
+.chip.active { background:var(--gold3); border-color:var(--gold); color:var(--gold2); font-weight:500; }
+.dir-input, .sp-select, .sp-input {
+  width:100%; padding:9px 12px;
+  background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius-sm);
+  color:var(--text); font-size:14px;
+}
+.dir-input:focus, .sp-input:focus { outline:none; border-color:var(--gold); }
+.sp-select { cursor:pointer; }
+.sp-select:focus { outline:none; border-color:var(--gold); }
+
+/* ── 按钮 ── */
+.btn {
+  padding:9px 18px; border-radius:var(--radius-sm); border:1px solid var(--border);
+  background:var(--bg3); color:var(--text); cursor:pointer; font-size:13px;
+  transition: all .15s; white-space:nowrap;
+}
+.btn:hover { border-color:var(--gold); }
+.btn:disabled { opacity:.4; cursor:not-allowed; }
+.btn-primary { background:var(--gold); color:#000; border-color:var(--gold); font-weight:600; }
+.btn-primary:hover { opacity:.9; }
+.btn-sm { padding:6px 12px; font-size:12px; }
+.btn-generate {
+  width:100%; padding:12px; font-size:15px; font-weight:600;
+  background: linear-gradient(135deg,#d4a843,#c49030); color:#000;
+  border:none; border-radius:var(--radius-sm); cursor:pointer; transition:all .15s;
+}
+.btn-generate:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(212,168,67,.3); }
+.btn-generate:disabled { opacity:.4; cursor:not-allowed; transform:none; box-shadow:none; }
+
+/* ── 上下文状态 ── */
+.ctx-stats {
+  background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius-sm);
+  padding:10px 14px; font-size:12px; color:var(--muted);
+}
+.ctx-stats .row { display:flex; justify-content:space-between; padding:2px 0; }
+.ctx-stats .val { color:var(--text); font-weight:500; }
+
+/* ── 结果区 ── */
+.result-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding-bottom:12px; border-bottom:1px solid var(--border);
+}
+.result-title { font-size:15px; font-weight:600; }
+.sp-badge {
+  font-size:12px; padding:3px 10px; border-radius:12px;
+  background:var(--gold3); border:1px solid var(--gold); color:var(--gold2);
+}
+
+/* ── 方案面板 ── */
+.plan-card {
+  background:var(--bg2); border:1px solid var(--gold); border-radius:var(--radius);
+  overflow:hidden; display:flex; flex-direction:column;
+}
+.plan-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 16px; background:var(--bg3); border-bottom:1px solid var(--border);
+  font-size:12px;
+}
+.plan-head .tag { color:var(--gold); font-weight:600; }
+.plan-head .sp-mini { color:var(--muted); font-size:11px; }
+.plan-body {
+  padding:18px 20px; font-size:13px; line-height:1.9;
+  white-space:pre-wrap; flex:1; min-height:300px;
+  outline:none; cursor:text;
+}
+.plan-body:focus { background: rgba(212,168,67,.03); }
+
+.archive-row { display:flex; gap:10px; margin-top:12px; align-items:center; }
+.archive-note { font-size:12px; color:var(--dim); }
+
+/* ── 批量生产 Tab ── */
+.batch-layout {
+  display: grid; grid-template-columns: 340px 1fr;
+  height: calc(100vh - 128px);
+}
+.batch-sidebar {
+  background: var(--bg2); border-right: 1px solid var(--border);
+  padding: 24px 20px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.batch-main { padding: 24px 28px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+.job-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; background: var(--bg3);
+  border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px;
+}
+.job-status {
+  font-size: 10px; padding: 2px 8px; border-radius: 10px; flex-shrink: 0; font-weight: 500;
+}
+.job-status.pending  { background: var(--bg4); color: var(--muted); }
+.job-status.generating { background: rgba(212,168,67,.2); color: var(--gold2); }
+.job-status.done     { background: rgba(74,222,128,.15); color: var(--green); }
+.job-status.failed   { background: rgba(248,113,113,.15); color: var(--red); }
+.batch-result-card {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--radius); overflow: hidden;
+}
+.batch-result-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: var(--bg3);
+  border-bottom: 1px solid var(--border); font-size: 12px;
+}
+.batch-result-body {
+  padding: 16px 20px; font-size: 13px; line-height: 1.9;
+  white-space: pre-wrap; outline: none; cursor: text;
+  max-height: 420px; overflow-y: auto;
+}
+.batch-result-body:focus { background: rgba(212,168,67,.03); }
+.batch-result-footer {
+  padding: 10px 16px; border-top: 1px solid var(--border);
+  display: flex; gap: 8px; align-items: center;
+}
+
+/* ── 竞品研究台 Tab ── */
+.research-layout {
+  display: grid; grid-template-columns: 1fr 1fr;
+  height: calc(100vh - 128px);
+}
+.research-input-panel {
+  background: var(--bg2); border-right: 1px solid var(--border);
+  padding: 24px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto;
+}
+.research-result-panel {
+  padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px;
+}
+.notes-textarea {
+  flex: 1; min-height: 340px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-family: inherit; font-size: 13px; line-height: 1.8;
+  padding: 12px; resize: none;
+}
+.notes-textarea:focus { outline: none; border-color: var(--gold); }
+.analysis-result {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--radius); padding: 20px;
+  font-size: 13px; line-height: 1.9; white-space: pre-wrap;
+}
+
+/* ── 素材库 Tab ── */
+.materials-layout {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  height: calc(100vh - 128px); gap: 0;
+}
+.mat-panel {
+  border-right: 1px solid var(--border); overflow-y: auto;
+  display: flex; flex-direction: column;
+}
+.mat-panel:last-child { border-right: none; }
+.mat-panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px 12px; position: sticky; top: 0;
+  background: var(--bg2); border-bottom: 1px solid var(--border); z-index: 1;
+}
+.mat-panel-title { font-size: 13px; font-weight: 600; }
+.mat-panel-count { font-size: 11px; color: var(--muted); }
+.mat-cards { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+.mat-card {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+  font-size: 12px; line-height: 1.7;
+}
+.mat-card-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.mat-card-tag {
+  display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 10px;
+  margin-right: 4px; margin-bottom: 4px; border: 1px solid var(--border2);
+}
+.mat-card-desc { color: var(--muted); margin-top: 6px; font-size: 11px; line-height: 1.6; }
+.mat-add-form {
+  margin: 12px 16px; padding: 14px; background: var(--bg3);
+  border: 1px solid var(--gold); border-radius: var(--radius-sm);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.mat-add-form input, .mat-add-form select, .mat-add-form textarea {
+  width: 100%; padding: 7px 10px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text); font-size: 12px; font-family: inherit;
+}
+.mat-add-form input:focus, .mat-add-form select:focus, .mat-add-form textarea:focus {
+  outline: none; border-color: var(--gold);
+}
+.mat-add-form textarea { min-height: 70px; line-height: 1.6; resize: none; }
+.mat-dim-group { margin-bottom: 4px; }
+.mat-dim-label { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: .6px; padding: 8px 0 4px; }
+.mat-edit-input {
+  width: 100%; padding: 6px 9px;
+  background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius-sm);
+  color: var(--text); font-size: 12px; font-family: inherit; line-height: 1.5;
+}
+.mat-edit-input:focus { outline: none; border-color: var(--gold); }
+
+/* ── 模板库 Tab ── */
+.templates-layout {
+  display: grid; grid-template-columns: 200px 1fr;
+  height: calc(100vh - 128px);
+}
+.templates-cat-list {
+  background: var(--bg2); border-right: 1px solid var(--border);
+  padding: 20px 16px; display: flex; flex-direction: column; gap: 6px;
+}
+.templates-cat-btn {
+  padding: 10px 14px; border-radius: var(--radius-sm);
+  background: none; border: 1px solid transparent;
+  color: var(--muted); font-size: 13px; cursor: pointer;
+  text-align: left; transition: all .15s;
+}
+.templates-cat-btn:hover { background: var(--bg3); color: var(--text); }
+.templates-cat-btn.active { background: var(--gold3); border-color: var(--gold); color: var(--gold2); font-weight: 500; }
+.templates-main { padding: 24px 28px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+.template-card {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--radius); overflow: hidden;
+}
+.template-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: var(--bg3); border-bottom: 1px solid var(--border);
+}
+.template-card-body { padding: 14px 16px; font-size: 13px; line-height: 1.8; white-space: pre-wrap; color: var(--muted); }
+.template-form {
+  background: var(--bg3); border: 1px solid var(--gold); border-radius: var(--radius);
+  padding: 18px; display: flex; flex-direction: column; gap: 12px;
+}
+.template-form input, .template-form textarea {
+  width: 100%; padding: 9px 12px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text); font-size: 13px; font-family: inherit;
+}
+.template-form input:focus, .template-form textarea:focus { outline: none; border-color: var(--gold); }
+.template-form textarea { min-height: 160px; line-height: 1.7; resize: vertical; }
+.sub-tmpl-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+.sub-tmpl-chip {
+  padding: 4px 10px; border-radius: 14px; font-size: 11px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg3); color: var(--muted);
+  transition: all .15s;
+}
+.sub-tmpl-chip:hover { border-color: var(--gold); color: var(--text); }
+.sub-tmpl-chip.active { background: var(--gold3); border-color: var(--gold); color: var(--gold2); }
+
+/* ── 撰写指令编辑器 ── */
+.prompt-bar {
+  background:var(--bg2); border:1px solid var(--border2);
+  border-radius:var(--radius); overflow:hidden;
+}
+.prompt-bar-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 16px; cursor:pointer; user-select:none; transition:background .15s;
+}
+.prompt-bar-head:hover { background:var(--bg3); }
+.prompt-bar-head .label { font-size:13px; font-weight:600; }
+.prompt-bar-head .hint { font-size:11px; color:var(--muted); margin-left:8px; }
+.prompt-bar-body { padding:0 16px 16px; display:none; }
+.prompt-textarea {
+  width:100%; min-height:380px; margin-top:12px;
+  background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm);
+  color:var(--text); font-family:'Cascadia Code','Consolas',monospace; font-size:12px;
+  line-height:1.7; padding:12px; resize:vertical;
+}
+.prompt-textarea:focus { outline:none; border-color:var(--gold); }
+.prompt-bar-footer { display:flex; gap:8px; align-items:center; margin-top:8px; }
+.prompt-save-status { font-size:11px; color:var(--muted); }
+
+/* ── 提示词基础 Tab ── */
+.pb-layout {
+  display: grid; grid-template-columns: 220px 1fr;
+  height: calc(100vh - 128px); gap: 0;
+}
+.pb-sidebar {
+  border-right: 1px solid var(--border); overflow-y: auto;
+  padding: 16px 0; background: var(--bg2);
+}
+.pb-section-label {
+  font-size: 10px; font-weight: 700; color: var(--muted);
+  letter-spacing: .8px; text-transform: uppercase;
+  padding: 12px 16px 4px;
+}
+.pb-item {
+  padding: 9px 16px; font-size: 13px; color: var(--fg2);
+  cursor: pointer; border-left: 2px solid transparent;
+  transition: all .12s; line-height: 1.35;
+}
+.pb-item:hover { background: var(--bg3); color: var(--text); }
+.pb-item.active { background: var(--bg3); color: var(--gold2); border-left-color: var(--gold); font-weight: 600; }
+.pb-main {
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.pb-editor-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 20px 10px; border-bottom: 1px solid var(--border2);
+  background: var(--bg);
+}
+.pb-editor-title { font-size: 14px; font-weight: 600; color: var(--text); flex: 1; }
+.pb-save-status { font-size: 11px; color: var(--muted); }
+.pb-editor-body {
+  flex: 1; display: flex; flex-direction: column; gap: 0;
+  overflow: hidden; padding: 0;
+}
+.pb-editor-section {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+  border-bottom: 1px solid var(--border2);
+}
+.pb-editor-section:last-child { border-bottom: none; }
+.pb-editor-sublabel {
+  font-size: 11px; font-weight: 600; color: var(--muted);
+  letter-spacing: .5px; padding: 8px 16px 4px;
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+}
+.pb-textarea {
+  flex: 1; width: 100%; background: var(--bg); border: none;
+  padding: 14px 16px; color: var(--text); font-family: 'Courier New', monospace;
+  font-size: 12.5px; line-height: 1.7; resize: none;
+  box-sizing: border-box; overflow-y: auto;
+}
+.pb-textarea:focus { outline: none; }
+.pb-footer {
+  padding: 10px 16px; border-top: 1px solid var(--border);
+  display: flex; gap: 8px; align-items: center;
+  background: var(--bg2);
+}
+.pb-pairing-label { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .4px; }
+.pb-pair-select {
+  background: var(--bg3); border: 1px solid var(--border2);
+  color: var(--text); border-radius: var(--radius-sm);
+  padding: 5px 8px; font-size: 12px; font-family: inherit;
+}
+
+/* ── 修改对比 Tab ── */
+.comparison-layout { padding:28px; max-width:800px; margin:0 auto; }
+.cmp-section-title { font-size:15px; font-weight:600; color:var(--text); margin-bottom:6px; }
+.cmp-section-hint { font-size:12px; color:var(--muted); margin-bottom:20px; line-height:1.6; }
+.cmp-field { margin-bottom:16px; }
+.cmp-field label { display:block; font-size:12px; color:var(--dim); margin-bottom:6px; font-weight:500; letter-spacing:.3px; }
+.cmp-field textarea {
+  width:100%; background:var(--bg3); border:1px solid var(--border2);
+  border-radius:var(--radius-sm); padding:10px 12px; color:var(--text);
+  font-size:13px; font-family:inherit; line-height:1.75; resize:vertical; box-sizing:border-box;
+}
+.cmp-field textarea:focus { outline:none; border-color:var(--gold); }
+
+/* ── 消息弹出 ── */
+.toast {
+  position:fixed; bottom:24px; right:24px;
+  border-radius:8px; font-size:13px;
+  z-index:1000; animation:slideUp .25s ease-out; max-width:420px;
+  overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,.35);
+}
+@keyframes slideUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+.toast.ok  { background:rgba(74,222,128,.95); color:#000; }
+.toast.err { background:#1e1e1e; border:1px solid rgba(248,113,113,.6); color:#f87171; }
+.toast.info { background:rgba(96,165,250,.95); color:#000; }
+.toast-body { display:flex; align-items:flex-start; gap:10px; padding:11px 14px; }
+.toast-msg { flex:1; line-height:1.55; word-break:break-all; user-select:text; cursor:text; }
+.toast-actions { display:flex; gap:6px; align-items:center; flex-shrink:0; }
+.toast-btn {
+  font-size:11px; padding:3px 8px; border-radius:4px; border:none; cursor:pointer;
+  background:rgba(255,255,255,.15); color:inherit; font-family:inherit;
+}
+.toast-btn:hover { background:rgba(255,255,255,.28); }
+.toast.err .toast-btn { background:rgba(248,113,113,.2); color:#f87171; }
+.toast.err .toast-btn:hover { background:rgba(248,113,113,.35); }
+
+/* ── 提示词预览浮层 ── */
+.prompt-overlay {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2000;
+  align-items:flex-start; justify-content:center; padding:24px; overflow-y:auto;
+}
+.prompt-overlay.open { display:flex; }
+.prompt-panel {
+  background:var(--bg2); border:1px solid var(--border); border-radius:12px;
+  width:100%; max-width:780px; display:flex; flex-direction:column; gap:0;
+  max-height:calc(100vh - 48px); overflow:hidden;
+}
+.prompt-panel-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 18px; border-bottom:1px solid var(--border); flex-shrink:0;
+}
+.prompt-panel-head h3 { margin:0; font-size:14px; color:var(--text); }
+.prompt-panel-body { overflow-y:auto; padding:0; }
+.prompt-module {
+  border-bottom:1px solid var(--border2);
+}
+.prompt-module-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 16px; cursor:pointer; user-select:none;
+  background:var(--bg3); font-size:12px; font-weight:600; color:var(--muted);
+}
+.prompt-module-head:hover { background:var(--bg2); }
+.prompt-module-head .mod-chars { color:var(--dim); font-weight:400; font-size:11px; }
+.prompt-module-content {
+  padding:12px 16px; font-size:12px; color:var(--text);
+  white-space:pre-wrap; word-break:break-all; line-height:1.7;
+  background:var(--bg); display:none;
+}
+.prompt-module-content.open { display:block; }
+.prompt-full-area {
+  padding:16px; font-size:11px; color:var(--muted);
+  white-space:pre-wrap; word-break:break-all; line-height:1.6;
+  border-top:1px solid var(--border); display:none;
+}
+.prompt-full-area.open { display:block; }
+
+/* ── 空态 ── */
+.empty-state {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  color:var(--dim); gap:12px; text-align:center; padding:40px;
+}
+.empty-icon { font-size:48px; opacity:.5; }
+.empty-text { font-size:14px; }
+
+/* ── loading spinner ── */
+.spinner {
+  display:inline-block; width:14px; height:14px;
+  border:2px solid rgba(0,0,0,.2); border-top-color:rgba(0,0,0,.8);
+  border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:6px;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+
+@media(max-width:900px) {
+  .layout, .batch-layout, .research-layout { grid-template-columns:1fr; height:auto; }
+  .sidebar, .batch-sidebar { border-right:none; border-bottom:1px solid var(--border); }
+  .research-input-panel { border-right:none; border-bottom:1px solid var(--border); }
+}
+</style>
+</head>
+<body>
+
+<!-- 顶栏 -->
+<div class="topbar">
+  <div class="brand">
+    <div class="badge">烈刻</div>
+    <div>
+      <div class="brand-name">AI 市场部 · 撰写系统</div>
+      <div class="brand-sub">每天烈刻 · 气泡白酒 · 第三期</div>
+    </div>
+  </div>
+  <div id="statusPill" class="status-pill">
+    <div class="dot" id="statusDot"></div>
+    <span id="statusText">检查连接...</span>
+    <button class="btn btn-sm" onclick="clearCache()" title="清除飞书上下文缓存，下次生成时重新读取">刷新上下文</button>
+  </div>
+</div>
+
+<!-- Tab 导航 -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('write')">✍️ 撰写台</button>
+  <button class="tab-btn" onclick="switchTab('materials')">🗂️ 素材库</button>
+  <button class="tab-btn" onclick="switchTab('batch')">📋 批量生产</button>
+  <button class="tab-btn" onclick="switchTab('references')">📄 参考文案库</button>
+  <button class="tab-btn" onclick="switchTab('research')">🔍 竞品研究台</button>
+  <button class="tab-btn" onclick="switchTab('templates')">📂 模板库</button>
+  <button class="tab-btn" onclick="switchTab('comparison')">✏️ 修改对比</button>
+  <button class="tab-btn" onclick="switchTab('prompt-base')">⚙️ 提示词基础</button>
+</div>
+
+<!-- ══ Tab 1: 撰写台 ══ -->
+<div id="tab-write">
+  <div class="layout">
+    <aside class="sidebar">
+      <div>
+        <div class="section-label">内容框架</div>
+        <div class="chip-row" id="fwChips">
+          <div class="chip" data-val="A" onclick="selectFw(this)" title="受众有明确痛点（怕辣/上头/甜腻），产品作为解法出现">A · 问题解决</div>
+          <div class="chip active" data-val="B" onclick="selectFw(this)" title="靠新奇感、反差感、生活氛围驱动点击和收藏">B · 场景种草</div>
+          <div class="chip" data-val="C" onclick="selectFw(this)" title="受众多疑，需要配料/工艺/产区等硬核信任背书">C · 对比评测</div>
+          <div class="chip" data-val="D" onclick="selectFw(this)" title="靠「教会你怎么喝/选/搭」获取收藏流量">D · 教程干货</div>
+        </div>
+      </div>
+
+      <div id="subTmplSection" style="display:none">
+        <div class="section-label">风格模板 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span></div>
+        <div class="sub-tmpl-chips" id="subTmplChips"></div>
+        <div id="subTmplPreview" style="display:none;margin-top:8px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;color:var(--muted);line-height:1.7;white-space:pre-wrap;max-height:120px;overflow-y:auto"></div>
+      </div>
+
+      <!-- 人群选择（可选） -->
+      <div>
+        <div class="section-label">人群 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span></div>
+        <select class="sp-select" id="personaSelect" onchange="onPersonaChange(this)">
+          <option value="">不指定人群</option>
+        </select>
+      </div>
+
+      <!-- 卖点选择（最多3个） -->
+      <div>
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span>卖点</span>
+          <span style="font-size:10px;color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">最多3个</span>
+        </div>
+        <div id="spChips" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
+        <select class="sp-select" id="spItemSelect" onchange="onSpItemChange(this)">
+          <option value="">+ 添加卖点…</option>
+        </select>
+        <input type="text" class="sp-input" id="spCustom" placeholder="或自定义卖点（回车确认）…" style="margin-top:8px" onkeydown="if(event.key==='Enter'&&this.value.trim()){addCustomSp(this.value.trim());this.value=''}">
+      </div>
+
+      <!-- 场景选择（可选） -->
+      <div>
+        <div class="section-label">场景 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span></div>
+        <select class="sp-select" id="sceneSelect" onchange="onSceneChange(this)">
+          <option value="">不指定场景</option>
+        </select>
+      </div>
+
+      <!-- 参考笔记（可选） -->
+      <div>
+        <div class="section-label">参考笔记 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span></div>
+        <select class="sp-select" id="writeRefSelect" onchange="onWriteRefChange(this)">
+          <option value="">不使用参考笔记</option>
+        </select>
+        <div id="refPreviewBox" style="display:none;background:var(--bg3);border:1px solid var(--gold);border-radius:var(--radius-sm);padding:8px 10px;font-size:11px;color:var(--muted);line-height:1.6;margin-top:6px">
+          <div id="refPreviewTag" style="color:var(--gold2);font-size:10px;margin-bottom:4px"></div>
+          <div id="refPreviewContent" style="max-height:80px;overflow:hidden"></div>
+        </div>
+      </div>
+
+      <!-- 活人感语料速录 -->
+      <div>
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none" onclick="toggleCorpusPanel()">
+          <span>活人感语料 <span id="corpusBadge" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:1px 7px;font-size:10px;font-weight:400;color:var(--muted);margin-left:4px">0</span></span>
+          <span id="corpusChevron" style="color:var(--dim);font-size:11px;transition:transform .2s">▶</span>
+        </div>
+        <div id="corpusPanel" style="display:none;margin-top:8px">
+          <div id="corpusList" style="display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto;margin-bottom:8px"></div>
+          <div style="display:flex;gap:6px">
+            <input id="corpusInput" placeholder="粘贴一句活人感表达…" style="flex:1;font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none" onkeydown="if(event.key==='Enter')addCorpusItem()">
+            <button class="btn btn-sm btn-primary" style="padding:4px 10px" onclick="addCorpusItem()">+</button>
+          </div>
+          <div id="corpusStatus" style="font-size:11px;color:var(--muted);margin-top:4px;min-height:14px"></div>
+        </div>
+      </div>
+
+      <!-- 补充方向（可选） -->
+      <div>
+        <div class="section-label">补充方向 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span></div>
+        <input type="text" class="dir-input" id="dirCustom" placeholder="例：夏天、姐妹局、反差感…"></div>
+
+      <div style="display:flex;gap:8px;margin-bottom:4px">
+        <button class="btn-generate" id="generateBtn" onclick="generate(false)" style="flex:1">生成文案</button>
+        <button onclick="openPromptOverlay('single')" title="查看完整提示词" style="flex-shrink:0;padding:0 14px;font-size:13px;border-radius:var(--radius-sm);background:var(--bg3);border:1px solid var(--border);color:var(--fg2);cursor:pointer;white-space:nowrap">🔍 提示词</button>
+      </div>
+      <div id="genErrorBar" style="display:none;margin-top:10px;padding:10px 12px;background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.5);border-radius:8px;font-size:12px;color:#f87171;line-height:1.5;white-space:pre-wrap;word-break:break-all;cursor:pointer" title="点击关闭" onclick="this.style.display='none'"></div>
+
+      <div id="ctxStats" class="ctx-stats">
+        <div class="section-label" style="margin-bottom:6px">飞书上下文</div>
+        <div class="row"><span>修改偏好</span><span class="val" id="ctxIter">加载中…</span></div>
+        <div class="row"><span>参考爆款</span><span class="val" id="ctxRef">加载中…</span></div>
+      </div>
+    </aside>
+
+    <main class="main" id="mainArea">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">✍️</div>
+        <div class="empty-text">选择方向和卖点，点击「生成文案」<br>撰写助理将读取飞书学习库后出稿</div>
+      </div>
+
+      <div id="resultArea" style="display:none">
+        <div class="result-header">
+          <div class="result-title">生成结果</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span id="spBadge" class="sp-badge"></span>
+            <span style="font-size:12px;color:var(--dim)" id="dirBadge"></span>
+          </div>
+        </div>
+
+        <div class="plan-card">
+          <div class="plan-head">
+            <span class="tag">内容策略方案</span>
+            <span class="sp-mini" id="mainSpLabel"></span>
+          </div>
+          <div class="plan-body" id="mainContent" contenteditable="true" oninput="onMainEdit()"></div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- 撰写指令 + 产品信息编辑器 -->
+  <div style="padding:0 28px 28px; max-width:100%; display:flex; flex-direction:column; gap:10px">
+    <div class="prompt-bar" id="promptBar">
+      <div class="prompt-bar-head" onclick="togglePromptBar()">
+        <div>
+          <span class="label">✏️ 撰写指令</span>
+          <span class="hint">Claude 写作规则 · 可当场编辑，保存后下次生成立即生效</span>
+        </div>
+        <span id="promptChevron" style="color:var(--muted);font-size:12px">▼ 展开</span>
+      </div>
+      <div class="prompt-bar-body" id="promptBarBody">
+        <textarea class="prompt-textarea" id="promptTextarea" placeholder="加载中…"></textarea>
+        <div class="prompt-bar-footer">
+          <button class="btn btn-primary btn-sm" onclick="savePrompt()">💾 保存</button>
+          <button class="btn btn-sm" onclick="loadPrompt()">↺ 重新读取</button>
+          <span class="prompt-save-status" id="promptSaveStatus"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="prompt-bar" id="productInfoBar">
+      <div class="prompt-bar-head" onclick="toggleProductInfoBar()">
+        <div>
+          <span class="label">📦 产品信息</span>
+          <span class="hint">SKU · 规格 · 价格 · 主推方向 · 随时更新，自动注入生成</span>
+        </div>
+        <span id="productInfoChevron" style="color:var(--muted);font-size:12px">▼ 展开</span>
+      </div>
+      <div class="prompt-bar-body" id="productInfoBody">
+        <textarea class="prompt-textarea" id="productInfoTextarea" placeholder="加载中…"></textarea>
+        <div class="prompt-bar-footer">
+          <button class="btn btn-primary btn-sm" onclick="saveProductInfo()">💾 保存</button>
+          <button class="btn btn-sm" onclick="loadProductInfoPanel()">↺ 重新读取</button>
+          <span class="prompt-save-status" id="productInfoStatus"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /tab-write -->
+
+<!-- ══ Tab 2: 素材库 ══ -->
+<div id="tab-materials" style="display:none">
+  <div class="materials-layout">
+    <!-- 人群面板 -->
+    <div class="mat-panel">
+      <div class="mat-panel-head">
+        <div>
+          <div class="mat-panel-title">👤 人群</div>
+          <div class="mat-panel-count" id="matPeopleCount"></div>
+        </div>
+        <button class="btn btn-sm" onclick="showMatAdd('人')">+ 新增</button>
+      </div>
+      <div id="matAddForm-人" class="mat-add-form" style="display:none">
+        <div class="section-label">新增人群</div>
+        <input id="matAdd-人-name" placeholder="人群名称（必填）">
+        <select id="matAdd-人-mood">
+          <option value="">情绪状态（可选）</option>
+          <option>奖励自己</option><option>逃离压力</option>
+          <option>社交助兴</option><option>独处仪式感</option>
+        </select>
+        <textarea id="matAdd-人-desc" placeholder="详细描述：心理逻辑、文案方向、示范句式…"></textarea>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-primary btn-sm" onclick="submitMatAdd('人')">保存到飞书</button>
+          <button class="btn btn-sm" onclick="hideMatAdd('人')">取消</button>
+        </div>
+        <span id="matAdd-人-status" style="font-size:11px;color:var(--muted)"></span>
+      </div>
+      <div class="mat-cards" id="matCards-人"></div>
+    </div>
+
+    <!-- 卖点面板 -->
+    <div class="mat-panel">
+      <div class="mat-panel-head">
+        <div>
+          <div class="mat-panel-title">📦 卖点</div>
+          <div class="mat-panel-count" id="matGoodsCount"></div>
+        </div>
+        <button class="btn btn-sm" onclick="showMatAdd('货')">+ 新增</button>
+      </div>
+      <div id="matAddForm-货" class="mat-add-form" style="display:none">
+        <div class="section-label">新增卖点</div>
+        <input id="matAdd-货-name" placeholder="卖点简称（必填）">
+        <select id="matAdd-货-dim">
+          <option value="">维度（可选）</option>
+          <option>0糖健康</option><option>口感</option><option>原料</option>
+          <option>工艺</option><option>价格</option><option>情绪</option>
+        </select>
+        <select id="matAdd-货-angle">
+          <option value="">角度类型（可选）</option>
+          <option>场景型</option><option>感官型</option><option>数据型</option>
+          <option>情绪型</option><option>对比型</option>
+        </select>
+        <select id="matAdd-货-main">
+          <option value="否">是否主卖点</option>
+          <option value="是">是（主卖点）</option><option value="否">否</option>
+        </select>
+        <textarea id="matAdd-货-desc" placeholder="核心描述：用什么角度说这个卖点，示范文案片段…"></textarea>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-primary btn-sm" onclick="submitMatAdd('货')">保存到飞书</button>
+          <button class="btn btn-sm" onclick="hideMatAdd('货')">取消</button>
+        </div>
+        <span id="matAdd-货-status" style="font-size:11px;color:var(--muted)"></span>
+      </div>
+      <div class="mat-cards" id="matCards-货"></div>
+    </div>
+
+    <!-- 场景面板 -->
+    <div class="mat-panel">
+      <div class="mat-panel-head">
+        <div>
+          <div class="mat-panel-title">🎬 场景</div>
+          <div class="mat-panel-count" id="matSceneCount"></div>
+        </div>
+        <button class="btn btn-sm" onclick="showMatAdd('场')">+ 新增</button>
+      </div>
+      <div id="matAddForm-场" class="mat-add-form" style="display:none">
+        <div class="section-label">新增场景</div>
+        <input id="matAdd-场-name" placeholder="场景名称（必填）">
+        <select id="matAdd-场-mood">
+          <option value="">情绪分类（可选）</option>
+          <option>独处放松</option><option>社交助兴</option>
+          <option>奖励仪式感</option><option>户外出走</option>
+        </select>
+        <textarea id="matAdd-场-visual" placeholder="画面描述：镜头、道具、色调…"></textarea>
+        <textarea id="matAdd-场-guide" placeholder="团队指导：拍摄/文案方向…" style="min-height:50px"></textarea>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-primary btn-sm" onclick="submitMatAdd('场')">保存到飞书</button>
+          <button class="btn btn-sm" onclick="hideMatAdd('场')">取消</button>
+        </div>
+        <span id="matAdd-场-status" style="font-size:11px;color:var(--muted)"></span>
+      </div>
+      <div class="mat-cards" id="matCards-场"></div>
+    </div>
+  </div>
+</div><!-- /tab-materials -->
+
+<!-- ══ Tab 3 (was 2): 批量生产 ══ -->
+<div id="tab-batch" style="display:none">
+  <div class="batch-layout">
+    <aside class="batch-sidebar">
+      <div>
+        <div class="section-label">内容框架</div>
+        <div class="chip-row" id="batchFwChips">
+          <div class="chip" data-val="A" onclick="selectBatchFw(this)">A · 问题解决</div>
+          <div class="chip active" data-val="B" onclick="selectBatchFw(this)">B · 场景种草</div>
+          <div class="chip" data-val="C" onclick="selectBatchFw(this)">C · 对比评测</div>
+          <div class="chip" data-val="D" onclick="selectBatchFw(this)">D · 教程干货</div>
+        </div>
+      </div>
+
+      <div id="batchSubTmplSection" style="display:none">
+        <div class="section-label">风格模板 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span></div>
+        <div class="sub-tmpl-chips" id="batchSubTmplChips"></div>
+      </div>
+
+      <div>
+        <div class="section-label">人群 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span></div>
+        <select class="sp-select" id="batchPersonaSelect">
+          <option value="">不指定人群</option>
+        </select>
+      </div>
+
+      <div>
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span>卖点（必填）</span>
+          <span style="font-size:10px;color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">最多3个</span>
+        </div>
+        <div id="batchSpChips" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
+        <select class="sp-select" id="batchSpSelect" onchange="onBatchSpItemChange(this)">
+          <option value="">+ 添加卖点…</option>
+        </select>
+        <input type="text" class="sp-input" id="batchSpCustom" placeholder="或自定义卖点（回车确认）…" style="margin-top:6px" onkeydown="if(event.key==='Enter'&&this.value.trim()){addBatchCustomSp(this.value.trim());this.value=''}">
+      </div>
+
+      <div>
+        <div class="section-label">场景 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span></div>
+        <select class="sp-select" id="batchSceneSelect">
+          <option value="">不指定场景</option>
+        </select>
+      </div>
+
+      <div>
+        <div class="section-label">参考笔记 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span></div>
+        <select class="sp-select" id="batchRefSelect" onchange="onBatchRefChange(this)">
+          <option value="">不使用参考笔记</option>
+        </select>
+        <div id="batchRefPreview" style="display:none;background:var(--bg3);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:8px 10px;font-size:11px;color:var(--muted);line-height:1.6;margin-top:6px">
+          <div id="batchRefPreviewTag" style="color:var(--accent);font-size:10px;margin-bottom:4px"></div>
+          <div id="batchRefPreviewContent" style="max-height:80px;overflow:hidden"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">补充方向 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span></div>
+        <input type="text" class="dir-input" id="batchDir" placeholder="例如：夏天、姐妹局、反差感…">
+      </div>
+
+      <div>
+        <div class="section-label">生产数量</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" id="batchQty" min="1" max="10" value="3"
+            style="width:72px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;text-align:center">
+          <span style="font-size:12px;color:var(--muted)">条（1-10）· 自动归档到飞书</span>
+        </div>
+      </div>
+
+      <button class="btn" onclick="addBatchJob()">+ 加入队列</button>
+
+      <div>
+        <div class="section-label" style="margin-bottom:10px">
+          任务队列 <span id="batchCount" style="color:var(--gold2);font-weight:600">0</span> 条
+        </div>
+        <div id="batchJobList" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:4px">
+        <button class="btn-generate" id="batchStartBtn" onclick="startBatch()" disabled style="flex:1">开始批量生成</button>
+        <button onclick="openPromptOverlay('batch')" title="查看完整提示词" style="flex-shrink:0;padding:0 14px;font-size:13px;border-radius:var(--radius-sm);background:var(--bg3);border:1px solid var(--border);color:var(--fg2);cursor:pointer;white-space:nowrap">🔍 提示词</button>
+      </div>
+
+      <div id="batchCtxStats" class="ctx-stats">
+        <div class="section-label" style="margin-bottom:6px">飞书上下文</div>
+        <div class="row"><span>修改偏好</span><span class="val" id="batchCtxIter">加载中…</span></div>
+      </div>
+    </aside>
+
+    <main class="batch-main">
+      <div class="empty-state" id="batchEmptyState">
+        <div class="empty-icon">📋</div>
+        <div class="empty-text">添加任务后点击「开始批量生成」<br>结果将在此逐一呈现，每篇可单独归档</div>
+      </div>
+      <div id="batchResults"></div>
+    </main>
+  </div>
+</div><!-- /tab-batch -->
+
+<!-- ══ 参考文案库 Tab ══ -->
+<div id="tab-references" style="display:none">
+  <div style="display:grid;grid-template-columns:360px 1fr;height:calc(100vh - 128px)">
+    <!-- 左：新增表单 -->
+    <div class="mat-panel" style="padding:0">
+      <div class="mat-panel-head">
+        <div>
+          <div class="mat-panel-title">📄 参考文案库</div>
+          <div class="mat-panel-count" id="refCount">加载中…</div>
+        </div>
+        <button class="btn btn-sm" onclick="showRefAdd()">+ 新增</button>
+      </div>
+      <div id="refAddForm" class="mat-add-form" style="display:none;margin:12px 16px">
+        <div class="section-label">新增参考文案</div>
+        <input id="refAddTitle" placeholder="笔记标题（可选）">
+        <input id="refAddTag" placeholder="标签（例如：低度酒 / 微醺 / 仪式感）">
+        <textarea id="refAddContent" style="min-height:240px;resize:vertical" placeholder="粘贴参考文案内容（笔记正文）…"></textarea>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-primary btn-sm" onclick="submitRefAdd()">保存到飞书</button>
+          <button class="btn btn-sm" onclick="hideRefAdd()">取消</button>
+        </div>
+        <span id="refAddStatus" style="font-size:11px;color:var(--muted)"></span>
+      </div>
+      <div style="padding:16px 20px;font-size:12px;color:var(--dim);line-height:1.7">
+        选择参考文案后，将在撰写台生成时作为仿写风格参考注入 Claude。<br>仿照其节奏、情绪节点、结构，但内容完全原创。
+      </div>
+
+    </div>
+    <!-- 右：文案列表 -->
+    <div style="overflow-y:auto;border-left:1px solid var(--border)">
+      <div style="padding:12px 20px 0;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--border2);padding-bottom:10px">
+        <div style="font-size:12px;color:var(--muted)">
+          点击 <b>注入</b> 按钮固定参考文案作为 Claude 学习材料；未选时自动注入最新10条。
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span id="refInjectBadge" style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);color:var(--muted)">自动（最新10条）</span>
+          <button class="btn btn-sm" style="font-size:11px" onclick="clearRefSelection()">清除选择</button>
+        </div>
+      </div>
+      <div id="refCards" style="padding:16px 20px;display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Tab 3: 竞品研究台 ══ -->
+<div id="tab-research" style="display:none">
+  <div class="research-layout">
+    <div class="research-input-panel">
+      <!-- 模式选择 -->
+      <div style="display:flex;gap:6px;margin-bottom:4px">
+        <button id="rModeWriting" class="btn btn-primary btn-sm" onclick="setResearchMode('writing')">📝 写作方法研究</button>
+        <button id="rModeSelling" class="btn btn-sm" onclick="setResearchMode('selling')">💡 卖点表达提取</button>
+      </div>
+      <div id="rModeDesc" style="font-size:11px;color:var(--dim);margin-bottom:8px">
+        分析写作结构与技法，输出可附加到撰写指令的优化建议
+      </div>
+      <div class="section-label">粘贴竞品笔记（多篇用空行分隔）</div>
+      <textarea class="notes-textarea" id="competitorNotes"
+        placeholder="将竞品笔记全文粘贴到这里…&#10;&#10;可同时粘贴多篇。"></textarea>
+      <button class="btn-generate" id="analyzeBtn" onclick="runResearch()">
+        开始分析
+      </button>
+    </div>
+
+    <div class="research-result-panel">
+      <div class="empty-state" id="researchEmptyState" style="height:100%">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-text">
+          选择模式，粘贴竞品笔记后点击「开始分析」<br><br>
+          <span style="font-size:12px;color:var(--dim)">
+            📝 写作方法 → 技法拆解，附加到撰写指令<br>
+            💡 卖点提取 → 输出可添加到货表格 + 产品信息的建议
+          </span>
+        </div>
+      </div>
+
+      <!-- 写作方法结果 -->
+      <div id="writingResult" style="display:none;flex-direction:column;gap:16px">
+        <div class="result-header">
+          <div class="result-title">写作方法分析</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary btn-sm" onclick="applyAnalysis()">→ 附加到撰写指令</button>
+            <button class="btn btn-sm" onclick="applyAnalysisToProductInfo()">→ 附加到产品信息</button>
+          </div>
+        </div>
+        <div class="analysis-result" id="analysisContent"></div>
+      </div>
+
+      <!-- 卖点提取结果 -->
+      <div id="sellingResult" style="display:none;flex-direction:column;gap:16px">
+        <div class="result-header">
+          <div class="result-title">卖点表达提取</div>
+          <button class="btn btn-sm" onclick="applySellingToProductInfo()">→ 附加到产品信息文档</button>
+        </div>
+        <div class="analysis-result" id="sellingAnalysisContent" style="margin-bottom:4px"></div>
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--gold2)">建议添加到货表格</div>
+          <div id="sellingSuggestions" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /tab-research -->
+
+<!-- ══ Tab 4: 模板库 ══ -->
+<div id="tab-templates" style="display:none">
+  <div class="templates-layout">
+    <div class="templates-cat-list">
+      <div class="section-label" style="margin-bottom:12px">框架分类</div>
+      <button class="templates-cat-btn active" data-fw="A" onclick="selectTmplCat(this)">A · 问题解决</button>
+      <button class="templates-cat-btn" data-fw="B" onclick="selectTmplCat(this)">B · 场景种草</button>
+      <button class="templates-cat-btn" data-fw="C" onclick="selectTmplCat(this)">C · 对比评测</button>
+      <button class="templates-cat-btn" data-fw="D" onclick="selectTmplCat(this)">D · 教程干货</button>
+    </div>
+
+    <div class="templates-main" id="templatesList">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <span class="result-title" id="tmplCatTitle">A · 问题解决型</span>
+          <span style="font-size:12px;color:var(--muted);margin-left:12px">模板会在生成时作为仿写结构参考</span>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="showAddTemplate()">+ 新建模板</button>
+      </div>
+
+      <div id="tmplAddForm" class="template-form" style="display:none">
+        <div class="section-label">新建模板</div>
+        <input type="text" id="tmplName" placeholder="模板名称（例如：独处微醺夜晚）">
+        <input type="text" id="tmplDesc" placeholder="一句话说明适用场景（可选）">
+        <textarea id="tmplBody" placeholder="风格描述 + 结构要点 + 示例句式&#10;&#10;例如：&#10;开头：描写一个具体场景（地点+时间+动作），不超过20字&#10;转折：用一个反差感的问句引出产品&#10;卖点：只强调一个感官体验，锚定品牌事实&#10;结尾：一句开放式互动，问读者的感受"></textarea>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="saveNewTemplate()">保存</button>
+          <button class="btn btn-sm" onclick="hideAddTemplate()">取消</button>
+        </div>
+      </div>
+
+      <div id="tmplCards"></div>
+    </div>
+  </div>
+</div><!-- /tab-templates -->
+
+<!-- ══ Tab: 修改对比 ══ -->
+<div id="tab-comparison" style="display:none">
+  <div class="comparison-layout">
+    <div class="cmp-section-title">修改对比归档</div>
+    <div class="cmp-section-hint">选取 AI 生成文案中的局部片段，填写人手改写版本和改写理由，归档后下次 AI 生成将优先学习本次偏好。</div>
+
+    <div class="cmp-field">
+      <label>AI创作（粘贴你想改的片段）</label>
+      <textarea id="cmpAi" rows="6" placeholder="粘贴 AI 生成文案中你想修改的部分…"></textarea>
+    </div>
+
+    <div class="cmp-field">
+      <label>人手修改后</label>
+      <textarea id="cmpHuman" rows="6" placeholder="写出你改过之后的版本…"></textarea>
+    </div>
+
+    <div class="cmp-field">
+      <label>修改理由（对 AI 创作的分析）</label>
+      <textarea id="cmpReason" rows="3" placeholder="例如：语气太广告，换成更生活化；太直白，要更有画面感…"></textarea>
+    </div>
+
+    <div class="archive-row" style="margin-top:16px">
+      <button class="btn btn-primary" id="cmpArchiveBtn" onclick="archiveComparison()">📥 归档到修改对比</button>
+      <span class="archive-note" id="cmpArchiveNote">归档后 AI 下次将优先学习本次改动</span>
+    </div>
+  </div>
+</div><!-- /tab-comparison -->
+
+<!-- ══ Tab: 提示词基础 ══ -->
+<div id="tab-prompt-base" style="display:none">
+  <div class="pb-layout">
+
+    <!-- 左侧模块列表 -->
+    <div class="pb-sidebar">
+      <div class="pb-section-label">固定模块</div>
+      <div class="pb-item active" data-module="writing" onclick="pbSelect(this,'writing')">📝 撰写规范</div>
+      <div class="pb-item" data-module="brand" onclick="pbSelect(this,'brand')">🏷️ 品牌事实</div>
+      <div class="pb-item" data-module="product" onclick="pbSelect(this,'product')">📦 产品信息</div>
+
+      <div class="pb-section-label" style="margin-top:8px">框架写法</div>
+      <div class="pb-item" data-module="fw-A" onclick="pbSelect(this,'fw-A')">A · 痛苦破解型</div>
+      <div class="pb-item" data-module="fw-B" onclick="pbSelect(this,'fw-B')">B · 场景种草型</div>
+      <div class="pb-item" data-module="fw-C" onclick="pbSelect(this,'fw-C')">C · 对比评测型</div>
+      <div class="pb-item" data-module="fw-D" onclick="pbSelect(this,'fw-D')">D · 教程干货型</div>
+    </div>
+
+    <!-- 右侧编辑区 -->
+    <div class="pb-main">
+      <div class="pb-editor-header">
+        <span class="pb-editor-title" id="pbTitle">撰写规范</span>
+        <span class="pb-save-status" id="pbSaveStatus"></span>
+        <button class="btn btn-sm" onclick="pbSave()" style="background:var(--gold);color:#000">保存</button>
+      </div>
+
+      <!-- 单文本区（固定模块） -->
+      <div class="pb-editor-body" id="pbSingleBody">
+        <textarea class="pb-textarea" id="pbEditor" oninput="pbDirty=true" spellcheck="false"></textarea>
+      </div>
+
+      <!-- 双文本区（框架：body + example） -->
+      <div class="pb-editor-body" id="pbFwBody" style="display:none">
+        <div class="pb-editor-section" style="flex:2">
+          <div class="pb-editor-sublabel">写法逻辑（body）</div>
+          <textarea class="pb-textarea" id="pbFwBodyEditor" oninput="pbDirty=true" spellcheck="false"></textarea>
+        </div>
+        <div class="pb-editor-section" style="flex:1">
+          <div class="pb-editor-sublabel">示例正文（example）</div>
+          <textarea class="pb-textarea" id="pbFwExampleEditor" oninput="pbDirty=true" spellcheck="false"></textarea>
+        </div>
+      </div>
+
+      <!-- 底部：搭配预览 -->
+      <div class="pb-footer">
+        <span class="pb-pairing-label">搭配预览</span>
+        <select class="pb-pair-select" id="pbPairFw">
+          <option value="A">框架 A</option>
+          <option value="B" selected>框架 B</option>
+          <option value="C">框架 C</option>
+          <option value="D">框架 D</option>
+        </select>
+        <select class="pb-pair-select" id="pbPairSP" style="min-width:140px">
+          <option value="">卖点（可选）</option>
+        </select>
+        <select class="pb-pair-select" id="pbPairPersona" style="min-width:120px">
+          <option value="">人群（可选）</option>
+        </select>
+        <button class="btn btn-sm" onclick="pbOpenPreview()" style="margin-left:4px">🔍 预览完整提示词</button>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /tab-prompt-base -->
+
+<script>
+// ─── 全局状态 ──────────────────────────────────────────────────────
+const st = {
+  framework: 'B', sellingPoint: '',
+  mainEdited: false, generating: false,
+  subTemplate: null,
+  persona: null,
+  spItems: [],        // selected 卖点 items (max 3)
+  scene: null,
+  refArticle: null,
+};
+
+// ─── 素材库数据 ────────────────────────────────────────────────────
+let matData = { 人: [], 货: [], 场: [] };
+let matLoaded = false;
+
+async function loadMaterials(force = false) {
+  if (matLoaded && !force) return;
+  try {
+    const r = await fetch('/api/materials').then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    matData = { 人: r.人 || [], 货: r.货 || [], 场: r.场 || [] };
+    matLoaded = true;
+    renderSidebarMaterials();
+    renderMatCards();
+  } catch(e) {
+    console.warn('素材加载失败', e.message);
+  }
+}
+
+function renderSidebarMaterials() {
+  // 人群 select
+  const personaSel = document.getElementById('personaSelect');
+  if (personaSel) {
+    personaSel.innerHTML = '<option value="">不指定人群</option>' +
+      matData.人.map((p, i) => `<option value="${i}">${escHtml(p.name)}${p.mood ? ' · ' + escHtml(p.mood) : ''}</option>`).join('');
+  }
+
+  // 卖点 select with optgroups by dimension
+  const spSel = document.getElementById('spItemSelect');
+  if (spSel) {
+    const dims = ['0糖健康','口感','原料','工艺','价格','情绪'];
+    const grouped = {};
+    dims.forEach(d => { grouped[d] = []; });
+    matData.货.forEach((sp, i) => { const d = sp.dim || '其他'; if (!grouped[d]) grouped[d]=[]; grouped[d].push({...sp, _idx: i}); });
+    spSel.innerHTML = '<option value="">选择卖点…</option>' +
+      dims.filter(d => grouped[d].length > 0).map(d =>
+        `<optgroup label="${escHtml(d)}">${grouped[d].map(sp =>
+          `<option value="${sp._idx}"${sp.main === '是' ? ' style="font-weight:600"' : ''}>${escHtml(sp.name)}</option>`).join('')}</optgroup>`
+      ).join('');
+  }
+
+  // 场景 select
+  const sceneSel = document.getElementById('sceneSelect');
+  if (sceneSel) {
+    sceneSel.innerHTML = '<option value="">不指定场景</option>' +
+      matData.场.map((s, i) => `<option value="${i}">${escHtml(s.name)}${s.mood ? ' · ' + escHtml(s.mood) : ''}</option>`).join('');
+  }
+
+  renderBatchSidebarMaterials();
+}
+
+function renderBatchSidebarMaterials() {
+  const bpSel = document.getElementById('batchPersonaSelect');
+  if (bpSel) {
+    bpSel.innerHTML = '<option value="">不指定人群</option>' +
+      matData.人.map((p, i) => `<option value="${i}">${escHtml(p.name)}</option>`).join('');
+  }
+  const bspSel = document.getElementById('batchSpSelect');
+  if (bspSel) {
+    const dims = ['0糖健康','口感','原料','工艺','价格','情绪'];
+    const grouped = {};
+    dims.forEach(d => { grouped[d] = []; });
+    matData.货.forEach((sp, i) => { const d = sp.dim || '其他'; if (!grouped[d]) grouped[d]=[]; grouped[d].push({...sp, _idx: i}); });
+    bspSel.innerHTML = '<option value="">选择卖点…</option>' +
+      dims.filter(d => grouped[d].length > 0).map(d =>
+        `<optgroup label="${escHtml(d)}">${grouped[d].map(sp =>
+          `<option value="${sp._idx}">${escHtml(sp.name)}</option>`).join('')}</optgroup>`
+      ).join('');
+  }
+  const bscSel = document.getElementById('batchSceneSelect');
+  if (bscSel) {
+    bscSel.innerHTML = '<option value="">不指定场景</option>' +
+      matData.场.map((s, i) => `<option value="${i}">${escHtml(s.name)}</option>`).join('');
+  }
+  const brefSel = document.getElementById('batchRefSelect');
+  if (brefSel && refData.length > 0) {
+    const cur = brefSel.value;
+    brefSel.innerHTML = '<option value="">不使用参考笔记</option>' +
+      refData.map((r, i) => {
+        const label = r.title || (r.tag ? r.tag.split(',')[0] : '') || '（无标题）';
+        return `<option value="${i}">${escHtml(label.slice(0, 28))}</option>`;
+      }).join('');
+    if (cur) brefSel.value = cur;
+  }
+  const wrefSel = document.getElementById('writeRefSelect');
+  if (wrefSel && refData.length > 0) {
+    const curW = wrefSel.value;
+    wrefSel.innerHTML = '<option value="">不使用参考笔记</option>' +
+      refData.map((r, i) => {
+        const label = r.title || (r.tag ? r.tag.split(',')[0] : '') || '（无标题）';
+        return `<option value="${i}">${escHtml(label.slice(0, 28))}</option>`;
+      }).join('');
+    if (curW) wrefSel.value = curW;
+  }
+}
+
+function onWriteRefChange(sel) {
+  st.refArticle = sel.value !== '' ? refData[parseInt(sel.value)] : null;
+  updateRefPreview();
+}
+
+function onBatchRefChange(sel) {
+  batchSt.refArticle = sel.value !== '' ? refData[parseInt(sel.value)] : null;
+  updateBatchRefPreview();
+}
+
+function updateBatchRefPreview() {
+  const box = document.getElementById('batchRefPreview');
+  if (!box) return;
+  if (batchSt.refArticle) {
+    document.getElementById('batchRefPreviewTag').textContent = batchSt.refArticle.title || batchSt.refArticle.tag || '';
+    const c = batchSt.refArticle.content || '';
+    document.getElementById('batchRefPreviewContent').textContent = c.slice(0, 150) + (c.length > 150 ? '…' : '');
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
+}
+
+function onPersonaChange(sel) {
+  st.persona = sel.value !== '' ? matData.人[parseInt(sel.value)] : null;
+}
+
+function onSpItemChange(sel) {
+  if (sel.value === '') return;
+  const item = matData.货[parseInt(sel.value)];
+  if (!item) return;
+  if (st.spItems.length >= 3) { showToast('最多选3个卖点', 'err'); sel.value = ''; return; }
+  if (st.spItems.some(x => x.name === item.name)) { sel.value = ''; return; }
+  st.spItems.push(item);
+  sel.value = '';
+  renderSpChips();
+}
+
+function addCustomSp(txt) {
+  if (!txt) return;
+  if (st.spItems.length >= 3) { showToast('最多选3个卖点', 'err'); return; }
+  if (st.spItems.some(x => x.name === txt)) return;
+  st.spItems.push({ name: txt, _custom: true });
+  renderSpChips();
+}
+
+function removeSpItem(i) {
+  st.spItems.splice(i, 1);
+  renderSpChips();
+}
+
+function renderSpChips() {
+  const el = document.getElementById('spChips');
+  if (!el) return;
+  el.innerHTML = st.spItems.map((sp, i) => `
+    <span style="display:inline-flex;align-items:center;gap:4px;background:var(--gold3);border:1px solid var(--gold);border-radius:10px;padding:3px 8px;font-size:11px;color:var(--gold2)">
+      ${escHtml(sp.name)}
+      <span onclick="removeSpItem(${i})" style="cursor:pointer;color:var(--gold2);opacity:.7;font-size:13px;line-height:1">×</span>
+    </span>`).join('');
+}
+
+function onBatchSpItemChange(sel) {
+  if (sel.value === '') return;
+  const item = matData.货[parseInt(sel.value)];
+  if (!item) return;
+  if (batchSt.spItems.length >= 3) { showToast('最多选3个卖点', 'err'); sel.value = ''; return; }
+  if (batchSt.spItems.some(x => x.name === item.name)) { sel.value = ''; return; }
+  batchSt.spItems.push(item);
+  sel.value = '';
+  renderBatchSpChips();
+}
+
+function addBatchCustomSp(txt) {
+  if (!txt) return;
+  if (batchSt.spItems.length >= 3) { showToast('最多选3个卖点', 'err'); return; }
+  if (batchSt.spItems.some(x => x.name === txt)) return;
+  batchSt.spItems.push({ name: txt, _custom: true });
+  renderBatchSpChips();
+}
+
+function removeBatchSpItem(i) {
+  batchSt.spItems.splice(i, 1);
+  renderBatchSpChips();
+}
+
+function renderBatchSpChips() {
+  const el = document.getElementById('batchSpChips');
+  if (!el) return;
+  el.innerHTML = batchSt.spItems.map((sp, i) => `
+    <span style="display:inline-flex;align-items:center;gap:4px;background:var(--gold3);border:1px solid var(--gold);border-radius:10px;padding:3px 8px;font-size:11px;color:var(--gold2)">
+      ${escHtml(sp.name)}
+      <span onclick="removeBatchSpItem(${i})" style="cursor:pointer;color:var(--gold2);opacity:.7;font-size:13px;line-height:1">×</span>
+    </span>`).join('');
+}
+
+function onSceneChange(sel) {
+  st.scene = sel.value !== '' ? matData.场[parseInt(sel.value)] : null;
+}
+
+// ─── 素材库 Tab 卡片渲染 ──────────────────────────────────────────
+const moodColors = {
+  '奖励自己': '#4ade80', '逃离压力': '#f87171', '社交助兴': '#60a5fa',
+  '独处仪式感': '#c084fc', '独处放松': '#c084fc', '户外出走': '#fb923c',
+  '奖励仪式感': '#4ade80', '0糖健康': '#4ade80', '口感': '#fb923c',
+  '原料': '#67e8f9', '工艺': '#fbbf24', '价格': '#2dd4bf', '情绪': '#c084fc',
+};
+
+function moodTag(val) {
+  if (!val) return '';
+  const col = moodColors[val] || 'var(--muted)';
+  return `<span class="mat-card-tag" style="color:${col};border-color:${col}30;background:${col}12">${escHtml(val)}</span>`;
+}
+
+function renderMatCards() {
+  // 人群
+  document.getElementById('matPeopleCount').textContent = matData.人.length + ' 条';
+  document.getElementById('matCards-人').innerHTML = matData.人.map((p, i) => `
+    <div class="mat-card" id="matcard-人-${i}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="flex:1">
+          <div class="mat-card-name">${escHtml(p.name)}</div>
+          ${moodTag(p.mood)}
+        </div>
+        <button class="btn btn-sm" style="flex-shrink:0;font-size:10px;padding:3px 8px" onclick="toggleMatEdit('人',${i})">编辑</button>
+      </div>
+      <div class="mat-card-view-人-${i}">${p.desc ? `<div class="mat-card-desc">${escHtml(p.desc)}</div>` : ''}</div>
+      <div class="mat-card-edit-人-${i}" style="display:none;margin-top:8px;display:none;flex-direction:column;gap:6px">
+        <input class="mat-edit-input" value="${escHtml(p.name)}" placeholder="人群名称">
+        <select class="mat-edit-input">
+          ${['奖励自己','逃离压力','社交助兴','独处仪式感'].map(o=>`<option${p.mood===o?' selected':''}>${o}</option>`).join('')}
+        </select>
+        <textarea class="mat-edit-input" style="min-height:60px;resize:none">${escHtml(p.desc||'')}</textarea>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-primary btn-sm" onclick="saveMatEdit('人',${i},'${escJs(p._id||'')}')">保存到飞书</button>
+          <button class="btn btn-sm" onclick="toggleMatEdit('人',${i})">取消</button>
+          <span class="mat-edit-status" style="font-size:11px;color:var(--muted)"></span>
+        </div>
+      </div>
+    </div>`).join('');
+
+  // 卖点（按维度分组）
+  document.getElementById('matGoodsCount').textContent = matData.货.length + ' 条';
+  const dims = ['0糖健康','口感','原料','工艺','价格','情绪'];
+  const grouped = {};
+  dims.forEach(d => { grouped[d] = []; });
+  matData.货.forEach((sp, i) => { const d = sp.dim||'其他'; if(!grouped[d]) grouped[d]=[]; grouped[d].push({...sp, _globalIdx: i}); });
+  document.getElementById('matCards-货').innerHTML = dims.filter(d => grouped[d].length > 0).map(d => `
+    <div style="margin-bottom:4px">
+      <div class="mat-dim-label">${escHtml(d)}</div>
+      ${grouped[d].map(sp => {const i=sp._globalIdx; return `
+        <div class="mat-card" id="matcard-货-${i}" style="${sp.main==='是'?'border-color:var(--gold)':''}margin-bottom:6px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <div style="flex:1">
+              <div class="mat-card-name">${escHtml(sp.name)}${sp.main==='是'?'<span style="font-size:10px;color:var(--gold);margin-left:6px">主</span>':''}</div>
+              ${moodTag(sp.angle)}
+            </div>
+            <button class="btn btn-sm" style="flex-shrink:0;font-size:10px;padding:3px 8px" onclick="toggleMatEdit('货',${i})">编辑</button>
+          </div>
+          <div class="mat-card-view-货-${i}">${sp.desc?`<div class="mat-card-desc">${escHtml(sp.desc)}</div>`:''}</div>
+          <div class="mat-card-edit-货-${i}" style="display:none;flex-direction:column;gap:6px;margin-top:8px">
+            <input class="mat-edit-input" value="${escHtml(sp.name)}" placeholder="卖点简称">
+            <select class="mat-edit-input">${['0糖健康','口感','原料','工艺','价格','情绪'].map(o=>`<option${sp.dim===o?' selected':''}>${o}</option>`).join('')}</select>
+            <select class="mat-edit-input">${['场景型','感官型','数据型','情绪型','对比型'].map(o=>`<option${sp.angle===o?' selected':''}>${o}</option>`).join('')}</select>
+            <select class="mat-edit-input"><option value="是"${sp.main==='是'?' selected':''}>主卖点</option><option value="否"${sp.main!=='是'?' selected':''}>非主卖点</option></select>
+            <textarea class="mat-edit-input" style="min-height:60px;resize:none">${escHtml(sp.desc||'')}</textarea>
+            <div style="display:flex;gap:6px;align-items:center">
+              <button class="btn btn-primary btn-sm" onclick="saveMatEdit('货',${i},'${escJs(sp._id||'')}')">保存到飞书</button>
+              <button class="btn btn-sm" onclick="toggleMatEdit('货',${i})">取消</button>
+              <span class="mat-edit-status" style="font-size:11px;color:var(--muted)"></span>
+            </div>
+          </div>
+        </div>`;}).join('')}
+    </div>`).join('');
+
+  // 场景
+  document.getElementById('matSceneCount').textContent = matData.场.length + ' 条';
+  document.getElementById('matCards-场').innerHTML = matData.场.map((s, i) => `
+    <div class="mat-card" id="matcard-场-${i}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="flex:1">
+          <div class="mat-card-name">${escHtml(s.name)}</div>
+          ${moodTag(s.mood)}
+        </div>
+        <button class="btn btn-sm" style="flex-shrink:0;font-size:10px;padding:3px 8px" onclick="toggleMatEdit('场',${i})">编辑</button>
+      </div>
+      <div class="mat-card-view-场-${i}">
+        ${s.visual?`<div class="mat-card-desc">${escHtml(s.visual)}</div>`:''}
+        ${s.guide?`<div class="mat-card-desc" style="color:var(--dim);margin-top:4px">${escHtml(s.guide)}</div>`:''}
+      </div>
+      <div class="mat-card-edit-场-${i}" style="display:none;flex-direction:column;gap:6px;margin-top:8px">
+        <input class="mat-edit-input" value="${escHtml(s.name)}" placeholder="场景名称">
+        <select class="mat-edit-input">${['独处放松','社交助兴','奖励仪式感','户外出走'].map(o=>`<option${s.mood===o?' selected':''}>${o}</option>`).join('')}</select>
+        <textarea class="mat-edit-input" style="min-height:50px;resize:none" placeholder="画面描述">${escHtml(s.visual||'')}</textarea>
+        <textarea class="mat-edit-input" style="min-height:40px;resize:none" placeholder="团队指导">${escHtml(s.guide||'')}</textarea>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-primary btn-sm" onclick="saveMatEdit('场',${i},'${escJs(s._id||'')}')">保存到飞书</button>
+          <button class="btn btn-sm" onclick="toggleMatEdit('场',${i})">取消</button>
+          <span class="mat-edit-status" style="font-size:11px;color:var(--muted)"></span>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleMatEdit(type, idx) {
+  const editEl = document.querySelector(`.mat-card-edit-${type}-${idx}`);
+  const viewEl = document.querySelector(`.mat-card-view-${type}-${idx}`);
+  const isOpen = editEl.style.display !== 'none';
+  editEl.style.display = isOpen ? 'none' : 'flex';
+  viewEl.style.display = isOpen ? '' : 'none';
+}
+
+async function saveMatEdit(type, idx, recordId) {
+  const editEl = document.querySelector(`.mat-card-edit-${type}-${idx}`);
+  const inputs = editEl.querySelectorAll('.mat-edit-input');
+  const statusEl = editEl.querySelector('.mat-edit-status');
+  statusEl.textContent = '保存中…';
+
+  let fields = {};
+  const names = {
+    人: ['人群名称','情绪状态','详细描述'],
+    货: ['卖点简称','维度','角度类型','是否主卖点','核心描述'],
+    场: ['场景名称','情绪分类','画面描述','团队指导'],
+  };
+  names[type].forEach((n, i) => { const v = inputs[i]?.value?.trim(); if (v) fields[n] = v; });
+
+  try {
+    const endpoint = recordId ? '/api/materials/update' : '/api/materials/add';
+    const body = recordId ? { type, recordId, fields } : { type, fields };
+    const r = await fetch(endpoint, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    statusEl.textContent = '✓ 已保存';
+    matLoaded = false;
+    await loadMaterials(true);
+    showToast('✓ 已同步到飞书', 'ok');
+  } catch(e) {
+    statusEl.textContent = '失败：' + e.message;
+  }
+}
+
+// ─── 素材库新增 ────────────────────────────────────────────────────
+function showMatAdd(type) {
+  ['人','货','场'].forEach(t => {
+    const f = document.getElementById(`matAddForm-${t}`);
+    if (f) f.style.display = t === type ? 'flex' : 'none';
+  });
+}
+function hideMatAdd(type) {
+  const f = document.getElementById(`matAddForm-${type}`);
+  if (f) f.style.display = 'none';
+}
+
+async function submitMatAdd(type) {
+  const status = document.getElementById(`matAdd-${type}-status`);
+  status.textContent = '保存中…';
+  let fields = {};
+
+  if (type === '人') {
+    const name = document.getElementById('matAdd-人-name').value.trim();
+    if (!name) { status.textContent = '名称不能为空'; return; }
+    fields = { '人群名称': name, '情绪状态': document.getElementById('matAdd-人-mood').value || undefined, '详细描述': document.getElementById('matAdd-人-desc').value.trim() || undefined };
+  } else if (type === '货') {
+    const name = document.getElementById('matAdd-货-name').value.trim();
+    if (!name) { status.textContent = '名称不能为空'; return; }
+    fields = { '卖点简称': name, '维度': document.getElementById('matAdd-货-dim').value || undefined, '角度类型': document.getElementById('matAdd-货-angle').value || undefined, '是否主卖点': document.getElementById('matAdd-货-main').value, '核心描述': document.getElementById('matAdd-货-desc').value.trim() || undefined };
+  } else if (type === '场') {
+    const name = document.getElementById('matAdd-场-name').value.trim();
+    if (!name) { status.textContent = '名称不能为空'; return; }
+    fields = { '场景名称': name, '情绪分类': document.getElementById('matAdd-场-mood').value || undefined, '画面描述': document.getElementById('matAdd-场-visual').value.trim() || undefined, '团队指导': document.getElementById('matAdd-场-guide').value.trim() || undefined };
+  }
+
+  // Remove undefined values
+  Object.keys(fields).forEach(k => { if (fields[k] === undefined) delete fields[k]; });
+
+  try {
+    const r = await fetch('/api/materials/add', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type, fields }),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    status.textContent = '✓ 已保存';
+    matLoaded = false;
+    await loadMaterials(true);
+    hideMatAdd(type);
+    showToast(`✓ 已新增${type === '人' ? '人群' : type === '货' ? '卖点' : '场景'}`, 'ok');
+  } catch(e) {
+    status.textContent = '失败：' + e.message;
+  }
+}
+
+// ─── 框架选择（撰写台）────────────────────────────────────────────
+function selectFw(el) {
+  document.querySelectorAll('#fwChips .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  st.framework = el.dataset.val;
+  st.subTemplate = null;
+  loadSubTemplates(el.dataset.val);
+}
+
+// ─── 启动检查 ──────────────────────────────────────────────────────
+async function checkHealth() {
+  try {
+    const r = await fetch('/api/health').then(x => x.json());
+    const dot = document.getElementById('statusDot');
+    const txt = document.getElementById('statusText');
+    if (r.ok) {
+      dot.className = 'dot ok';
+      txt.textContent = r.contextCached ? `已就绪 · 上下文缓存 ${r.contextAge}` : '已就绪';
+    }
+  } catch(e) {
+    document.getElementById('statusDot').className = 'dot err';
+    document.getElementById('statusText').textContent = '服务器未响应';
+  }
+}
+
+function getSellingPoint() {
+  if (st.spItems.length > 0) return st.spItems.map(x => x.name).join(' / ');
+  return document.getElementById('spCustom').value.trim();
+}
+
+// ─── 生成（撰写台）────────────────────────────────────────────────
+async function generate() {
+  const sp = getSellingPoint();
+  if (!sp) { showToast('请选择或填写主推卖点', 'err'); return; }
+  if (st.generating) return;
+
+  st.generating = true; st.sellingPoint = sp;
+  const btn = document.getElementById('generateBtn');
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>生成中…';
+  dot.className = 'dot busy';
+  txt.textContent = '读取飞书 + 调用 Claude…';
+  document.getElementById('genErrorBar').style.display = 'none';
+
+  // 倒计时提示（每10s更新一次，让用户知道还在跑）
+  let elapsed = 0;
+  const tickTimer = setInterval(() => {
+    elapsed += 10;
+    txt.textContent = `Claude 生成中… 已等待 ${elapsed}s`;
+  }, 10000);
+
+  const controller = new AbortController();
+  const abortTimer = setTimeout(() => controller.abort(), 270000); // 4.5 分钟硬超时
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        framework: st.framework,
+        direction: document.getElementById('dirCustom').value.trim(),
+        sellingPoint: sp,
+        spItems: st.spItems.filter(x => !x._custom),
+        subTemplate: st.subTemplate || null,
+        persona: st.persona || null,
+        scene: st.scene || null,
+        refArticle: st.refArticle || null,
+      }),
+    }).then(x => x.json());
+
+    if (!res.ok) throw new Error(res.error);
+
+    const { main } = res;
+    st.mainEdited = false;
+
+    renderMain(main);
+    const fwLabels = { A:'问题解决', B:'场景种草', C:'对比评测', D:'教程干货' };
+    const ctxParts = [`框架${st.framework}·${fwLabels[st.framework]||st.framework}`];
+    if (st.persona) ctxParts.push(`人：${st.persona.name}`);
+    if (st.scene) ctxParts.push(`场：${st.scene.name}`);
+    const dirNote = document.getElementById('dirCustom').value.trim();
+    if (dirNote) ctxParts.push(dirNote);
+    document.getElementById('spBadge').textContent = sp;
+    document.getElementById('dirBadge').textContent = ctxParts.join('　');
+    document.getElementById('mainSpLabel').textContent = sp;
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('resultArea').style.display = 'block';
+
+    if (res.contextStats) {
+      const s = res.contextStats;
+      document.getElementById('ctxIter').textContent = s.iterComp + ' 条';
+      document.getElementById('ctxRef').textContent = s.reference + ' 条';
+    }
+    dot.className = 'dot ok';
+    txt.textContent = '生成完成，已推送飞书群';
+    document.getElementById('genErrorBar').style.display = 'none';
+    showToast('✓ 生成完成，主版本已发送飞书群', 'ok');
+
+  } catch(e) {
+    dot.className = 'dot err'; txt.textContent = '生成失败';
+    const msg = e.name === 'AbortError' ? '请求超时（超过 4.5 分钟），请重试' : e.message;
+    const errBar = document.getElementById('genErrorBar');
+    errBar.textContent = '⚠ 生成失败：' + msg;
+    errBar.style.display = 'block';
+    showToast('生成失败：' + msg, 'err');
+  } finally {
+    clearInterval(tickTimer);
+    clearTimeout(abortTimer);
+    st.generating = false; btn.disabled = false;
+    btn.innerHTML = '生成文案';
+  }
+}
+
+function renderMain(v) { document.getElementById('mainContent').innerText = v.full || ''; }
+function onMainEdit() { st.mainEdited = true; }
+
+// ─── 归档（撰写台）────────────────────────────────────────────────
+// ─── 修改对比归档 ─────────────────────────────────────────────────
+async function archiveComparison() {
+  const aiText   = document.getElementById('cmpAi').value.trim();
+  const humanText = document.getElementById('cmpHuman').value.trim();
+  const reason   = document.getElementById('cmpReason').value.trim();
+  if (!aiText)    { showToast('请填写 AI 创作片段', 'err'); return; }
+  if (!humanText) { showToast('请填写人手修改版本', 'err'); return; }
+
+  const btn = document.getElementById('cmpArchiveBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>归档中…';
+  try {
+    const res = await fetch('/api/archive-comparison', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ aiText, humanText, reason }),
+    }).then(x => x.json());
+    if (!res.ok) throw new Error(res.error);
+    document.getElementById('cmpAi').value = '';
+    document.getElementById('cmpHuman').value = '';
+    document.getElementById('cmpReason').value = '';
+    document.getElementById('cmpArchiveNote').textContent = '✓ 已归档，AI 下次将优先学习';
+    showToast('✓ 归档完成！', 'ok');
+  } catch(e) {
+    showToast('归档失败：' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '📥 归档到修改对比';
+  }
+}
+
+// ─── 清除缓存 ──────────────────────────────────────────────────────
+async function clearCache() {
+  await fetch('/api/clear-cache', { method:'POST' });
+  showToast('上下文缓存已清除，下次生成将重新读取飞书', 'info');
+  checkHealth();
+}
+
+// ─── 撰写指令面板 ──────────────────────────────────────────────────
+let promptOpen = false;
+function togglePromptBar() {
+  promptOpen = !promptOpen;
+  document.getElementById('promptBarBody').style.display = promptOpen ? 'block' : 'none';
+  document.getElementById('promptChevron').textContent = promptOpen ? '▲ 收起' : '▼ 展开';
+  if (promptOpen && !document.getElementById('promptTextarea').value) loadPrompt();
+}
+async function loadPrompt() {
+  document.getElementById('promptSaveStatus').textContent = '加载中…';
+  try {
+    const r = await fetch('/api/writing-prompt').then(x => x.json());
+    if (r.ok) { document.getElementById('promptTextarea').value = r.content; document.getElementById('promptSaveStatus').textContent = ''; }
+    else document.getElementById('promptSaveStatus').textContent = '读取失败：' + r.error;
+  } catch (e) { document.getElementById('promptSaveStatus').textContent = '网络错误'; }
+}
+async function savePrompt() {
+  const content = document.getElementById('promptTextarea').value;
+  if (!content.trim()) { showToast('指令内容不能为空', 'err'); return; }
+  document.getElementById('promptSaveStatus').textContent = '保存中…';
+  try {
+    const r = await fetch('/api/writing-prompt', {
+      method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ content }),
+    }).then(x => x.json());
+    if (r.ok) { document.getElementById('promptSaveStatus').textContent = '✓ 已保存，下次生成生效'; showToast('撰写指令已保存', 'ok'); }
+    else document.getElementById('promptSaveStatus').textContent = '失败：' + r.error;
+  } catch (e) { document.getElementById('promptSaveStatus').textContent = '网络错误'; }
+}
+
+// ─── Toast ────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type = 'ok') {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  clearTimeout(toastTimer);
+
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+
+  const msgEl = document.createElement('div');
+  msgEl.className = 'toast-msg';
+  msgEl.textContent = msg;
+
+  const actions = document.createElement('div');
+  actions.className = 'toast-actions';
+
+  if (type === 'err') {
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'toast-btn';
+    copyBtn.textContent = '复制';
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(msg).then(() => { copyBtn.textContent = '✓'; setTimeout(() => { copyBtn.textContent = '复制'; }, 1500); });
+    };
+    actions.appendChild(copyBtn);
+  }
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'toast-btn';
+  closeBtn.textContent = '×';
+  closeBtn.onclick = () => el.remove();
+  actions.appendChild(closeBtn);
+
+  const body = document.createElement('div');
+  body.className = 'toast-body';
+  body.appendChild(msgEl);
+  body.appendChild(actions);
+  el.appendChild(body);
+
+  document.body.appendChild(el);
+
+  if (type !== 'err') {
+    toastTimer = setTimeout(() => el.remove(), 4000);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 批量生产
+// ═══════════════════════════════════════════════════════════════════
+const batchSt = { jobs: [], framework: 'B', subTemplate: null, batchId: null, pollInterval: null, refArticle: null, spItems: [] };
+
+function selectBatchFw(el) {
+  document.querySelectorAll('#batchFwChips .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  batchSt.framework = el.dataset.val;
+  batchSt.subTemplate = null;
+  renderBatchSubTmplChips(el.dataset.val);
+}
+
+function renderBatchSubTmplChips(fw) {
+  const list = (allTemplates[fw] || []).filter(t => !t.isBase);
+  const section = document.getElementById('batchSubTmplSection');
+  const chips = document.getElementById('batchSubTmplChips');
+  if (list.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  chips.innerHTML = list.map(t => `
+    <div class="sub-tmpl-chip" data-tmpl-id="${escHtml(t.id)}" onclick="selectBatchSubTmpl(this)">
+      ${escHtml(t.name)}
+    </div>`).join('');
+}
+
+function selectBatchSubTmpl(el) {
+  const id = el.dataset.tmplId;
+  const template = (allTemplates[batchSt.framework] || []).find(t => t.id === id);
+  if (!template) return;
+  const wasSelected = batchSt.subTemplate && batchSt.subTemplate.id === id;
+  document.querySelectorAll('#batchSubTmplChips .sub-tmpl-chip').forEach(c => c.classList.remove('active'));
+  batchSt.subTemplate = wasSelected ? null : template;
+  if (!wasSelected) el.classList.add('active');
+}
+
+function addBatchJob() {
+  const dir = document.getElementById('batchDir').value.trim();
+  const spCustom = document.getElementById('batchSpCustom').value.trim();
+  const sp = batchSt.spItems.length > 0 ? batchSt.spItems.map(x => x.name).join(' / ') : spCustom;
+  if (!sp) { showToast('请选择或填写卖点', 'err'); return; }
+
+  const personaIdx = document.getElementById('batchPersonaSelect').value;
+  const sceneIdx   = document.getElementById('batchSceneSelect').value;
+
+  const qty = Math.min(Math.max(1, parseInt(document.getElementById('batchQty').value) || 1), 10);
+  batchSt.jobs.push({
+    framework:    batchSt.framework,
+    direction:    dir,
+    sellingPoint: sp,
+    spItems:      batchSt.spItems.filter(x => !x._custom),
+    persona:      personaIdx !== '' ? matData.人[parseInt(personaIdx)] : null,
+    scene:        sceneIdx   !== '' ? matData.场[parseInt(sceneIdx)]   : null,
+    subTemplate:  batchSt.subTemplate || null,
+    refArticle:   batchSt.refArticle  || null,
+    qty,
+  });
+  document.getElementById('batchDir').value = '';
+  document.getElementById('batchSpCustom').value = '';
+  document.getElementById('batchPersonaSelect').value = '';
+  document.getElementById('batchSceneSelect').value = '';
+  batchSt.spItems = [];
+  renderBatchSpChips();
+  renderBatchQueue();
+  document.getElementById('batchStartBtn').disabled = false;
+}
+
+function removeBatchJob(idx) {
+  batchSt.jobs.splice(idx, 1);
+  renderBatchQueue();
+  if (batchSt.jobs.length === 0) document.getElementById('batchStartBtn').disabled = true;
+}
+
+function renderBatchQueue(serverJobs) {
+  const jobs = serverJobs || batchSt.jobs.map(j => ({ ...j, status: 'pending' }));
+  document.getElementById('batchCount').textContent = jobs.length;
+  const statusLabel = { pending:'待生成', generating:'生成中', done:'完成', failed:'失败' };
+  document.getElementById('batchJobList').innerHTML = jobs.map((j, i) => `
+    <div class="job-item">
+      <span class="job-status ${j.status||'pending'}">${statusLabel[j.status||'pending']}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">
+        ${escHtml(j.sellingPoint)}${j.qtyLabel ? ` <span style="color:var(--dim)">${escHtml(j.qtyLabel)}</span>` : j.qty > 1 ? ` <span style="color:var(--gold2)">×${j.qty}条</span>` : ''}${j.direction ? ' · ' + escHtml(j.direction) : ''}
+      </span>
+      ${!serverJobs ? `<button class="btn btn-sm" onclick="removeBatchJob(${i})" style="padding:2px 8px;font-size:11px;flex-shrink:0">✕</button>` : ''}
+    </div>`).join('');
+}
+
+async function startBatch() {
+  if (batchSt.jobs.length === 0) return;
+  const btn = document.getElementById('batchStartBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>批量生成中…';
+  document.getElementById('batchEmptyState').style.display = 'none';
+
+  try {
+    const res = await fetch('/api/batch-start', {
+      method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({ jobs: batchSt.jobs }),
+    }).then(x => x.json());
+    if (!res.ok) throw new Error(res.error);
+    batchSt.batchId = res.batchId;
+    batchSt.jobs = [];
+    pollBatch();
+  } catch(e) {
+    showToast('批量启动失败：' + e.message, 'err');
+    btn.disabled = false; btn.innerHTML = '开始批量生成';
+  }
+}
+
+function pollBatch() {
+  if (batchSt.pollInterval) clearInterval(batchSt.pollInterval);
+  batchSt.pollInterval = setInterval(async () => {
+    try {
+      const res = await fetch('/api/batch-poll/' + batchSt.batchId).then(x => x.json());
+      if (!res.ok) return;
+      renderBatchQueue(res.jobs);
+      renderBatchResults(res.jobs);
+      if (res.done) {
+        clearInterval(batchSt.pollInterval);
+        document.getElementById('batchStartBtn').disabled = false;
+        document.getElementById('batchStartBtn').innerHTML = '开始批量生成';
+        renderBatchQueue(); // 清空队列显示
+        showToast(`批量生成完成，共 ${res.jobs.length} 篇`, 'ok');
+      }
+    } catch {}
+  }, 3000);
+}
+
+function renderBatchResults(jobs) {
+  const doneJobs = jobs.filter(j => j.status === 'done' || j.status === 'failed');
+  if (doneJobs.length === 0) return;
+  document.getElementById('batchResults').innerHTML = doneJobs.map(j => {
+    if (j.status === 'failed') return `
+      <div class="batch-result-card" style="border-color:var(--red)">
+        <div class="batch-result-head">
+          <span style="color:var(--red)">生成失败</span>
+          <span style="color:var(--muted)">${escHtml(j.sellingPoint)}</span>
+        </div>
+        <div style="padding:16px;color:var(--red);font-size:13px">${escHtml(j.error)}</div>
+      </div>`;
+    const r = j.result || {};
+    const meta = [j.direction, j.persona?.name, j.scene?.name].filter(Boolean).join(' · ');
+    return `
+      <div class="batch-result-card">
+        <div class="batch-result-head">
+          <span style="color:var(--gold2)">框架${j.framework}${meta ? ' · ' + escHtml(meta) : ''}</span>
+          <span class="sp-badge">${escHtml(j.sellingPoint)}</span>
+        </div>
+        <div style="padding:16px 20px;display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div class="section-label" style="margin-bottom:4px">标题</div>
+            <input class="mat-edit-input" id="brc-title-${j.id}" value="${escHtml(r.title||'')}" style="font-size:13px">
+          </div>
+          <div>
+            <div class="section-label" style="margin-bottom:4px">正文</div>
+            <textarea class="mat-edit-input" id="brc-body-${j.id}" style="min-height:110px;resize:vertical;font-size:13px;line-height:1.7">${escHtml(r.body||'')}</textarea>
+          </div>
+          <div>
+            <div class="section-label" style="margin-bottom:4px">话题</div>
+            <input class="mat-edit-input" id="brc-tags-${j.id}" value="${escHtml(r.tags||'')}" style="font-size:13px">
+          </div>
+        </div>
+        <div class="batch-result-footer">
+          ${j.archived
+            ? `<span style="font-size:12px;color:var(--green)">✓ 已自动归档到飞书</span>`
+            : j.archiveError
+              ? `<span style="font-size:12px;color:var(--red)">归档失败</span><button class="btn btn-primary btn-sm" onclick="archiveBatchItem(${j.id})">重试归档</button>`
+              : `<span style="font-size:12px;color:var(--dim)">归档中…</span>`}
+          <span style="font-size:12px;color:var(--dim)" id="ban-${j.id}"></span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escJs(s)   { return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+async function archiveBatchItem(jobId) {
+  const title = document.getElementById(`brc-title-${jobId}`)?.value?.trim() || '';
+  const body  = document.getElementById(`brc-body-${jobId}`)?.value?.trim()  || '';
+  const tags  = document.getElementById(`brc-tags-${jobId}`)?.value?.trim()  || '';
+  if (!body) { showToast('正文不能为空', 'err'); return; }
+  try {
+    const res = await fetch('/api/batch-archive', {
+      method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({ title, body, tags }),
+    }).then(x => x.json());
+    if (!res.ok) throw new Error(res.error);
+    const note = document.getElementById(`ban-${jobId}`);
+    if (note) note.textContent = '✓ 已归档';
+    showToast('✓ 归档到飞书完成', 'ok');
+  } catch(e) { showToast('归档失败：' + e.message, 'err'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 竞品研究台
+// ═══════════════════════════════════════════════════════════════════
+let researchMode = 'writing';
+
+function setResearchMode(mode) {
+  researchMode = mode;
+  const isWriting = mode === 'writing';
+  document.getElementById('rModeWriting').className = isWriting ? 'btn btn-primary btn-sm' : 'btn btn-sm';
+  document.getElementById('rModeSelling').className = isWriting ? 'btn btn-sm' : 'btn btn-primary btn-sm';
+  document.getElementById('rModeDesc').textContent = isWriting
+    ? '分析写作结构与技法，输出可附加到撰写指令的优化建议'
+    : '提取竞品卖点表达角度，生成可添加到货表格和产品信息文档的建议';
+  document.getElementById('writingResult').style.display = 'none';
+  document.getElementById('sellingResult').style.display = 'none';
+  document.getElementById('researchEmptyState').style.display = 'flex';
+}
+
+async function runResearch() {
+  const notes = document.getElementById('competitorNotes').value.trim();
+  if (!notes) { showToast('请粘贴竞品笔记', 'err'); return; }
+  if (researchMode === 'writing') await analyzeCompetitor(notes);
+  else await analyzeSellingPoints(notes);
+}
+
+async function analyzeCompetitor(notes) {
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>分析中（约60秒）…';
+  document.getElementById('researchEmptyState').style.display = 'none';
+  document.getElementById('writingResult').style.display = 'none';
+  try {
+    let currentTemplate = '';
+    try { const r = await fetch('/api/writing-prompt').then(x=>x.json()); if (r.ok) currentTemplate = r.content; } catch {}
+    const res = await fetch('/api/analyze-competitor', {
+      method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({ notes, currentTemplate }),
+    }).then(x => x.json());
+    if (!res.ok) throw new Error(res.error);
+    document.getElementById('analysisContent').textContent = res.analysis;
+    document.getElementById('writingResult').style.display = 'flex';
+    showToast('写作方法分析完成！', 'ok');
+  } catch(e) {
+    showToast('分析失败：' + e.message, 'err');
+    document.getElementById('researchEmptyState').style.display = 'flex';
+  } finally {
+    btn.disabled = false; btn.innerHTML = '开始分析';
+  }
+}
+
+async function analyzeSellingPoints(notes) {
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>提取中（约60秒）…';
+  document.getElementById('researchEmptyState').style.display = 'none';
+  document.getElementById('sellingResult').style.display = 'none';
+  try {
+    const res = await fetch('/api/extract-selling-points', {
+      method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({ notes }),
+    }).then(x => x.json());
+    if (!res.ok) throw new Error(res.error);
+
+    // 显示文本分析（去掉 JSON 代码块部分）
+    const cleanText = res.analysis.replace(/```json[\s\S]*?```/g, '').trim();
+    document.getElementById('sellingAnalysisContent').textContent = cleanText;
+
+    // 渲染建议卖点卡片
+    const suggestionsEl = document.getElementById('sellingSuggestions');
+    if (res.suggestions && res.suggestions.length > 0) {
+      suggestionsEl.innerHTML = res.suggestions.map((s, i) => `
+        <div class="mat-card" style="border-color:var(--border2)">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <div style="flex:1">
+              <div class="mat-card-name">${escHtml(s['卖点简称']||'')}</div>
+              ${s['维度'] ? `<span class="mat-card-tag" style="color:var(--gold2)">${escHtml(s['维度'])}</span>` : ''}
+              ${s['角度类型'] ? `<span class="mat-card-tag">${escHtml(s['角度类型'])}</span>` : ''}
+              ${s['是否主卖点']==='是' ? '<span class="mat-card-tag" style="color:var(--green)">主</span>' : ''}
+            </div>
+            <button class="btn btn-primary btn-sm" style="flex-shrink:0;font-size:10px;padding:3px 8px" onclick="addSuggestionToGoods(${i})" id="addGoodsBtn-${i}">添加到货表格</button>
+          </div>
+          ${s['核心描述'] ? `<div class="mat-card-desc" style="margin-top:6px">${escHtml(s['核心描述'])}</div>` : ''}
+        </div>`).join('');
+      window._sellingSuggestions = res.suggestions;
+    } else {
+      suggestionsEl.innerHTML = '<div style="font-size:12px;color:var(--dim)">未解析到结构化建议，请查看上方文本分析</div>';
+    }
+
+    document.getElementById('sellingResult').style.display = 'flex';
+    showToast('卖点提取完成！', 'ok');
+  } catch(e) {
+    showToast('提取失败：' + e.message, 'err');
+    document.getElementById('researchEmptyState').style.display = 'flex';
+  } finally {
+    btn.disabled = false; btn.innerHTML = '开始分析';
+  }
+}
+
+async function addSuggestionToGoods(i) {
+  const s = (window._sellingSuggestions || [])[i];
+  if (!s) return;
+  const btn = document.getElementById(`addGoodsBtn-${i}`);
+  if (btn) { btn.disabled = true; btn.textContent = '添加中…'; }
+  try {
+    const fields = {
+      '卖点简称': s['卖点简称'] || '',
+      '维度':     s['维度']     || '',
+      '角度类型': s['角度类型'] || '',
+      '是否主卖点': s['是否主卖点'] || '否',
+      '核心描述': s['核心描述'] || '',
+    };
+    Object.keys(fields).forEach(k => { if (!fields[k]) delete fields[k]; });
+    const res = await fetch('/api/materials/add', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type: '货', fields }),
+    }).then(x => x.json());
+    if (!res.ok) throw new Error(res.error);
+    if (btn) { btn.textContent = '✓ 已添加'; btn.className = 'btn btn-sm'; }
+    matLoaded = false; // 下次打开素材库时刷新
+    showToast('✓ 已添加到货表格', 'ok');
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '添加到货表格'; }
+    showToast('添加失败：' + e.message, 'err');
+  }
+}
+
+async function applyAnalysis() {
+  const analysis = document.getElementById('analysisContent').textContent.trim();
+  if (!analysis) return;
+  let currentTemplate = '';
+  try { const r = await fetch('/api/writing-prompt').then(x=>x.json()); if (r.ok) currentTemplate = r.content; } catch {}
+  switchTab('write');
+  if (!promptOpen) togglePromptBar();
+  document.getElementById('promptTextarea').value =
+    currentTemplate + '\n\n---\n\n# 竞品分析建议（请阅读后整合到上方规则中，再删除此段）\n\n' + analysis;
+  document.getElementById('promptSaveStatus').textContent = '⚠️ 已附加竞品分析，整合后请保存';
+  showToast('已切换到撰写台，请在撰写指令中整合后保存', 'info');
+}
+
+async function applyAnalysisToProductInfo() {
+  const analysis = document.getElementById('analysisContent').textContent.trim();
+  if (!analysis) return;
+  let current = '';
+  try { const r = await fetch('/api/product-info').then(x=>x.json()); if (r.ok) current = r.content; } catch {}
+  switchTab('write');
+  if (!productInfoOpen) toggleProductInfoBar();
+  document.getElementById('productInfoTextarea').value =
+    current + '\n\n---\n\n# 竞品分析补充（整合后请删除此段）\n\n' + analysis;
+  document.getElementById('productInfoStatus').textContent = '⚠️ 已附加建议，整合后请保存';
+  showToast('已附加到产品信息，请整合后保存', 'info');
+}
+
+async function applySellingToProductInfo() {
+  const text = document.getElementById('sellingAnalysisContent').textContent.trim();
+  if (!text) return;
+  // 提取"建议补充到产品信息文档"段落
+  const match = text.match(/###\s*建议补充到产品信息文档\n([\s\S]*?)(?=###|$)/);
+  const excerpt = match ? match[1].trim() : text;
+  let current = '';
+  try { const r = await fetch('/api/product-info').then(x=>x.json()); if (r.ok) current = r.content; } catch {}
+  switchTab('write');
+  if (!productInfoOpen) toggleProductInfoBar();
+  document.getElementById('productInfoTextarea').value =
+    current + '\n\n---\n\n# 竞品卖点提炼补充（整合后请删除此段）\n\n' + excerpt;
+  document.getElementById('productInfoStatus').textContent = '⚠️ 已附加建议，整合后请保存';
+  showToast('已附加到产品信息，请整合后保存', 'info');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 子模板（撰写台框架下的风格模板）
+// ═══════════════════════════════════════════════════════════════════
+let allTemplates = { A: [], B: [], C: [], D: [] };
+
+async function loadSubTemplates(fw) {
+  try {
+    const r = await fetch('/api/templates').then(x => x.json());
+    if (r.ok) allTemplates = r.templates;
+  } catch {}
+  renderSubTmplChips(fw || st.framework);
+}
+
+function renderSubTmplChips(fw) {
+  const list = (allTemplates[fw] || []).filter(t => !t.isBase); // 基础模板自动注入，不显示为可选项
+  const section = document.getElementById('subTmplSection');
+  const chips = document.getElementById('subTmplChips');
+  const preview = document.getElementById('subTmplPreview');
+  if (list.length === 0) { section.style.display = 'none'; preview.style.display = 'none'; return; }
+  section.style.display = 'block';
+  chips.innerHTML = list.map(t => `
+    <div class="sub-tmpl-chip" data-tmpl-id="${escHtml(t.id)}" onclick="selectSubTmpl(this)">
+      ${escHtml(t.name)}
+    </div>`).join('');
+}
+
+function selectSubTmpl(el) {
+  const id = el.dataset.tmplId;
+  const template = (allTemplates[st.framework] || []).find(t => t.id === id);
+  if (!template) return;
+
+  const wasSelected = st.subTemplate && st.subTemplate.id === id;
+  document.querySelectorAll('.sub-tmpl-chip').forEach(c => c.classList.remove('active'));
+  const preview = document.getElementById('subTmplPreview');
+
+  if (wasSelected) {
+    st.subTemplate = null;
+    preview.style.display = 'none';
+  } else {
+    el.classList.add('active');
+    st.subTemplate = template;
+    preview.textContent = (template.desc ? template.desc + '\n\n' : '') + template.body;
+    preview.style.display = 'block';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 产品信息面板
+// ═══════════════════════════════════════════════════════════════════
+let productInfoOpen = false;
+
+function toggleProductInfoBar() {
+  productInfoOpen = !productInfoOpen;
+  document.getElementById('productInfoBody').style.display = productInfoOpen ? 'block' : 'none';
+  document.getElementById('productInfoChevron').textContent = productInfoOpen ? '▲ 收起' : '▼ 展开';
+  if (productInfoOpen && !document.getElementById('productInfoTextarea').value) loadProductInfoPanel();
+}
+
+async function loadProductInfoPanel() {
+  document.getElementById('productInfoStatus').textContent = '加载中…';
+  try {
+    const r = await fetch('/api/product-info').then(x => x.json());
+    if (r.ok) { document.getElementById('productInfoTextarea').value = r.content; document.getElementById('productInfoStatus').textContent = ''; }
+    else document.getElementById('productInfoStatus').textContent = '读取失败：' + r.error;
+  } catch (e) { document.getElementById('productInfoStatus').textContent = '网络错误'; }
+}
+
+async function saveProductInfo() {
+  const content = document.getElementById('productInfoTextarea').value;
+  document.getElementById('productInfoStatus').textContent = '保存中…';
+  try {
+    const r = await fetch('/api/product-info', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content }),
+    }).then(x => x.json());
+    if (r.ok) { document.getElementById('productInfoStatus').textContent = '✓ 已保存，下次生成生效'; showToast('产品信息已保存', 'ok'); }
+    else document.getElementById('productInfoStatus').textContent = '失败：' + r.error;
+  } catch (e) { document.getElementById('productInfoStatus').textContent = '网络错误'; }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 模板库 Tab
+// ═══════════════════════════════════════════════════════════════════
+let currentTmplFw = 'A';
+let tmplEditingId = null;
+let baseEditingFw = null; // 正在编辑基础模板的框架
+const fwFullLabels = { A:'A · 问题解决型', B:'B · 场景种草型', C:'C · 对比评测型', D:'D · 教程干货型' };
+
+function selectTmplCat(el) {
+  document.querySelectorAll('.templates-cat-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  currentTmplFw = el.dataset.fw;
+  document.getElementById('tmplCatTitle').textContent = fwFullLabels[currentTmplFw];
+  renderTmplCards();
+  hideAddTemplate();
+}
+
+function renderTmplCards() {
+  const list = allTemplates[currentTmplFw] || [];
+  const userTemplates = list.filter(t => !t.isBase);
+  const baseTemplate = list.find(t => t.isBase);
+
+  let html = '';
+
+  if (baseTemplate) {
+    const isEditingBase = baseEditingFw === currentTmplFw;
+    html += `
+      <div class="template-card" style="border-color:var(--gold)">
+        <div class="template-card-head">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-weight:600;color:var(--gold2)">${escHtml(baseTemplate.name)}</span>
+            <span style="font-size:10px;padding:2px 7px;border-radius:10px;background:var(--gold3);color:var(--gold2);border:1px solid var(--gold)">自动注入</span>
+            <span style="color:var(--muted);font-size:12px">${escHtml(baseTemplate.desc||'')}</span>
+          </div>
+          <div>
+            ${isEditingBase
+              ? `<button class="btn btn-sm" style="font-size:11px" onclick="cancelEditBaseTemplate()">取消</button>`
+              : `<button class="btn btn-sm" style="font-size:11px" onclick="editBaseTemplate()">编辑</button>`}
+          </div>
+        </div>
+        ${isEditingBase ? `
+        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:11px;color:var(--muted);font-weight:600">写作逻辑（结构顺序、要点）</div>
+          <textarea id="baseEditBody" style="min-height:120px;resize:vertical;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text);font-size:12px;font-family:inherit;line-height:1.7;outline:none">${escHtml(baseTemplate.body)}</textarea>
+          <div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:4px">参考示例（注入给 Claude 学习节奏，可改写）</div>
+          <textarea id="baseEditExample" style="min-height:160px;resize:vertical;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text);font-size:12px;font-family:inherit;line-height:1.7;outline:none">${escHtml(baseTemplate.example||'')}</textarea>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary btn-sm" onclick="saveBaseTemplate()">保存修改</button>
+            <button class="btn btn-sm" onclick="cancelEditBaseTemplate()">取消</button>
+          </div>
+        </div>` : `
+        <div class="template-card-body">${escHtml(baseTemplate.body)}</div>
+        ${baseTemplate.example ? `<details style="padding:0 16px 12px"><summary style="font-size:11px;color:var(--dim);cursor:pointer;user-select:none">参考示例 ▸</summary><div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.7;white-space:pre-wrap">${escHtml(baseTemplate.example)}</div></details>` : ''}`}
+      </div>`;
+  }
+
+  if (userTemplates.length === 0 && !baseTemplate) {
+    html = `<div style="padding:40px;text-align:center;color:var(--dim);font-size:13px">暂无模板·点击「新建模板」添加第一个</div>`;
+  } else if (userTemplates.length === 0) {
+    html += `<div style="padding:20px;text-align:center;color:var(--dim);font-size:13px">暂无风格子模板·点击「新建模板」添加</div>`;
+  } else {
+    html += userTemplates.map(t => {
+      const isEditing = tmplEditingId === t.id;
+      return `
+      <div class="template-card" style="${isEditing ? 'border-color:var(--gold)' : ''}">
+        <div class="template-card-head">
+          <div>
+            <span style="font-weight:600;color:var(--text)">${escHtml(t.name)}</span>
+            ${t.desc ? `<span style="color:var(--muted);font-size:12px;margin-left:10px">${escHtml(t.desc)}</span>` : ''}
+          </div>
+          <div style="display:flex;gap:6px">
+            ${isEditing
+              ? `<button class="btn btn-sm" style="font-size:11px" onclick="cancelEditTemplate()">取消</button>`
+              : `<button class="btn btn-sm" style="font-size:11px" onclick="editTemplate('${escHtml(t.id)}')">编辑</button>`}
+            <button class="btn btn-sm" style="color:var(--red);border-color:var(--red);font-size:11px"
+              onclick="deleteTemplate('${escHtml(t.id)}')">删除</button>
+          </div>
+        </div>
+        ${isEditing ? `
+        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+          <input id="tmplEditName" value="${escHtml(t.name)}" style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:6px 10px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+          <input id="tmplEditDesc" value="${escHtml(t.desc||'')}" placeholder="简短说明（可选）" style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:6px 10px;color:var(--text);font-size:12px;font-family:inherit;outline:none">
+          <textarea id="tmplEditBody" style="min-height:160px;resize:vertical;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text);font-size:12px;font-family:inherit;line-height:1.7;outline:none">${escHtml(t.body)}</textarea>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary btn-sm" onclick="saveEditTemplate('${escHtml(t.id)}')">保存修改</button>
+            <button class="btn btn-sm" onclick="cancelEditTemplate()">取消</button>
+          </div>
+        </div>` : `<div class="template-card-body">${escHtml(t.body)}</div>`}
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('tmplCards').innerHTML = html;
+}
+
+function showAddTemplate() {
+  document.getElementById('tmplAddForm').style.display = 'flex';
+  document.getElementById('tmplName').focus();
+}
+function hideAddTemplate() {
+  document.getElementById('tmplAddForm').style.display = 'none';
+  document.getElementById('tmplName').value = '';
+  document.getElementById('tmplDesc').value = '';
+  document.getElementById('tmplBody').value = '';
+}
+
+async function saveNewTemplate() {
+  const name = document.getElementById('tmplName').value.trim();
+  const desc = document.getElementById('tmplDesc').value.trim();
+  const body = document.getElementById('tmplBody').value.trim();
+  if (!name || !body) { showToast('名称和模板内容不能为空', 'err'); return; }
+
+  if (!allTemplates[currentTmplFw]) allTemplates[currentTmplFw] = [];
+  allTemplates[currentTmplFw].push({
+    id: Date.now().toString(36), name, desc, body,
+  });
+  await persistTemplates();
+  hideAddTemplate();
+  renderTmplCards();
+  renderSubTmplChips(currentTmplFw);
+  showToast('模板已保存', 'ok');
+}
+
+async function deleteTemplate(id) {
+  allTemplates[currentTmplFw] = (allTemplates[currentTmplFw] || []).filter(t => t.id !== id);
+  await persistTemplates();
+  if (tmplEditingId === id) tmplEditingId = null;
+  renderTmplCards();
+  renderSubTmplChips(currentTmplFw);
+  if (st.subTemplate && st.subTemplate.id === id) st.subTemplate = null;
+  showToast('模板已删除', 'ok');
+}
+
+function editTemplate(id) {
+  tmplEditingId = id;
+  renderTmplCards();
+  setTimeout(() => document.getElementById('tmplEditName')?.focus(), 50);
+}
+
+function cancelEditTemplate() {
+  tmplEditingId = null;
+  renderTmplCards();
+}
+
+function editBaseTemplate() {
+  baseEditingFw = currentTmplFw;
+  tmplEditingId = null;
+  renderTmplCards();
+  setTimeout(() => document.getElementById('baseEditBody')?.focus(), 50);
+}
+
+function cancelEditBaseTemplate() {
+  baseEditingFw = null;
+  renderTmplCards();
+}
+
+async function saveBaseTemplate() {
+  const body = document.getElementById('baseEditBody')?.value?.trim();
+  const example = document.getElementById('baseEditExample')?.value?.trim();
+  if (!body) { showToast('写作逻辑不能为空', 'err'); return; }
+  try {
+    const r = await fetch('/api/base-template', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ fw: currentTmplFw, body, example: example || '' }),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    const list = allTemplates[currentTmplFw] || [];
+    const base = list.find(t => t.isBase);
+    if (base) { base.body = body; base.example = example || ''; }
+    baseEditingFw = null;
+    renderTmplCards();
+    showToast('基础写法已保存', 'ok');
+  } catch (e) {
+    showToast('保存失败：' + e.message, 'err');
+  }
+}
+
+async function saveEditTemplate(id) {
+  const name = document.getElementById('tmplEditName')?.value.trim();
+  const desc = document.getElementById('tmplEditDesc')?.value.trim();
+  const body = document.getElementById('tmplEditBody')?.value.trim();
+  if (!name || !body) { showToast('名称和模板内容不能为空', 'err'); return; }
+  const list = allTemplates[currentTmplFw] || [];
+  const t = list.find(x => x.id === id);
+  if (!t) return;
+  t.name = name; t.desc = desc; t.body = body;
+  await persistTemplates();
+  if (st.subTemplate && st.subTemplate.id === id) st.subTemplate = { ...t };
+  tmplEditingId = null;
+  renderTmplCards();
+  renderSubTmplChips(currentTmplFw);
+  showToast('模板已更新', 'ok');
+}
+
+async function persistTemplates() {
+  try {
+    await fetch('/api/templates', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ templates: allTemplates }),
+    });
+  } catch (e) { showToast('保存失败：' + e.message, 'err'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 参考文案库
+// ═══ 活人感语料专区 ════════════════════════════════════════════════
+let corpusItems = [];
+let corpusPanelOpen = false;
+
+async function loadCorpus() {
+  try {
+    const r = await fetch('/api/corpus').then(x => x.json());
+    if (r.ok) { corpusItems = r.items || []; renderCorpusList(); }
+  } catch (_) {}
+}
+
+function toggleCorpusPanel() {
+  corpusPanelOpen = !corpusPanelOpen;
+  const panel   = document.getElementById('corpusPanel');
+  const chevron = document.getElementById('corpusChevron');
+  if (panel)   panel.style.display = corpusPanelOpen ? 'block' : 'none';
+  if (chevron) chevron.style.transform = corpusPanelOpen ? 'rotate(90deg)' : '';
+  if (corpusPanelOpen) loadCorpus();
+}
+
+function renderCorpusList() {
+  const badge = document.getElementById('corpusBadge');
+  const list  = document.getElementById('corpusList');
+  if (badge) badge.textContent = corpusItems.length;
+  if (!list) return;
+  if (corpusItems.length === 0) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--dim);padding:4px 0">暂无语料，在下方输入框快速添加</div>';
+    return;
+  }
+  list.innerHTML = corpusItems.map((txt, i) => `
+    <div style="display:flex;align-items:flex-start;gap:6px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:6px 8px">
+      <div style="flex:1;font-size:12px;color:var(--muted);line-height:1.6;word-break:break-all">${escHtml(txt)}</div>
+      <button onclick="deleteCorpusItem(${i})" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;line-height:1;flex-shrink:0;padding:0 2px" title="删除">×</button>
+    </div>`).join('');
+}
+
+async function addCorpusItem() {
+  const input  = document.getElementById('corpusInput');
+  const status = document.getElementById('corpusStatus');
+  const txt = input?.value.trim();
+  if (!txt) return;
+  status.textContent = '保存中…';
+  try {
+    const r = await fetch('/api/corpus/add', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ item: txt }),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    corpusItems = r.items;
+    input.value = '';
+    status.textContent = '✓ 已保存到撰写指令';
+    renderCorpusList();
+    setTimeout(() => { status.textContent = ''; }, 2000);
+  } catch (e) { status.textContent = '保存失败：' + e.message; }
+}
+
+async function deleteCorpusItem(i) {
+  try {
+    const r = await fetch('/api/corpus/delete', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ index: i }),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    corpusItems = r.items;
+    renderCorpusList();
+  } catch (e) { showToast('删除失败：' + e.message, 'err'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+async function loadContextStats() {
+  try {
+    const r = await fetch('/api/context-stats').then(x => x.json());
+    if (!r.ok) return;
+    const elIter = document.getElementById('ctxIter');
+    const elRef  = document.getElementById('ctxRef');
+    if (elIter) elIter.textContent = r.iterComp + ' 条';
+    if (elRef)  elRef.textContent  = r.reference + ' 条';
+    const bIter = document.getElementById('batchCtxIter');
+    if (bIter) bIter.textContent = r.iterComp + ' 条';
+  } catch(e) {}
+}
+
+let refData = [];
+let refLoaded = false;
+let selectedRefIds = new Set(); // 当前被选为"注入 Claude"的参考文案 ID
+
+async function loadReferences(force = false) {
+  if (refLoaded && !force) return;
+  document.getElementById('refCount').textContent = '加载中…';
+  try {
+    const [r, sel] = await Promise.all([
+      fetch('/api/references').then(x => x.json()),
+      fetch('/api/references/selected').then(x => x.json()),
+    ]);
+    if (!r.ok) throw new Error(r.error);
+    refData = r.refs || [];
+    selectedRefIds = new Set(sel.ok ? (sel.ids || []) : []);
+    refLoaded = true;
+    renderRefCards();
+    renderBatchSidebarMaterials();
+    document.getElementById('refCount').textContent = refData.length + ' 篇';
+    updateRefInjectBadge();
+  } catch(e) {
+    document.getElementById('refCount').textContent = '加载失败';
+  }
+}
+
+function renderRefCards() {
+  const container = document.getElementById('refCards');
+  if (!container) return;
+  if (refData.length === 0) {
+    container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--dim);font-size:13px">暂无参考文案 · 点击「新增」添加第一篇</div>';
+    return;
+  }
+  container.innerHTML = refData.map((ref, i) => {
+    const isWrite = st.refArticle && st.refArticle._id === ref._id;
+    const isBatch = batchSt.refArticle && batchSt.refArticle._id === ref._id;
+    const isPinned = ref._id && selectedRefIds.has(ref._id);
+    const borderColor = isPinned ? 'var(--accent)' : isWrite ? 'var(--gold)' : isBatch ? 'var(--gold)' : '';
+    return `
+    <div class="mat-card" style="${borderColor ? `border-color:${borderColor};` : ''}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
+        <div style="flex:1">
+          ${isPinned ? `<span style="font-size:10px;padding:2px 6px;border-radius:8px;background:var(--accent)20;color:var(--accent);border:1px solid var(--accent)40;margin-bottom:4px;display:inline-block">📌 已注入</span> ` : ''}
+          ${ref.title ? `<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">${escHtml(ref.title)}</div>` : ''}
+          ${ref.tag ? `<span class="mat-card-tag" style="color:var(--gold2);border-color:var(--gold)30;background:var(--gold3)">${escHtml(ref.tag)}</span>` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+          ${isPinned
+            ? `<button class="btn btn-sm" style="font-size:10px;padding:3px 8px;color:var(--accent);border-color:var(--accent)" onclick="toggleRefInjection('${escHtml(ref._id||'')}')">📌 取消注入</button>`
+            : `<button class="btn btn-sm" style="font-size:10px;padding:3px 8px" onclick="toggleRefInjection('${escHtml(ref._id||'')}')">注入</button>`}
+          ${isWrite
+            ? `<button class="btn btn-sm" style="font-size:10px;padding:3px 8px;color:var(--green);border-color:var(--green)" onclick="clearRef()">✓ 撰写台</button>`
+            : `<button class="btn btn-sm btn-primary" style="font-size:10px;padding:3px 8px" onclick="selectRef(${i})">撰写台参考</button>`}
+          ${isBatch
+            ? `<button class="btn btn-sm" style="font-size:10px;padding:3px 8px;color:var(--accent);border-color:var(--accent)" onclick="clearBatchRef()">✓ 批量参考</button>`
+            : `<button class="btn btn-sm" style="font-size:10px;padding:3px 8px" onclick="selectRefForBatch(${i})">批量参考</button>`}
+          <button class="btn btn-sm" style="font-size:10px;padding:3px 8px;color:#e05c5c;border-color:#e05c5c40" onclick="deleteRef('${escHtml(ref._id || '')}',${i})">删除</button>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.7;white-space:pre-wrap;max-height:${refCardOpen[i] ? '9999px' : '96px'};overflow:hidden;cursor:pointer" onclick="toggleRefCard(${i})">
+        ${escHtml(ref.content)}
+      </div>
+      ${ref.content.length > 200 ? `<div style="text-align:right;margin-top:4px"><span style="font-size:11px;color:var(--dim);cursor:pointer" onclick="toggleRefCard(${i})">${refCardOpen[i] ? '收起' : '展开全文'}</span></div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+const refCardOpen = {};
+function toggleRefCard(i) {
+  refCardOpen[i] = !refCardOpen[i];
+  renderRefCards();
+}
+
+function updateRefInjectBadge() {
+  const badge = document.getElementById('refInjectBadge');
+  if (!badge) return;
+  if (selectedRefIds.size === 0) {
+    badge.textContent = '自动（最新10条）';
+    badge.style.color = 'var(--muted)';
+    badge.style.borderColor = 'var(--border2)';
+  } else {
+    badge.textContent = `已固定 ${selectedRefIds.size} 篇`;
+    badge.style.color = 'var(--accent)';
+    badge.style.borderColor = 'var(--accent)';
+  }
+}
+
+async function toggleRefInjection(id) {
+  if (!id) return;
+  if (selectedRefIds.has(id)) {
+    selectedRefIds.delete(id);
+  } else {
+    selectedRefIds.add(id);
+  }
+  updateRefInjectBadge();
+  renderRefCards();
+  try {
+    await fetch('/api/references/select', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ids: [...selectedRefIds] }),
+    });
+  } catch (e) {
+    showToast('保存注入设置失败', 'err');
+  }
+}
+
+async function clearRefSelection() {
+  selectedRefIds.clear();
+  updateRefInjectBadge();
+  renderRefCards();
+  try {
+    await fetch('/api/references/select', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ids: [] }),
+    });
+    showToast('已恢复自动注入（最新10条）', 'ok');
+  } catch (e) {
+    showToast('清除失败', 'err');
+  }
+}
+
+function selectRef(i) {
+  st.refArticle = refData[i];
+  const wsel = document.getElementById('writeRefSelect');
+  if (wsel) wsel.value = String(i);
+  updateRefPreview();
+  renderRefCards();
+  switchTab('write');
+  showToast('已选为撰写台参考笔记', 'ok');
+}
+
+function clearRef() {
+  st.refArticle = null;
+  const wsel = document.getElementById('writeRefSelect');
+  if (wsel) wsel.value = '';
+  updateRefPreview();
+  renderRefCards();
+}
+
+async function deleteRef(id, i) {
+  if (!id) { showToast('该记录缺少 ID，无法删除', 'err'); return; }
+  if (!confirm('确认删除这篇参考文案？此操作将同步删除飞书记录。')) return;
+  try {
+    const r = await fetch('/api/references/delete', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    refLoaded = false;
+    await loadReferences(true);
+    showToast('已删除', 'ok');
+  } catch(e) { showToast('删除失败：' + e.message, 'err'); }
+}
+
+
+function selectRefForBatch(i) {
+  batchSt.refArticle = refData[i];
+  const sel = document.getElementById('batchRefSelect');
+  if (sel) sel.value = String(i);
+  updateBatchRefPreview();
+  renderRefCards();
+  switchTab('batch');
+  showToast('已选为批量生产参考笔记', 'ok');
+}
+
+function clearBatchRef() {
+  batchSt.refArticle = null;
+  const sel = document.getElementById('batchRefSelect');
+  if (sel) sel.value = '';
+  updateBatchRefPreview();
+  renderRefCards();
+}
+
+function updateRefPreview() {
+  const box = document.getElementById('refPreviewBox');
+  if (!box) return;
+  if (st.refArticle) {
+    document.getElementById('refPreviewTag').textContent = st.refArticle.title || st.refArticle.tag || '';
+    const c = st.refArticle.content || '';
+    document.getElementById('refPreviewContent').textContent = c.slice(0, 150) + (c.length > 150 ? '…' : '');
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
+}
+
+function showRefAdd() {
+  document.getElementById('refAddForm').style.display = 'flex';
+  document.getElementById('refAddTitle').focus();
+}
+function hideRefAdd() {
+  document.getElementById('refAddForm').style.display = 'none';
+  document.getElementById('refAddTitle').value = '';
+  document.getElementById('refAddTag').value = '';
+  document.getElementById('refAddContent').value = '';
+  document.getElementById('refAddStatus').textContent = '';
+}
+
+async function submitRefAdd() {
+  const title   = document.getElementById('refAddTitle').value.trim();
+  const tag     = document.getElementById('refAddTag').value.trim();
+  const content = document.getElementById('refAddContent').value.trim();
+  const status  = document.getElementById('refAddStatus');
+  if (!content) { status.textContent = '内容不能为空'; return; }
+  status.textContent = '保存中…';
+  try {
+    const r = await fetch('/api/references/add', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title, tag, content }),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    status.textContent = '✓ 已保存';
+    refLoaded = false;
+    await loadReferences(true);
+    hideRefAdd();
+    showToast('✓ 参考文案已保存到飞书', 'ok');
+  } catch(e) {
+    status.textContent = '失败：' + e.message;
+  }
+}
+
+// ─── Tab 切换 ─────────────────────────────────────────────────────
+const ALL_TABS = ['write', 'materials', 'batch', 'references', 'research', 'templates', 'comparison', 'prompt-base'];
+function switchTab(tab) {
+  ALL_TABS.forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', ALL_TABS[i] === tab);
+  });
+  if (tab === 'write') { loadReferences(); loadContextStats(); }
+  if (tab === 'materials') loadMaterials();
+  if (tab === 'references') loadReferences();
+  if (tab === 'batch') {
+    loadMaterials();
+    loadReferences();
+    loadContextStats();
+    fetch('/api/templates').then(x=>x.json()).then(r => {
+      if (!r.ok) return;
+      allTemplates = r.templates;
+      renderBatchSubTmplChips(batchSt.framework);
+    }).catch(()=>{});
+  }
+  if (tab === 'templates') {
+    fetch('/api/templates').then(x=>x.json()).then(r => {
+      if (!r.ok) return;
+      allTemplates = r.templates;
+      renderTmplCards();
+    }).catch(()=>{});
+  }
+  if (tab === 'prompt-base') pbInit();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 提示词基础 Tab
+// ═══════════════════════════════════════════════════════════════════
+let pbCurrentModule = 'writing';
+let pbDirty = false;
+let pbFwData = {};   // { A: {body, example}, B: ... }
+let pbInited = false;
+
+const PB_MODULE_TITLES = {
+  writing: '撰写规范',
+  brand:   '品牌事实',
+  product: '产品信息',
+  'fw-A':  '框架 A · 痛苦破解型',
+  'fw-B':  '框架 B · 场景种草型',
+  'fw-C':  '框架 C · 对比评测型',
+  'fw-D':  '框架 D · 教程干货型',
+};
+
+async function pbInit() {
+  if (pbInited) { pbPopulatePairSelects(); return; }
+  pbInited = true;
+  // 加载框架数据
+  try {
+    const r = await fetch('/api/base-frameworks').then(x => x.json());
+    if (r.ok) pbFwData = r.frameworks;
+  } catch (e) {}
+  // 加载当前选中模块
+  await pbLoad('writing');
+  pbPopulatePairSelects();
+}
+
+async function pbPopulatePairSelects() {
+  await loadMaterials();
+  const spSel = document.getElementById('pbPairSP');
+  const perSel = document.getElementById('pbPairPersona');
+  const spOld = spSel.value;
+  const perOld = perSel.value;
+  spSel.innerHTML = '<option value="">卖点（可选）</option>' +
+    (matData.货 || []).map((x, i) => `<option value="${i}">${x.name}</option>`).join('');
+  perSel.innerHTML = '<option value="">人群（可选）</option>' +
+    (matData.人 || []).map((x, i) => `<option value="${i}">${escHtml(x.name)}${x.mood ? ' · ' + escHtml(x.mood) : ''}</option>`).join('');
+  spSel.value = spOld;
+  perSel.value = perOld;
+}
+
+function pbSelect(el, module) {
+  if (pbDirty) {
+    if (!confirm('有未保存的修改，切换后将丢失，确认切换？')) return;
+    pbDirty = false;
+  }
+  document.querySelectorAll('.pb-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  pbLoad(module);
+}
+
+async function pbLoad(module) {
+  pbCurrentModule = module;
+  document.getElementById('pbTitle').textContent = PB_MODULE_TITLES[module] || module;
+  document.getElementById('pbSaveStatus').textContent = '';
+  pbDirty = false;
+
+  const isFw = module.startsWith('fw-');
+  document.getElementById('pbSingleBody').style.display = isFw ? 'none' : 'flex';
+  document.getElementById('pbFwBody').style.display = isFw ? 'flex' : 'none';
+
+  if (isFw) {
+    const fw = module.replace('fw-', '');
+    const data = pbFwData[fw] || { body: '', example: '' };
+    document.getElementById('pbFwBodyEditor').value = data.body;
+    document.getElementById('pbFwExampleEditor').value = data.example;
+    return;
+  }
+
+  const urlMap = { writing: '/api/writing-prompt', brand: '/api/brand-facts', product: '/api/product-info' };
+  try {
+    const r = await fetch(urlMap[module]).then(x => x.json());
+    document.getElementById('pbEditor').value = r.content || '';
+  } catch (e) {
+    document.getElementById('pbEditor').value = '';
+  }
+}
+
+async function pbSave() {
+  const status = document.getElementById('pbSaveStatus');
+  status.textContent = '保存中…';
+  const isFw = pbCurrentModule.startsWith('fw-');
+
+  try {
+    if (isFw) {
+      const fw = pbCurrentModule.replace('fw-', '');
+      const body = document.getElementById('pbFwBodyEditor').value;
+      const example = document.getElementById('pbFwExampleEditor').value;
+      const r = await fetch(`/api/base-frameworks/${fw}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body, example }),
+      }).then(x => x.json());
+      if (!r.ok) throw new Error(r.error);
+      pbFwData[fw] = { body, example };
+    } else {
+      const urlMap = { writing: '/api/writing-prompt', brand: '/api/brand-facts', product: '/api/product-info' };
+      const content = document.getElementById('pbEditor').value;
+      const r = await fetch(urlMap[pbCurrentModule], {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      }).then(x => x.json());
+      if (!r.ok) throw new Error(r.error);
+    }
+    pbDirty = false;
+    status.textContent = '已保存 ✓';
+    setTimeout(() => { status.textContent = ''; }, 2000);
+    showToast('已保存', 'ok');
+  } catch (e) {
+    status.textContent = '保存失败';
+    showToast('保存失败：' + e.message, 'err');
+  }
+}
+
+async function pbOpenPreview() {
+  const fw = document.getElementById('pbPairFw').value;
+  const spIdx = document.getElementById('pbPairSP').value;
+  const perIdx = document.getElementById('pbPairPersona').value;
+  const spItem = spIdx !== '' ? (matData.货[parseInt(spIdx)] || null) : null;
+  const persona = perIdx !== '' ? (matData.人[parseInt(perIdx)] || null) : null;
+  const spItems = spItem ? [spItem] : [];
+  const sellingPoint = spItem ? spItem.name : '（预览）';
+
+  await openPromptOverlay('single', {
+    mode: 'single',
+    framework: fw,
+    sellingPoint,
+    spItems,
+    persona,
+    direction: '',
+    subTemplate: null,
+    scene: null,
+    refArticle: null,
+  });
+}
+
+// ─── 初始化 ────────────────────────────────────────────────────────
+checkHealth();
+loadSubTemplates('B');
+loadMaterials();
+loadReferences();
+loadContextStats();
+</script>
+
+<!-- ══ 提示词预览浮层 ══ -->
+<div class="prompt-overlay" id="promptOverlay" onclick="if(event.target===this)closePromptOverlay()">
+  <div class="prompt-panel">
+    <div class="prompt-panel-head">
+      <h3 id="promptOverlayTitle">完整提示词预览</h3>
+      <div style="display:flex;gap:10px;align-items:center">
+        <span id="promptTotalChars" style="font-size:11px;color:var(--dim)"></span>
+        <button class="btn btn-sm" id="promptFullToggle" onclick="togglePromptFull()" style="font-size:11px">展开完整原文</button>
+        <button class="btn btn-sm" onclick="closePromptOverlay()" style="font-size:11px">关闭</button>
+      </div>
+    </div>
+    <div class="prompt-panel-body">
+      <div id="promptModuleList"></div>
+      <div class="prompt-full-area" id="promptFullArea"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 提示词预览 ─────────────────────────────────────────────────────
+let _promptFullOpen = false;
+
+async function openPromptOverlay(mode = 'single', overrideBody = null) {
+  const overlay = document.getElementById('promptOverlay');
+  const list = document.getElementById('promptModuleList');
+  const fullArea = document.getElementById('promptFullArea');
+  const totalEl = document.getElementById('promptTotalChars');
+  const title = document.getElementById('promptOverlayTitle');
+
+  title.textContent = mode === 'batch' ? '批量生产 · 完整提示词预览' : '撰写台 · 完整提示词预览';
+  list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--dim);font-size:13px">加载中…</div>';
+  fullArea.classList.remove('open');
+  _promptFullOpen = false;
+  document.getElementById('promptFullToggle').textContent = '展开完整原文';
+  overlay.classList.add('open');
+
+  try {
+    const body = overrideBody || (mode === 'batch'
+      ? {
+          mode: 'batch',
+          framework: batchSt.framework,
+          direction: document.getElementById('batchDir')?.value?.trim() || '',
+          sellingPoint: (batchSt.spItems[0] || '（预览）'),
+        }
+      : {
+          mode: 'single',
+          framework: st.framework,
+          direction: document.getElementById('dirCustom')?.value?.trim() || '',
+          sellingPoint: (st.spItems?.[0]?.name || st.sellingPoint || '（预览）'),
+          spItems: st.spItems?.filter(x => !x._custom) || [],
+          subTemplate: st.subTemplate || null,
+          persona: st.persona || null,
+          scene: st.scene || null,
+          refArticle: st.refArticle || null,
+        });
+
+    const r = await fetch('/api/preview-prompt', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(x => x.json());
+
+    if (!r.ok) throw new Error(r.error);
+
+    const total = r.prompt.length;
+    totalEl.textContent = `共 ${total.toLocaleString()} 字符`;
+    fullArea.textContent = r.prompt;
+
+    list.innerHTML = r.modules.map((m, i) => `
+      <div class="prompt-module">
+        <div class="prompt-module-head" onclick="toggleModule(${i})">
+          <span>${escHtml(m.name)}</span>
+          <span class="mod-chars">${m.content.length.toLocaleString()} 字符 ▸</span>
+        </div>
+        <div class="prompt-module-content" id="mod-${i}">${escHtml(m.content)}</div>
+      </div>`).join('');
+  } catch (e) {
+    list.innerHTML = `<div style="padding:20px;color:#f87171;font-size:13px">加载失败：${escHtml(e.message)}</div>`;
+  }
+}
+
+function toggleModule(i) {
+  const el = document.getElementById('mod-' + i);
+  const head = el.previousElementSibling;
+  const open = el.classList.toggle('open');
+  head.querySelector('.mod-chars').textContent =
+    el.textContent.length.toLocaleString() + ' 字符 ' + (open ? '▾' : '▸');
+}
+
+function togglePromptFull() {
+  _promptFullOpen = !_promptFullOpen;
+  document.getElementById('promptFullArea').classList.toggle('open', _promptFullOpen);
+  document.getElementById('promptFullToggle').textContent = _promptFullOpen ? '收起完整原文' : '展开完整原文';
+}
+
+function closePromptOverlay() {
+  document.getElementById('promptOverlay').classList.remove('open');
+}
+</script>
+</body>
+</html>
