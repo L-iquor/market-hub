@@ -277,31 +277,91 @@ const FRAMEWORK_LABELS = {
   D: '教程干货型',
 };
 
-// ─── 加载本地文件（每次生成时读磁盘，保证实时生效） ──────────────────
+// ─── 本地文件缓存（POST 保存时主动失效）────────────────────────────
+const _fileCache = {};
+const FILE_CACHE_TTL = 5 * 60 * 1000;
+
+function readFileCached(filePath, fallback = '') {
+  const now = Date.now();
+  const c = _fileCache[filePath];
+  if (c && now - c.time < FILE_CACHE_TTL) return c.content;
+  let content;
+  try { content = fs.readFileSync(filePath, 'utf8'); }
+  catch { content = fallback; }
+  _fileCache[filePath] = { content, time: now };
+  return content;
+}
+
+function invalidateFile(filePath) { delete _fileCache[filePath]; }
+
+// ─── 加载本地文件 ─────────────────────────────────────────────────
 function loadWritingInstructions() {
-  try {
-    return fs.readFileSync(path.join(__dirname, 'writing-instructions.md'), 'utf8');
-  } catch (e) {
-    console.warn('[writing-instructions.md 未找到]');
-    return '';
-  }
+  return readFileCached(path.join(__dirname, 'writing-instructions.md'));
 }
-
+function loadOutputFormatSingle() {
+  return readFileCached(path.join(__dirname, 'output-format-single.md'));
+}
+function loadOutputFormatBatch() {
+  return readFileCached(path.join(__dirname, 'output-format-batch.md'));
+}
 function loadProductInfo() {
+  return readFileCached(path.join(__dirname, 'product-info.md'));
+}
+function loadBrandFacts() {
+  const { brand } = CFG;
+  const fallback = `## 固定品牌事实（可按需取用，不要全部堆砌）\n品牌名：${brand.name} | 品类：${brand.category}\n品牌定位：${brand.positioning}\n品牌调性：${brand.archetype}；${brand.tone}\n\n### 原料与工艺锚点\n${brand.facts.map(f => `- ${f}`).join('\n')}`;
+  return readFileCached(path.join(__dirname, 'brand-facts.md'), fallback);
+}
+
+// ─── 标题灵感库（飞书多维表格）───────────────────────────────────────
+const TITLE_TABLE = 'tbljHmaT4eJj6sMV'; // 好标题灵感库，在 OUTPUT_BASE 下
+const TITLE_HOOKS = ['新奇/反常识', '利他/利益前置', '梦想生活/人格认同', '品类新定义', '好奇心缺口'];
+const TITLE_FIELD_IDS = { title: 'fldTdzdDVZ', hook: 'fldb5oq6pN', note: 'fldv68IwCu', source: 'fldsilb4os', date: 'fld397LrRv' };
+
+let _titleCache = null;
+let _titleCacheTime = 0;
+const TITLE_CACHE_TTL = 5 * 60 * 1000;
+
+function loadTitleLibrary() {
+  const now = Date.now();
+  if (_titleCache && now - _titleCacheTime < TITLE_CACHE_TTL) return _titleCache;
   try {
-    return fs.readFileSync(path.join(__dirname, 'product-info.md'), 'utf8');
+    const res = larkCli(['base', '+record-list', '--base-token', OUTPUT_BASE, '--table-id', TITLE_TABLE, '--limit', '200', '--format', 'json']);
+    const records = res.data.data || [];
+    const fieldIdList = res.data.field_id_list || [];
+    const recordIds = res.data.record_id_list || [];
+    const idxMap = {};
+    fieldIdList.forEach((fid, i) => { idxMap[fid] = i; });
+    const lib = records.map((r, i) => {
+      const get = (fid) => { const v = r[idxMap[fid]]; return Array.isArray(v) ? (v[0] || '') : (v || ''); };
+      return { id: recordIds[i], title: get(TITLE_FIELD_IDS.title), hook: get(TITLE_FIELD_IDS.hook) || '未分类', note: get(TITLE_FIELD_IDS.note), source: get(TITLE_FIELD_IDS.source), date: get(TITLE_FIELD_IDS.date) };
+    }).filter(t => t.title);
+    _titleCache = lib;
+    _titleCacheTime = now;
+    return lib;
   } catch (e) {
-    return '';
+    console.warn('[TitleLib]', e.message);
+    return _titleCache || [];
   }
 }
 
-function loadBrandFacts() {
-  try {
-    return fs.readFileSync(path.join(__dirname, 'brand-facts.md'), 'utf8');
-  } catch (e) {
-    const { brand } = CFG;
-    return `## 固定品牌事实（可按需取用，不要全部堆砌）\n品牌名：${brand.name} | 品类：${brand.category}\n品牌定位：${brand.positioning}\n品牌调性：${brand.archetype}；${brand.tone}\n\n### 原料与工艺锚点\n${brand.facts.map(f => `- ${f}`).join('\n')}`;
-  }
+function invalidateTitleCache() { _titleCache = null; _titleCacheTime = 0; }
+
+function titleLibraryBlock() {
+  const lib = loadTitleLibrary();
+  if (!lib.length) return '';
+  const byHook = {};
+  lib.forEach(t => {
+    const h = t.hook || '未分类';
+    if (!byHook[h]) byHook[h] = [];
+    byHook[h].push(t.title);
+  });
+  const lines = ['### 优先级0·好标题收录（学习角度多样性和点击欲望，不要直接复用字句）'];
+  Object.entries(byHook).forEach(([hook, titles]) => {
+    lines.push(`[${hook}]`);
+    titles.slice(-8).forEach(t => lines.push(`  · ${t}`));
+  });
+  return lines.join('\n') + '\n\n';
 }
 
 function loadTemplates() {
@@ -414,6 +474,9 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
   // ⑤ 飞书实时学习材料
   let learningBlock = '## 飞书学习材料（按优先级排列）\n\n';
 
+  const titleBlock = titleLibraryBlock();
+  if (titleBlock) learningBlock += titleBlock;
+
   if (ctx.iterComp.length > 0) {
     learningBlock += `### 优先级1·人工修改偏好（从改动中学习用户偏好方向）\n`;
     ctx.iterComp.slice(-10).forEach((r, i) => {
@@ -448,8 +511,9 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
 方向：${direction}
 本次主推卖点：${sellingPoint}`;
 
-  // ⑥ 输出格式
-  const outputBlock = refArticle
+  // ⑥ 输出格式（优先读取用户编辑的自定义文件，否则用内置默认值）
+  const _customFmt = loadOutputFormatSingle();
+  const outputBlock = _customFmt || (refArticle
     ? `## 输出格式要求
 严格按以下格式输出，不要加额外说明或前置语：
 
@@ -495,21 +559,21 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
 3.
 
 ### 推断依据
-（框架选择理由、目标人群、主次卖点逻辑）`;
+（框架选择理由、目标人群、主次卖点逻辑）`);
 
   const modules = [
-    { name: '① 撰写规范', content: systemBlock },
-    { name: '② 品牌事实', content: brandBlock },
+    { name: '① 撰写规范', key: 'writing', content: systemBlock },
+    { name: '② 品牌事实', key: 'brand',   content: brandBlock },
     ...(sellingPointBlock ? [{ name: '② 本次主推卖点详情', content: sellingPointBlock }] : []),
     ...(materialBlock   ? [{ name: '③ 定向素材（人/场）', content: materialBlock }]   : []),
-    ...(productBlock    ? [{ name: '④ 动态产品信息',      content: productBlock }]    : []),
+    ...(productBlock    ? [{ name: '④ 动态产品信息', key: 'product', content: productBlock }]    : []),
     ...(imitBlock       ? [{ name: '⑤ 仿写参考范文★',    content: imitBlock }]        : []),
-    ...(frameworkLogicBlock ? [{ name: '⑥ 框架写作逻辑（基础模板 body）', content: frameworkLogicBlock }] : []),
-    ...(!imitBlock && frameworkExampleBlock ? [{ name: '⑦ 框架参考示例（基础模板 example）', content: frameworkExampleBlock }] : []),
+    ...(frameworkLogicBlock ? [{ name: '⑥ 框架写作逻辑（基础模板 body）', key: `fw-body-${framework}`, content: frameworkLogicBlock }] : []),
+    ...(!imitBlock && frameworkExampleBlock ? [{ name: '⑦ 框架参考示例（基础模板 example）', key: `fw-example-${framework}`, content: frameworkExampleBlock }] : []),
     ...(subTemplateBlock ? [{ name: '⑧ 风格子模板',      content: subTemplateBlock }] : []),
     { name: '⑨ 飞书学习材料', content: learningBlock },
     { name: '⑩ 当前任务',    content: taskBlock },
-    { name: '⑪ 输出格式',    content: outputBlock },
+    { name: '⑪ 输出格式', key: 'output-single', content: outputBlock },
   ];
   const prompt = modules.map(m => m.content).join('\n\n---\n\n');
   return { prompt, modules };
@@ -547,6 +611,8 @@ function buildBatchPrompt(ctx, direction, sellingPoint, framework, persona = nul
     : '';
 
   let learningBatchBlock = '';
+  const batchTitleBlock = titleLibraryBlock();
+  if (batchTitleBlock) learningBatchBlock += '## 飞书学习材料\n' + batchTitleBlock;
   if (ctx.iterComp && ctx.iterComp.length > 0) {
     learningBatchBlock += `## 飞书学习材料\n### 优先级1·金句修改对比（学习人工修改偏好）\n`;
     ctx.iterComp.slice(-6).forEach((r, i) => {
@@ -589,7 +655,8 @@ function buildBatchPrompt(ctx, direction, sellingPoint, framework, persona = nul
 
   const taskBlock = `## 当前任务\n框架：${framework} · ${fwLabel}\n方向：${direction || '不限'}\n主推卖点：${sellingPoint}`;
 
-  const outputBlock = `## 输出格式（严格按此格式，不加任何额外说明或前置语）
+  const _customFmtBatch = loadOutputFormatBatch();
+  const outputBlock = _customFmtBatch || `## 输出格式（严格按此格式，不加任何额外说明或前置语）
 
 ### 标题
 （含emoji，16字以内）
@@ -601,16 +668,16 @@ function buildBatchPrompt(ctx, direction, sellingPoint, framework, persona = nul
 （5-8个话题标签，#开头，空格分隔，例如 #微醺 #低度酒 #下班后）`;
 
   const modules = [
-    { name: '① 撰写规范',     content: systemBlock },
-    { name: '② 品牌事实',     content: brandBlock },
+    { name: '① 撰写规范',     key: 'writing',  content: systemBlock },
+    { name: '② 品牌事实',     key: 'brand',    content: brandBlock },
     ...(batchSpBlock    ? [{ name: '② 本次主推卖点详情', content: batchSpBlock }]       : []),
     ...(materialBlock    ? [{ name: '③ 定向素材（人/场）', content: materialBlock }]    : []),
     ...(learningBatchBlock ? [{ name: '④ 飞书学习材料',   content: learningBatchBlock }] : []),
     ...(imitBatchBlock   ? [{ name: '⑤ 仿写参考范文★',   content: imitBatchBlock }]    : []),
-    ...(frameworkBlock   ? [{ name: '⑥ 框架写作逻辑（基础模板 body）', content: frameworkBlock }] : []),
-    ...(batchExampleBlock? [{ name: '⑦ 框架参考示例（基础模板 example）', content: batchExampleBlock }] : []),
+    ...(frameworkBlock   ? [{ name: '⑥ 框架写作逻辑（基础模板 body）', key: `fw-body-${framework}`, content: frameworkBlock }] : []),
+    ...(batchExampleBlock? [{ name: '⑦ 框架参考示例（基础模板 example）', key: `fw-example-${framework}`, content: batchExampleBlock }] : []),
     { name: '⑧ 当前任务',     content: taskBlock },
-    { name: '⑨ 输出格式',     content: outputBlock },
+    { name: '⑨ 输出格式',     key: 'output-batch', content: outputBlock },
   ];
   const prompt = modules.map(m => m.content).join('\n\n---\n\n');
   return { prompt, modules };
@@ -632,7 +699,6 @@ function parseBatchResult(text) {
 
 // ─── 解析 Claude 输出（单方案）────────────────────────────────────────
 function parsePlan(text) {
-  // 从正文中提取标题选项（供飞书预览使用）
   const titleLines = [];
   const titleMatch = text.match(/###\s*备选标题[（(]3[个个][）)]\s*\n([\s\S]*?)(?=\n###|\n---)/);
   if (titleMatch) {
@@ -641,7 +707,9 @@ function parsePlan(text) {
       if (m) titleLines.push(m[1].trim());
     });
   }
-  return { full: text.trim(), titles: titleLines };
+  const bodyMatch = text.match(/###\s*正文\s*\n([\s\S]*?)(?=\n###|$)/);
+  const body = bodyMatch ? bodyMatch[1].trim() : '';
+  return { full: text.trim(), titles: titleLines, body };
 }
 
 // ─── 发送飞书群消息（cc-connect bot REDACTED）───────────
@@ -685,48 +753,19 @@ async function sendFeishuMessage(content) {
   }
 }
 
-// ─── 写入输出表（批量生产归档）──────────────────────────────────────
-function writeOutputRecord(fields) {
-  const tmpName = `_tmp_output_${Date.now()}.json`;
-  const tmpFile = path.join(__dirname, tmpName);
-  fs.writeFileSync(tmpFile, JSON.stringify(fields), 'utf8');
-  try {
-    return larkCli(['base', '+record-upsert', '--base-token', OUTPUT_BASE, '--table-id', OUTPUT_TABLE, '--json', `@${tmpName}`]);
-  } finally { try { fs.unlinkSync(tmpFile); } catch (_) {} }
-}
-
-// ─── 写入素材库表（使用 MAT_BASE）────────────────────────────────────
-function writeMatRecord(tableId, fields) {
+// ─── 写入飞书表（统一实现）────────────────────────────────────────────
+function writeToBase(tableId, fields, baseToken = CFG.feishu.baseToken) {
   const tmpName = `_tmp_lark_${Date.now()}.json`;
   const tmpFile = path.join(__dirname, tmpName);
   fs.writeFileSync(tmpFile, JSON.stringify(fields), 'utf8');
   try {
-    return larkCli([
-      'base', '+record-upsert',
-      '--base-token', MAT_BASE,
-      '--table-id', tableId,
-      '--json', `@${tmpName}`,
-    ]);
+    return larkCli(['base', '+record-upsert', '--base-token', baseToken, '--table-id', tableId, '--json', `@${tmpName}`]);
   } finally { try { fs.unlinkSync(tmpFile); } catch (_) {} }
 }
 
-// ─── 写入飞书表 ────────────────────────────────────────────────────
-function writeRecord(tableId, fields) {
-  // 写临时文件到当前目录，lark-cli 要求相对路径
-  const tmpName = `_tmp_lark_${Date.now()}.json`;
-  const tmpFile = path.join(__dirname, tmpName);
-  fs.writeFileSync(tmpFile, JSON.stringify(fields), 'utf8');
-  try {
-    return larkCli([
-      'base', '+record-upsert',
-      '--base-token', CFG.feishu.baseToken,
-      '--table-id', tableId,
-      '--json', `@${tmpName}`,
-    ]);
-  } finally {
-    try { fs.unlinkSync(tmpFile); } catch (_) {}
-  }
-}
+function writeOutputRecord(fields) { return writeToBase(OUTPUT_TABLE, fields, OUTPUT_BASE); }
+function writeMatRecord(tableId, fields) { return writeToBase(tableId, fields, MAT_BASE); }
+function writeRecord(tableId, fields) { return writeToBase(tableId, fields); }
 
 // ─── Claude 异步调用（用于批量/竞品分析，不阻塞事件循环）─────────────
 function runClaudeAsync(prompt, timeoutMs = 90000) {
@@ -766,21 +805,24 @@ function runClaudeAsync(prompt, timeoutMs = 90000) {
 // 生成文案
 app.post('/api/generate', async (req, res) => {
   try {
-    const { framework = 'B', direction, sellingPoint, spItems = [], subTemplate = null, persona = null, scene = null, refArticle = null } = req.body;
-    if (!sellingPoint) return res.json({ ok: false, error: '请选择或填写主推卖点' });
+    const { framework = 'B', direction, sellingPoint, spItems = [], subTemplate = null, persona = null, scene = null, refArticle = null, rawPrompt = null } = req.body;
+    if (!sellingPoint && !rawPrompt) return res.json({ ok: false, error: '请选择或填写主推卖点' });
 
-    // 获取飞书上下文
-    let ctx;
-    try { ctx = await fetchFeishuContext(); }
-    catch (e) {
-      console.error('[Context fetch]', e.message);
-      ctx = { iterComp: [], reference: [] };
+    let prompt;
+    let ctx = { iterComp: [], reference: [] };
+
+    if (rawPrompt) {
+      // 直接使用用户在预览界面编辑过的完整提示词
+      prompt = rawPrompt;
+    } else {
+      // 正常流程：从飞书拉取上下文并组装 prompt
+      try { ctx = await fetchFeishuContext(); }
+      catch (e) { console.error('[Context fetch]', e.message); }
+      ({ prompt } = buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems));
     }
 
-    const { prompt, modules: _modules } = buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems);
-
     // 调用本地 claude CLI（使用 Pro 账户额度，无需 API key）
-    const rawText = await runClaudeAsync(prompt, 300000);
+    const rawText = await runClaudeAsync(prompt, 420000);
     const plan = parsePlan(rawText);
 
     // 发全文（去掉分析段落），截取到"优化方向"之前
@@ -812,7 +854,14 @@ app.post('/api/preview-prompt', async (req, res) => {
     const result = mode === 'batch'
       ? buildBatchPrompt(ctx, direction, sellingPoint, framework, persona, scene, refArticle, spItems)
       : buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems);
-    res.json({ ok: true, prompt: result.prompt, modules: result.modules });
+    const titleCount = (() => { try { return loadTitleLibrary().length; } catch { return 0; } })();
+    res.json({
+      ok: true,
+      prompt: result.prompt,
+      modules: result.modules,
+      contextStats: { iterComp: ctx.iterComp.length, reference: ctx.reference.length, titles: titleCount },
+      inputs: { framework, direction, sellingPoint, subTemplate: subTemplate?.name || null, persona: persona?.name || null, scene: scene?.name || null, refArticle: refArticle?.name || null },
+    });
   } catch (e) {
     res.json({ ok: false, error: e.message });
   }
@@ -835,6 +884,54 @@ app.post('/api/archive-comparison', (req, res) => {
   }
 });
 
+// 撰写台一键保存到小红书发布表
+app.post('/api/save-to-publish', (req, res) => {
+  try {
+    const { title, body, tags } = req.body;
+    if (!body || !body.trim()) return res.json({ ok: false, error: '正文不能为空' });
+    writeOutputRecord({
+      '标题':    title  || '',
+      '正文':    body.trim(),
+      '话题':    tags   || '',
+      '发布计划': '立即发布',
+      '是否发布': '否',
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// ─── 标题灵感库 ───────────────────────────────────────────────────
+app.get('/api/titles', (req, res) => {
+  res.json({ ok: true, titles: loadTitleLibrary(), hooks: TITLE_HOOKS });
+});
+
+app.post('/api/titles/add', (req, res) => {
+  try {
+    const { title, hook, note, source } = req.body;
+    if (!title || !title.trim()) return res.json({ ok: false, error: '标题不能为空' });
+    const result = writeToBase(TITLE_TABLE, {
+      '标题': title.trim(),
+      '钩子类型': hook || '未分类',
+      '备注': note || '',
+      '来源': source || 'manual',
+      '日期': new Date().toISOString().slice(0, 10),
+    }, OUTPUT_BASE);
+    invalidateTitleCache();
+    const id = result?.data?.record?.record_id_list?.[0] || '';
+    res.json({ ok: true, id });
+  } catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
+app.delete('/api/titles/:id', (req, res) => {
+  try {
+    larkCli(['base', '+record-delete', '--base-token', OUTPUT_BASE, '--table-id', TITLE_TABLE, '--record-id', req.params.id, '--yes']);
+    invalidateTitleCache();
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
 // 读取撰写指令
 app.get('/api/writing-prompt', (req, res) => {
   try {
@@ -850,7 +947,9 @@ app.post('/api/writing-prompt', (req, res) => {
   try {
     const { content } = req.body;
     if (typeof content !== 'string' || !content.trim()) return res.json({ ok: false, error: '内容不能为空' });
-    fs.writeFileSync(path.join(__dirname, 'writing-instructions.md'), content, 'utf8');
+    const p = path.join(__dirname, 'writing-instructions.md');
+    fs.writeFileSync(p, content, 'utf8');
+    invalidateFile(p);
     res.json({ ok: true });
   } catch (e) {
     res.json({ ok: false, error: e.message });
@@ -1053,7 +1152,25 @@ app.post('/api/product-info', (req, res) => {
   try {
     const { content } = req.body;
     if (typeof content !== 'string') return res.json({ ok: false, error: '内容格式错误' });
-    fs.writeFileSync(path.join(__dirname, 'product-info.md'), content, 'utf8');
+    const p = path.join(__dirname, 'product-info.md');
+    fs.writeFileSync(p, content, 'utf8');
+    invalidateFile(p);
+    res.json({ ok: true });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// ─── 输出格式（撰写台 / 批量）─────────────────────────────────────
+app.post('/api/output-format', (req, res) => {
+  try {
+    const { mode, content } = req.body;
+    if (!['single', 'batch'].includes(mode)) return res.json({ ok: false, error: '无效的 mode' });
+    if (typeof content !== 'string') return res.json({ ok: false, error: '内容格式错误' });
+    const fname = mode === 'batch' ? 'output-format-batch.md' : 'output-format-single.md';
+    const p = path.join(__dirname, fname);
+    fs.writeFileSync(p, content, 'utf8');
+    invalidateFile(p);
     res.json({ ok: true });
   } catch (e) {
     res.json({ ok: false, error: e.message });
@@ -1069,7 +1186,9 @@ app.post('/api/brand-facts', (req, res) => {
   try {
     const { content } = req.body;
     if (typeof content !== 'string') return res.json({ ok: false, error: '内容格式错误' });
-    fs.writeFileSync(path.join(__dirname, 'brand-facts.md'), content, 'utf8');
+    const p = path.join(__dirname, 'brand-facts.md');
+    fs.writeFileSync(p, content, 'utf8');
+    invalidateFile(p);
     res.json({ ok: true });
   } catch (e) {
     res.json({ ok: false, error: e.message });

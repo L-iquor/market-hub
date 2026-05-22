@@ -443,12 +443,12 @@ label { font-size:13px; color:var(--muted); }
 /* ── 提示词预览浮层 ── */
 .prompt-overlay {
   display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:2000;
-  align-items:flex-start; justify-content:center; padding:24px; overflow-y:auto;
+  align-items:flex-start; justify-content:center; padding:16px; overflow-y:auto;
 }
 .prompt-overlay.open { display:flex; }
 .prompt-panel {
   background:var(--bg2); border:1px solid var(--border); border-radius:12px;
-  width:100%; max-width:780px; display:flex; flex-direction:column; gap:0;
+  width:100%; max-width:1100px; display:flex; flex-direction:column; gap:0;
   max-height:calc(100vh - 48px); overflow:hidden;
 }
 .prompt-panel-head {
@@ -462,21 +462,22 @@ label { font-size:13px; color:var(--muted); }
 }
 .prompt-module-head {
   display:flex; align-items:center; justify-content:space-between;
-  padding:10px 16px; cursor:pointer; user-select:none;
+  padding:10px 20px; cursor:pointer; user-select:none;
   background:var(--bg3); font-size:12px; font-weight:600; color:var(--muted);
 }
 .prompt-module-head:hover { background:var(--bg2); }
 .prompt-module-head .mod-chars { color:var(--dim); font-weight:400; font-size:11px; }
 .prompt-module-content {
-  padding:12px 16px; font-size:12px; color:var(--text);
-  white-space:pre-wrap; word-break:break-all; line-height:1.7;
+  padding:14px 20px; font-size:12px; color:var(--text);
+  white-space:pre-wrap; word-break:break-word; line-height:1.75;
   background:var(--bg); display:none;
 }
 .prompt-module-content.open { display:block; }
 .prompt-full-area {
-  padding:16px; font-size:11px; color:var(--muted);
-  white-space:pre-wrap; word-break:break-all; line-height:1.6;
-  border-top:1px solid var(--border); display:none;
+  padding:16px; font-size:11px; color:var(--muted); line-height:1.6;
+  border-top:1px solid var(--border); border-left:none; border-right:none; border-bottom:none;
+  display:none; width:100%; box-sizing:border-box; background:var(--bg);
+  min-height:300px; outline:none;
 }
 .prompt-full-area.open { display:block; }
 
@@ -501,6 +502,62 @@ label { font-size:13px; color:var(--muted); }
   .sidebar, .batch-sidebar { border-right:none; border-bottom:1px solid var(--border); }
   .research-input-panel { border-right:none; border-bottom:1px solid var(--border); }
 }
+
+/* ── 问号提示徽章 ── */
+.tip {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:15px; height:15px; border-radius:50%; font-size:9px; font-weight:700;
+  background:var(--bg3); border:1px solid var(--border2); color:var(--dim);
+  cursor:help; margin-left:5px; vertical-align:middle; position:relative;
+  flex-shrink:0; line-height:1; user-select:none;
+}
+.tip:hover { border-color:var(--gold); color:var(--gold2); }
+.tip::after {
+  content: attr(data-tip);
+  display:none; position:absolute; left:0; bottom:calc(100% + 8px);
+  background:var(--bg4); border:1px solid var(--border2); border-radius:8px;
+  padding:9px 12px; font-size:11px; color:var(--text); line-height:1.7;
+  font-weight:400; width:250px; white-space:normal; z-index:5000;
+  box-shadow:0 4px 20px rgba(0,0,0,.7); pointer-events:none;
+}
+.tip.tip-right::after { left:auto; right:0; }
+.tip:hover::after { display:block; }
+
+/* ── 使用说明 Tab ── */
+.guide-wrap { max-width:900px; margin:0 auto; padding:32px 28px 60px; }
+.guide-hero { text-align:center; margin-bottom:40px; }
+.guide-hero h1 { font-size:22px; font-weight:700; color:var(--text); margin-bottom:8px; }
+.guide-hero p { font-size:13px; color:var(--muted); line-height:1.8; }
+.guide-flow {
+  display:flex; align-items:center; justify-content:center; flex-wrap:wrap;
+  gap:0; margin:20px 0 0;
+}
+.guide-flow-step {
+  background:var(--bg3); border:1px solid var(--border2); border-radius:8px;
+  padding:8px 16px; font-size:12px; color:var(--text); white-space:nowrap;
+}
+.guide-flow-arrow { color:var(--dim); font-size:14px; padding:0 6px; }
+.guide-sections { display:flex; flex-direction:column; gap:28px; }
+.guide-section h2 {
+  font-size:14px; font-weight:700; color:var(--gold2); margin-bottom:12px;
+  padding-bottom:8px; border-bottom:1px solid var(--border2);
+  display:flex; align-items:center; gap:8px;
+}
+.guide-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
+.guide-card {
+  background:var(--bg2); border:1px solid var(--border); border-radius:10px;
+  padding:14px 16px;
+}
+.guide-card-title { font-size:12px; font-weight:700; color:var(--text); margin-bottom:6px; }
+.guide-card-body { font-size:11px; color:var(--muted); line-height:1.75; }
+.guide-card-body b { color:var(--text); font-weight:600; }
+.guide-tip-list { list-style:none; display:flex; flex-direction:column; gap:6px; }
+.guide-tip-list li {
+  font-size:12px; color:var(--muted); line-height:1.7;
+  padding:8px 12px; background:var(--bg2); border:1px solid var(--border);
+  border-radius:8px;
+}
+.guide-tip-list li b { color:var(--gold2); }
 </style>
 </head>
 <body>
@@ -523,6 +580,7 @@ label { font-size:13px; color:var(--muted); }
 
 <!-- Tab 导航 -->
 <div class="tab-nav">
+  <button class="tab-btn" onclick="switchTab('guide')">📖 使用说明</button>
   <button class="tab-btn active" onclick="switchTab('write')">✍️ 撰写台</button>
   <button class="tab-btn" onclick="switchTab('materials')">🗂️ 素材库</button>
   <button class="tab-btn" onclick="switchTab('batch')">📋 批量生产</button>
@@ -530,7 +588,218 @@ label { font-size:13px; color:var(--muted); }
   <button class="tab-btn" onclick="switchTab('research')">🔍 竞品研究台</button>
   <button class="tab-btn" onclick="switchTab('templates')">📂 模板库</button>
   <button class="tab-btn" onclick="switchTab('comparison')">✏️ 修改对比</button>
+  <button class="tab-btn" onclick="switchTab('title-lib')">🌟 标题灵感库</button>
   <button class="tab-btn" onclick="switchTab('prompt-base')">⚙️ 提示词基础</button>
+</div>
+
+<!-- ══ Tab: 使用说明 ══ -->
+<div id="tab-guide" style="display:none;overflow-y:auto;height:calc(100vh - 128px)">
+  <div class="guide-wrap">
+    <div class="guide-hero">
+      <h1>每天烈刻 · AI 市场部使用说明</h1>
+      <p>飞书数据驱动 · Claude 生成 · 小红书发布<br>越用越懂你的写作偏好，越用越准</p>
+      <div class="guide-flow">
+        <div class="guide-flow-step">📥 素材库维护</div>
+        <div class="guide-flow-arrow">→</div>
+        <div class="guide-flow-step">✍️ 撰写台选参数</div>
+        <div class="guide-flow-arrow">→</div>
+        <div class="guide-flow-step">⚡ Claude 生成</div>
+        <div class="guide-flow-arrow">→</div>
+        <div class="guide-flow-step">⭐ 收录好标题</div>
+        <div class="guide-flow-arrow">→</div>
+        <div class="guide-flow-step">📤 保存发布表</div>
+        <div class="guide-flow-arrow">→</div>
+        <div class="guide-flow-step">📱 飞书自动发布</div>
+      </div>
+    </div>
+
+    <div class="guide-sections">
+
+      <!-- 撰写台 -->
+      <div class="guide-section">
+        <h2>✍️ 撰写台——单篇生成</h2>
+        <div class="guide-cards">
+          <div class="guide-card">
+            <div class="guide-card-title">内容框架（必选）</div>
+            <div class="guide-card-body">
+              决定文案的叙事逻辑：<br>
+              <b>A 问题解决</b> — 读者有明确痛点（辣嗓/上头/甜腻），产品作为解法登场<br>
+              <b>B 场景种草</b> — 靠氛围感、反差感、新奇感驱动点击和收藏<br>
+              <b>C 对比评测</b> — 受众多疑，需要配料/工艺/产区硬核信任背书<br>
+              <b>D 教程干货</b> — 靠"教会你怎么喝/选/搭"获取收藏流量
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">卖点（必选，最多3个）</div>
+            <div class="guide-card-body">
+              主推的产品特点。从下拉菜单选，或自定义输入。<br>
+              卖点越具体，文案越聚焦。<b>不要选"全部"</b>——堆砌卖点会让文案失焦。<br>
+              卖点数据来自飞书<b>货·品类与卖点表</b>。
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">人群 · 场景（可选）</div>
+            <div class="guide-card-body">
+              选择后，Claude 会把措辞和场景细节对准这类人群/场景。<br>
+              不选则写法更通用。数据来自飞书<b>人·用户画像表</b>和<b>场·使用场景表</b>。
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">参考笔记（可选）</div>
+            <div class="guide-card-body">
+              选择后进入<b>仿写模式</b>：Claude 会模仿该笔记的整体结构、情绪节奏和句式，但内容完全原创。<br>
+              适合复制爆款结构。数据来自<b>参考文案库 Tab</b>。
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">活人感语料（可选）</div>
+            <div class="guide-card-body">
+              注入当下真实的口语化表达，例如"第二天不头疼""明亮的果感"。<br>
+              Claude 会学习这些语感融入文案，防止输出"广告腔"。<br>
+              语料只在当次生成中有效，不永久保存。
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">补充方向（可选）</div>
+            <div class="guide-card-body">
+              临时注入任何创作方向：节日/季节/特殊场景/目标调性。<br>
+              例：<b>夏天、姐妹局、反差感、情绪低落时</b><br>
+              每次生成前填，不影响固定配置，下次生成不会保留。
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">风格模板（可选）</div>
+            <div class="guide-card-body">
+              叠加一个具体的写作风格。Claude 会模仿该模板的句式节奏，同时保持框架逻辑。<br>
+              模板在<b>模板库 Tab</b> 中管理。
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">生成结果操作</div>
+            <div class="guide-card-body">
+              生成后：<br>
+              1. 结果直接可编辑，修改后可归档到<b>修改对比</b><br>
+              2. 点击 <b>⭐</b> 将好标题存入灵感库<br>
+              3. 确认标题/正文/话题后，点<b>保存到发布表</b>进入飞书发布流程
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 批量生产 -->
+      <div class="guide-section">
+        <h2>📋 批量生产——一次生成多篇</h2>
+        <div class="guide-cards">
+          <div class="guide-card">
+            <div class="guide-card-title">适用场景</div>
+            <div class="guide-card-body">
+              内容日历规划、一口气出多个角度的稿件。同一卖点 + 同一框架，批量跑出不同切入角的文案。
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">操作流程</div>
+            <div class="guide-card-body">
+              1. 选框架 + 填写卖点和方向<br>
+              2. 点「添加任务」加入队列，可添加多个不同方向<br>
+              3. 点「开始批量生成」逐条运行<br>
+              4. 每条结果可展开查看，⭐ 收录好标题
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 学习系统 -->
+      <div class="guide-section">
+        <h2>🧠 学习系统——让 AI 越来越懂你</h2>
+        <div class="guide-cards">
+          <div class="guide-card">
+            <div class="guide-card-title">修改对比（最重要）</div>
+            <div class="guide-card-body">
+              每次对 AI 稿件做了修改，把<b>AI原文片段</b>和<b>改后版本</b>归档一条。<br>
+              积累越多，Claude 越了解你的语感偏好，不需要每次反复调整。<br>
+              在撰写台侧栏点 <b>＋</b> 快速录入，或在<b>修改对比 Tab</b> 管理。
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">参考文案库</div>
+            <div class="guide-card-body">
+              存放高质量爆款笔记。AI 生成时会学习这些文案的结构特征。<br>
+              选「参考笔记」进仿写模式时，AI 直接以它为结构蓝本。
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">标题灵感库</div>
+            <div class="guide-card-body">
+              收录点击欲望强的好标题，按钩子类型分类（新奇/利他/品类新定义等）。<br>
+              AI 生成标题时会参考库中的角度多样性，防止每次出相同套路的标题。<br>
+              在生成结果区点 <b>⭐</b> 快速收录。数据存在飞书<b>好标题灵感库</b>表。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 提示词系统 -->
+      <div class="guide-section">
+        <h2>🔍 提示词系统——完全透明可控</h2>
+        <div class="guide-cards">
+          <div class="guide-card">
+            <div class="guide-card-title">🔍 提示词预览</div>
+            <div class="guide-card-body">
+              点击撰写台的「🔍 提示词」按钮，查看本次生成用到的完整提示词。<br>
+              顶部摘要显示本次选了哪些参数 + 飞书学习材料条数。
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">永久修改（写入文件）</div>
+            <div class="guide-card-body">
+              展开<b>可保存</b>标注的模块（撰写规范/品牌事实/框架写作逻辑/输出格式等），直接编辑 textarea，点<b>💾 保存到文件</b>，下次每次生成都生效。
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">临时修改（本次有效）</div>
+            <div class="guide-card-body">
+              点「展开完整原文」→ 在 textarea 里修改任何内容 → 点<b>「📝 用此提示词生成」</b>。<br>
+              只影响这一次生成，不覆盖任何文件。
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">撰写指令 / 产品信息</div>
+            <div class="guide-card-body">
+              撰写台底部的折叠区域。撰写指令是 AI 的写作规则；产品信息是 SKU/价格/主推方向。<br>
+              可随时编辑，保存后下次生成立即生效。也可在提示词预览里编辑。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 飞书联动 -->
+      <div class="guide-section">
+        <h2>📡 飞书数据联动</h2>
+        <ul class="guide-tip-list">
+          <li><b>素材库（人/货/场）</b> → 飞书「内容生产素材库」base · 用户画像表 / 品类卖点表 / 使用场景表</li>
+          <li><b>修改偏好记录</b> → 飞书「特征工程-金句修改对比」表 · 每次归档自动写入</li>
+          <li><b>参考爆款文案</b> → 飞书「参考-图文文案」表 · 每次生成读取最新 N 条</li>
+          <li><b>标题灵感库</b> → 飞书「好标题灵感库」表（在小红书发布 base 下）· ⭐ 收录时写入</li>
+          <li><b>保存到发布表</b> → 飞书「小红书自动发布表」· 后续由自动化流程处理</li>
+          <li><b>生成结果推送</b> → 飞书群消息 · 每次生成完成后自动发送全文摘要</li>
+        </ul>
+      </div>
+
+      <!-- 快速上手 -->
+      <div class="guide-section">
+        <h2>⚡ 快速上手流程</h2>
+        <ul class="guide-tip-list">
+          <li>① <b>先维护素材</b>：进「素材库」确认人/货/场数据已录入飞书</li>
+          <li>② <b>选框架 + 卖点</b>：撰写台选 B 框架 + 1-2 个具体卖点，点「生成文案」</li>
+          <li>③ <b>看结果改稿</b>：不满意的地方直接编辑，改完后点「＋」归档修改对比</li>
+          <li>④ <b>收录好标题</b>：看到点击欲望强的标题点 ⭐ 存入灵感库</li>
+          <li>⑤ <b>保存发布</b>：确认标题/正文/话题，点「保存到发布表」</li>
+          <li>⑥ <b>反复迭代</b>：修改对比积累到 10+ 条后，生成质量会明显提升</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
 </div>
 
 <!-- ══ Tab 1: 撰写台 ══ -->
@@ -538,7 +807,7 @@ label { font-size:13px; color:var(--muted); }
   <div class="layout">
     <aside class="sidebar">
       <div>
-        <div class="section-label">内容框架</div>
+        <div class="section-label">内容框架 <span class="tip tip-right" data-tip="决定文案叙事结构。A=有明确痛点（辣嗓/甜腻）；B=靠氛围/反差/新奇感；C=受众多疑需配料/工艺背书；D=靠教程干货获收藏">?</span></div>
         <div class="chip-row" id="fwChips">
           <div class="chip" data-val="A" onclick="selectFw(this)" title="受众有明确痛点（怕辣/上头/甜腻），产品作为解法出现">A · 问题解决</div>
           <div class="chip active" data-val="B" onclick="selectFw(this)" title="靠新奇感、反差感、生活氛围驱动点击和收藏">B · 场景种草</div>
@@ -548,14 +817,14 @@ label { font-size:13px; color:var(--muted); }
       </div>
 
       <div id="subTmplSection" style="display:none">
-        <div class="section-label">风格模板 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span></div>
+        <div class="section-label">风格模板 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span> <span class="tip tip-right" data-tip="叠加一个具体的写作风格。Claude 会模仿该模板的句式节奏，同时保持框架逻辑。模板在「模板库」Tab 中管理">?</span></div>
         <div class="sub-tmpl-chips" id="subTmplChips"></div>
         <div id="subTmplPreview" style="display:none;margin-top:8px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;color:var(--muted);line-height:1.7;white-space:pre-wrap;max-height:120px;overflow-y:auto"></div>
       </div>
 
       <!-- 人群选择（可选） -->
       <div>
-        <div class="section-label">人群 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span></div>
+        <div class="section-label">人群 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span> <span class="tip tip-right" data-tip="选择目标读者群体后，文案的措辞和场景细节会对准这类人群。数据来自飞书「人·用户画像表」">?</span></div>
         <select class="sp-select" id="personaSelect" onchange="onPersonaChange(this)">
           <option value="">不指定人群</option>
         </select>
@@ -564,7 +833,7 @@ label { font-size:13px; color:var(--muted); }
       <!-- 卖点选择（最多3个） -->
       <div>
         <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
-          <span>卖点</span>
+          <span>卖点 <span class="tip tip-right" data-tip="主推的产品特点，最多3个。越具体越好，不要堆砌所有卖点——聚焦1-2个让文案更有力。数据来自飞书「货·品类与卖点表」">?</span></span>
           <span style="font-size:10px;color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">最多3个</span>
         </div>
         <div id="spChips" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
@@ -576,7 +845,7 @@ label { font-size:13px; color:var(--muted); }
 
       <!-- 场景选择（可选） -->
       <div>
-        <div class="section-label">场景 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span></div>
+        <div class="section-label">场景 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span> <span class="tip tip-right" data-tip="给文案一个具体使用场景，让读者更容易代入。例：下班独酌、姐妹聚会、周末放松。数据来自飞书「场·使用场景表」">?</span></div>
         <select class="sp-select" id="sceneSelect" onchange="onSceneChange(this)">
           <option value="">不指定场景</option>
         </select>
@@ -584,7 +853,7 @@ label { font-size:13px; color:var(--muted); }
 
       <!-- 参考笔记（可选） -->
       <div>
-        <div class="section-label">参考笔记 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span></div>
+        <div class="section-label">参考笔记 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span> <span class="tip tip-right" data-tip="选择后进入仿写模式：Claude 会模仿该笔记的整体结构、情绪节奏和句式，内容完全原创。适合复制爆款结构。来自「参考文案库」Tab">?</span></div>
         <select class="sp-select" id="writeRefSelect" onchange="onWriteRefChange(this)">
           <option value="">不使用参考笔记</option>
         </select>
@@ -597,7 +866,7 @@ label { font-size:13px; color:var(--muted); }
       <!-- 活人感语料速录 -->
       <div>
         <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none" onclick="toggleCorpusPanel()">
-          <span>活人感语料 <span id="corpusBadge" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:1px 7px;font-size:10px;font-weight:400;color:var(--muted);margin-left:4px">0</span></span>
+          <span>活人感语料 <span class="tip" data-tip="注入真实口语化表达，例：'明亮的果感''第二天不头疼'。Claude 会学习这些语感融入文案，防止广告腔。只在本次生成有效">?</span> <span id="corpusBadge" style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:1px 7px;font-size:10px;font-weight:400;color:var(--muted);margin-left:4px">0</span></span>
           <span id="corpusChevron" style="color:var(--dim);font-size:11px;transition:transform .2s">▶</span>
         </div>
         <div id="corpusPanel" style="display:none;margin-top:8px">
@@ -612,7 +881,7 @@ label { font-size:13px; color:var(--muted); }
 
       <!-- 补充方向（可选） -->
       <div>
-        <div class="section-label">补充方向 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span></div>
+        <div class="section-label">补充方向 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span> <span class="tip tip-right" data-tip="临时注入创作方向：节日/季节/特殊场景/调性。例：夏天、姐妹局、反差感。每次生成前填，不影响固定配置，下次生成不保留">?</span></div>
         <input type="text" class="dir-input" id="dirCustom" placeholder="例：夏天、姐妹局、反差感…"></div>
 
       <div style="display:flex;gap:8px;margin-bottom:4px">
@@ -622,8 +891,24 @@ label { font-size:13px; color:var(--muted); }
       <div id="genErrorBar" style="display:none;margin-top:10px;padding:10px 12px;background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.5);border-radius:8px;font-size:12px;color:#f87171;line-height:1.5;white-space:pre-wrap;word-break:break-all;cursor:pointer" title="点击关闭" onclick="this.style.display='none'"></div>
 
       <div id="ctxStats" class="ctx-stats">
-        <div class="section-label" style="margin-bottom:6px">飞书上下文</div>
-        <div class="row"><span>修改偏好</span><span class="val" id="ctxIter">加载中…</span></div>
+        <div class="section-label" style="margin-bottom:6px">飞书上下文 <span class="tip" data-tip="每次生成前实时从飞书读取。修改偏好条数越多、参考爆款越丰富，生成质量越高">?</span></div>
+        <div class="row" style="align-items:center">
+          <span>修改偏好 <span class="tip" data-tip="已归档的「AI原文 vs 改后版本」对比记录。积累越多，AI 越懂你的语感偏好。点 ＋ 快速录入一条">?</span></span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="val" id="ctxIter">加载中…</span>
+            <button onclick="toggleIterForm('write')" style="font-size:10px;padding:1px 6px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--muted);cursor:pointer;line-height:1.6" title="记录一条修改偏好">＋</button>
+          </div>
+        </div>
+        <div id="iterFormWrite" style="display:none;margin-top:6px;padding:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);flex-direction:column;gap:6px">
+          <textarea id="iterAiWrite" rows="2" placeholder="AI 原片段…" style="font-size:11px;resize:none;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;outline:none;line-height:1.5"></textarea>
+          <textarea id="iterHumanWrite" rows="2" placeholder="改后版本…" style="font-size:11px;resize:none;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;outline:none;line-height:1.5"></textarea>
+          <input id="iterReasonWrite" placeholder="修改理由（可选）" style="font-size:11px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;outline:none">
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="btn btn-primary btn-sm" style="font-size:11px;padding:3px 10px" onclick="submitIterForm('write')">归档</button>
+            <button class="btn btn-sm" style="font-size:11px;padding:3px 8px" onclick="toggleIterForm('write')">取消</button>
+            <span id="iterStatusWrite" style="font-size:10px;color:var(--muted)"></span>
+          </div>
+        </div>
         <div class="row"><span>参考爆款</span><span class="val" id="ctxRef">加载中…</span></div>
       </div>
     </aside>
@@ -649,6 +934,26 @@ label { font-size:13px; color:var(--muted); }
             <span class="sp-mini" id="mainSpLabel"></span>
           </div>
           <div class="plan-body" id="mainContent" contenteditable="true" oninput="onMainEdit()"></div>
+        </div>
+
+        <!-- 备选标题收录 -->
+        <div id="titlesPanel" style="margin-top:12px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)">
+          <div style="font-size:12px;color:var(--gold2);font-weight:600;margin-bottom:8px">备选标题 · 收录到灵感库 <span class="tip" data-tip="点 ⭐ 将标题存入飞书「好标题灵感库」。AI 下次生成标题时会参考库中的钩子类型和角度多样性，持续提升点击欲望">?</span></div>
+          <div id="titleChips" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+
+        <!-- 保存到小红书发布表 -->
+        <div id="publishArea" style="margin-top:12px;padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <span style="font-size:12px;color:var(--gold2);font-weight:600">保存到小红书发布表 <span class="tip" data-tip="写入飞书「小红书自动发布表」。确认标题/正文/话题后点保存，后续由自动化流程处理发布，无需手动操作">?</span></span>
+            <span id="publishStatus" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <input id="publishTitle" placeholder="标题（从备选标题中选一条，可编辑）" style="font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;width:100%;box-sizing:border-box">
+            <textarea id="publishBody" rows="4" placeholder="正文（自动提取，可编辑）" style="font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;resize:vertical;line-height:1.6;width:100%;box-sizing:border-box"></textarea>
+            <input id="publishTags" placeholder="话题标签，如：#微醺气泡酒 #周末放松" style="font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;width:100%;box-sizing:border-box">
+            <button class="btn btn-primary btn-sm" onclick="saveToPublish()" style="align-self:flex-start;padding:5px 16px">保存到发布表</button>
+          </div>
         </div>
 
       </div>
@@ -877,7 +1182,23 @@ label { font-size:13px; color:var(--muted); }
 
       <div id="batchCtxStats" class="ctx-stats">
         <div class="section-label" style="margin-bottom:6px">飞书上下文</div>
-        <div class="row"><span>修改偏好</span><span class="val" id="batchCtxIter">加载中…</span></div>
+        <div class="row" style="align-items:center">
+          <span>修改偏好</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="val" id="batchCtxIter">加载中…</span>
+            <button onclick="toggleIterForm('batch')" style="font-size:10px;padding:1px 6px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--muted);cursor:pointer;line-height:1.6" title="记录一条修改偏好">＋</button>
+          </div>
+        </div>
+        <div id="iterFormBatch" style="display:none;margin-top:6px;padding:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);flex-direction:column;gap:6px">
+          <textarea id="iterAiBatch" rows="2" placeholder="AI 原片段…" style="font-size:11px;resize:none;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;outline:none;line-height:1.5"></textarea>
+          <textarea id="iterHumanBatch" rows="2" placeholder="改后版本…" style="font-size:11px;resize:none;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;outline:none;line-height:1.5"></textarea>
+          <input id="iterReasonBatch" placeholder="修改理由（可选）" style="font-size:11px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;outline:none">
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="btn btn-primary btn-sm" style="font-size:11px;padding:3px 10px" onclick="submitIterForm('batch')">归档</button>
+            <button class="btn btn-sm" style="font-size:11px;padding:3px 8px" onclick="toggleIterForm('batch')">取消</button>
+            <span id="iterStatusBatch" style="font-size:10px;color:var(--muted)"></span>
+          </div>
+        </div>
       </div>
     </aside>
 
@@ -1058,6 +1379,44 @@ label { font-size:13px; color:var(--muted); }
     </div>
   </div>
 </div><!-- /tab-comparison -->
+
+<!-- ══ Tab: 标题灵感库 ══ -->
+<div id="tab-title-lib" style="display:none">
+  <div class="comparison-layout">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="cmp-section-title" style="margin-bottom:0">标题灵感库</div>
+      <button class="btn btn-sm" onclick="refreshTitleLib()" style="font-size:11px">刷新</button>
+    </div>
+    <div class="cmp-section-hint">收录让你觉得「会点进去」的好标题。AI 每次生成标题时会学习这些角度，帮助保持多样性和点击欲望。</div>
+
+    <!-- 手动添加 -->
+    <div style="margin-bottom:16px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)">
+      <div style="font-size:12px;font-weight:600;color:var(--gold2);margin-bottom:8px">手动添加</div>
+      <input id="tlAddTitle" placeholder="粘贴一条让你觉得会点进去的标题…" style="width:100%;box-sizing:border-box;font-size:13px;padding:6px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;margin-bottom:6px">
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="tlAddHook" style="font-size:12px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;flex:1">
+          <option value="">选择心理钩子…</option>
+          <option>新奇/反常识</option>
+          <option>利他/利益前置</option>
+          <option>梦想生活/人格认同</option>
+          <option>品类新定义</option>
+          <option>好奇心缺口</option>
+        </select>
+        <input id="tlAddNote" placeholder="为什么好（可选）" style="flex:2;font-size:12px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none">
+        <button class="btn btn-primary btn-sm" onclick="addTitleToLib()">添加</button>
+      </div>
+    </div>
+
+    <!-- 统计 -->
+    <div id="tlStats" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
+
+    <!-- 列表 -->
+    <div id="tlList" style="display:flex;flex-direction:column;gap:6px">
+      <div style="color:var(--dim);font-size:13px;text-align:center;padding:24px">加载中…</div>
+    </div>
+  </div>
+</div><!-- /tab-title-lib -->
+
 
 <!-- ══ Tab: 提示词基础 ══ -->
 <div id="tab-prompt-base" style="display:none">
@@ -1578,7 +1937,7 @@ async function generate() {
   }, 10000);
 
   const controller = new AbortController();
-  const abortTimer = setTimeout(() => controller.abort(), 270000); // 4.5 分钟硬超时
+  const abortTimer = setTimeout(() => controller.abort(), 480000); // 8 分钟硬超时
 
   try {
     const res = await fetch('/api/generate', {
@@ -1619,6 +1978,16 @@ async function generate() {
       document.getElementById('ctxIter').textContent = s.iterComp + ' 条';
       document.getElementById('ctxRef').textContent = s.reference + ' 条';
     }
+    // 预填发布表字段 + 渲染备选标题收录
+    const titleEl = document.getElementById('publishTitle');
+    const bodyEl  = document.getElementById('publishBody');
+    const statusEl2 = document.getElementById('publishStatus');
+    if (titleEl && bodyEl) {
+      titleEl.value = (main.titles && main.titles[0]) || '';
+      bodyEl.value  = main.body || '';
+      if (statusEl2) statusEl2.textContent = '';
+    }
+    renderTitleChips(main.titles || []);
     dot.className = 'dot ok';
     txt.textContent = '生成完成，已推送飞书群';
     document.getElementById('genErrorBar').style.display = 'none';
@@ -1626,7 +1995,7 @@ async function generate() {
 
   } catch(e) {
     dot.className = 'dot err'; txt.textContent = '生成失败';
-    const msg = e.name === 'AbortError' ? '请求超时（超过 4.5 分钟），请重试' : e.message;
+    const msg = e.name === 'AbortError' ? '请求超时（超过 8 分钟），请重试' : e.message;
     const errBar = document.getElementById('genErrorBar');
     errBar.textContent = '⚠ 生成失败：' + msg;
     errBar.style.display = 'block';
@@ -1900,7 +2269,10 @@ function renderBatchResults(jobs) {
         </div>
         <div style="padding:16px 20px;display:flex;flex-direction:column;gap:10px">
           <div>
-            <div class="section-label" style="margin-bottom:4px">标题</div>
+            <div class="section-label" style="margin-bottom:4px;display:flex;align-items:center;justify-content:space-between">
+              <span>标题</span>
+              <button onclick="collectBatchTitle(${j.id})" id="brc-collect-${j.id}" style="font-size:10px;padding:1px 7px;background:transparent;border:1px solid var(--gold);color:var(--gold2);border-radius:4px;cursor:pointer">⭐ 收录</button>
+            </div>
             <input class="mat-edit-input" id="brc-title-${j.id}" value="${escHtml(r.title||'')}" style="font-size:13px">
           </div>
           <div>
@@ -2697,7 +3069,7 @@ async function submitRefAdd() {
 }
 
 // ─── Tab 切换 ─────────────────────────────────────────────────────
-const ALL_TABS = ['write', 'materials', 'batch', 'references', 'research', 'templates', 'comparison', 'prompt-base'];
+const ALL_TABS = ['guide', 'write', 'materials', 'batch', 'references', 'research', 'templates', 'comparison', 'title-lib', 'prompt-base'];
 function switchTab(tab) {
   ALL_TABS.forEach(t => {
     document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none';
@@ -2725,6 +3097,7 @@ function switchTab(tab) {
       renderTmplCards();
     }).catch(()=>{});
   }
+  if (tab === 'title-lib') refreshTitleLib();
   if (tab === 'prompt-base') pbInit();
 }
 
@@ -2885,12 +3258,13 @@ loadContextStats();
       <div style="display:flex;gap:10px;align-items:center">
         <span id="promptTotalChars" style="font-size:11px;color:var(--dim)"></span>
         <button class="btn btn-sm" id="promptFullToggle" onclick="togglePromptFull()" style="font-size:11px">展开完整原文</button>
+        <button class="btn btn-primary btn-sm" id="promptGenerateBtn" onclick="generateFromPromptOverlay()" style="font-size:11px;display:none">📝 用此提示词生成</button>
         <button class="btn btn-sm" onclick="closePromptOverlay()" style="font-size:11px">关闭</button>
       </div>
     </div>
     <div class="prompt-panel-body">
       <div id="promptModuleList"></div>
-      <div class="prompt-full-area" id="promptFullArea"></div>
+      <textarea class="prompt-full-area" id="promptFullArea" style="resize:vertical;font-family:monospace;font-size:12px" spellcheck="false"></textarea>
     </div>
   </div>
 </div>
@@ -2942,16 +3316,55 @@ async function openPromptOverlay(mode = 'single', overrideBody = null) {
 
     const total = r.prompt.length;
     totalEl.textContent = `共 ${total.toLocaleString()} 字符`;
-    fullArea.textContent = r.prompt;
+    fullArea.value = r.prompt;
 
-    list.innerHTML = r.modules.map((m, i) => `
+    // 当前参数摘要
+    const inp = r.inputs || {};
+    const stats = r.contextStats || {};
+    const FWLABELS = { A: '问题解决型', B: '场景种草型', C: '对比评测型', D: '教程干货型' };
+    const pills = [];
+    if (inp.framework) pills.push(`框架${inp.framework}·${FWLABELS[inp.framework] || inp.framework}`);
+    if (inp.direction) pills.push(`方向：${inp.direction}`);
+    if (inp.sellingPoint && inp.sellingPoint !== '（预览）') pills.push(`卖点：${inp.sellingPoint}`);
+    if (inp.subTemplate) pills.push(`子模板：${inp.subTemplate}`);
+    if (inp.persona) pills.push(`人群：${inp.persona}`);
+    if (inp.scene) pills.push(`场景：${inp.scene}`);
+    if (inp.refArticle) pills.push(`参考：${inp.refArticle}`);
+    const statParts = [];
+    if (stats.iterComp) statParts.push(`修改${stats.iterComp}条`);
+    if (stats.reference) statParts.push(`爆款${stats.reference}条`);
+    if (stats.titles) statParts.push(`标题${stats.titles}条`);
+    const summaryHtml = `<div style="margin-bottom:14px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;line-height:1.8">
+      <div style="color:var(--dim);margin-bottom:6px;font-size:11px">当前生成参数</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        ${pills.map(p => `<span style="background:var(--bg4,#2a2a2a);border:1px solid var(--border);border-radius:4px;padding:2px 8px;color:var(--fg2)">${escHtml(p)}</span>`).join('')}
+      </div>
+      ${statParts.length ? `<div style="margin-top:6px;color:var(--muted);font-size:11px">学习材料：${statParts.join(' / ')}</div>` : ''}
+    </div>`;
+
+    const SAVEABLE_KEYS = new Set(['writing','brand','product','output-single','output-batch']);
+    list.innerHTML = summaryHtml + r.modules.map((m, i) => {
+      const key = m.key || '';
+      const canSave = key && (SAVEABLE_KEYS.has(key) || key.startsWith('fw-body-') || key.startsWith('fw-example-'));
+      const saveRow = canSave
+        ? `<div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+             <button class="btn btn-primary btn-sm" style="font-size:11px" onclick="saveModule(${i},'${escJs(key)}')">💾 保存到文件</button>
+             <span id="mod-status-${i}" style="font-size:11px;color:var(--muted)"></span>
+           </div>`
+        : `<div style="margin-top:8px;font-size:11px;color:var(--dim)">动态内容不可永久保存。如需本次修改 → 展开完整原文 → 直接编辑 → 「用此提示词生成」</div>
+           <span id="mod-status-${i}" style="display:none"></span>`;
+      return `
       <div class="prompt-module">
         <div class="prompt-module-head" onclick="toggleModule(${i})">
-          <span>${escHtml(m.name)}</span>
-          <span class="mod-chars">${m.content.length.toLocaleString()} 字符 ▸</span>
+          <span>${escHtml(m.name)}${canSave ? ' <span style="font-size:10px;color:var(--gold);margin-left:4px">可保存</span>' : ''}</span>
+          <span class="mod-chars" id="mod-chars-${i}">${m.content.length.toLocaleString()} 字符 ▸</span>
         </div>
-        <div class="prompt-module-content" id="mod-${i}">${escHtml(m.content)}</div>
-      </div>`).join('');
+        <div class="prompt-module-content" id="mod-${i}">
+          <textarea id="mod-ta-${i}" style="width:100%;font-size:12px;font-family:monospace;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:10px;resize:none;line-height:1.7;box-sizing:border-box;overflow:hidden;display:block" onkeydown="event.stopPropagation()" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'">${escHtml(m.content)}</textarea>
+          ${saveRow}
+        </div>
+      </div>`;
+    }).join('');
   } catch (e) {
     list.innerHTML = `<div style="padding:20px;color:#f87171;font-size:13px">加载失败：${escHtml(e.message)}</div>`;
   }
@@ -2959,20 +3372,312 @@ async function openPromptOverlay(mode = 'single', overrideBody = null) {
 
 function toggleModule(i) {
   const el = document.getElementById('mod-' + i);
-  const head = el.previousElementSibling;
   const open = el.classList.toggle('open');
-  head.querySelector('.mod-chars').textContent =
-    el.textContent.length.toLocaleString() + ' 字符 ' + (open ? '▾' : '▸');
+  const chars = document.getElementById('mod-chars-' + i);
+  const ta = document.getElementById('mod-ta-' + i);
+  if (ta) {
+    if (open) {
+      ta.style.height = 'auto';
+      ta.style.height = ta.scrollHeight + 'px';
+      ta.style.overflowY = 'hidden';
+    }
+    if (chars) chars.textContent = ta.value.length.toLocaleString() + ' 字符 ' + (open ? '▾' : '▸');
+  }
+}
+
+async function saveModule(i, key) {
+  const content = document.getElementById('mod-ta-' + i).value;
+  const statusEl = document.getElementById('mod-status-' + i);
+  if (!content.trim()) { statusEl.textContent = '内容不能为空'; return; }
+  statusEl.textContent = '保存中…';
+
+  const urlMap = {
+    writing:         { url: '/api/writing-prompt', body: { content } },
+    brand:           { url: '/api/brand-facts',    body: { content } },
+    product:         { url: '/api/product-info',   body: { content } },
+    'output-single': { url: '/api/output-format',  body: { mode: 'single', content } },
+    'output-batch':  { url: '/api/output-format',  body: { mode: 'batch',  content } },
+  };
+
+  let fetchOpts;
+  if (urlMap[key]) {
+    fetchOpts = { url: urlMap[key].url, body: urlMap[key].body };
+  } else if (key.startsWith('fw-body-')) {
+    fetchOpts = { url: '/api/base-template', body: { fw: key.slice(8), body: content } };
+  } else if (key.startsWith('fw-example-')) {
+    fetchOpts = { url: '/api/base-template', body: { fw: key.slice(11), example: content } };
+  } else {
+    statusEl.textContent = '此模块动态生成，不支持保存';
+    return;
+  }
+
+  try {
+    const r = await fetch(fetchOpts.url, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(fetchOpts.body),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    statusEl.textContent = '✓ 已保存';
+    showToast('✓ 已保存，下次生成立即生效', 'ok');
+    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
+  } catch(e) {
+    statusEl.textContent = '失败：' + e.message;
+  }
 }
 
 function togglePromptFull() {
   _promptFullOpen = !_promptFullOpen;
   document.getElementById('promptFullArea').classList.toggle('open', _promptFullOpen);
   document.getElementById('promptFullToggle').textContent = _promptFullOpen ? '收起完整原文' : '展开完整原文';
+  document.getElementById('promptGenerateBtn').style.display = _promptFullOpen ? '' : 'none';
 }
 
 function closePromptOverlay() {
   document.getElementById('promptOverlay').classList.remove('open');
+}
+
+let _promptOverlayMode = 'single';
+
+async function generateFromPromptOverlay() {
+  const rawPrompt = document.getElementById('promptFullArea').value.trim();
+  if (!rawPrompt) { showToast('提示词内容为空', 'err'); return; }
+
+  const btn = document.getElementById('promptGenerateBtn');
+  btn.disabled = true;
+  btn.textContent = '生成中…';
+
+  try {
+    // 用撰写台的卖点作为标签（仅供飞书消息显示用，实际生成用 rawPrompt）
+    const sp = (st.spItems?.[0]?.name || st.sellingPoint || '（自定义提示词）');
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sellingPoint: sp, rawPrompt }),
+    }).then(x => x.json());
+
+    if (!res.ok) throw new Error(res.error);
+
+    closePromptOverlay();
+    // 把结果渲染到撰写台
+    const { main } = res;
+    st.mainEdited = false;
+    renderMain(main);
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('resultArea').style.display = 'block';
+    const titleEl = document.getElementById('publishTitle');
+    const bodyEl  = document.getElementById('publishBody');
+    if (titleEl && bodyEl) {
+      titleEl.value = (main.titles && main.titles[0]) || '';
+      bodyEl.value  = main.body || '';
+    }
+    renderTitleChips(main.titles || []);
+    showToast('✓ 生成完成（使用自定义提示词）', 'ok');
+  } catch(e) {
+    showToast('生成失败：' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📝 用此提示词生成';
+  }
+}
+
+// ─── 修改偏好快速录入 ───────────────────────────────────────────────
+const _iterFormOpen = { write: false, batch: false };
+function toggleIterForm(ctx) {
+  const sfx = ctx === 'write' ? 'Write' : 'Batch';
+  const key = ctx === 'write' ? 'write' : 'batch';
+  _iterFormOpen[key] = !_iterFormOpen[key];
+  const el = document.getElementById('iterForm' + sfx);
+  if (_iterFormOpen[key]) {
+    el.style.display = 'flex';
+    el.style.flexDirection = 'column';
+    document.getElementById('iterAi' + sfx).focus();
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+async function submitIterForm(ctx) {
+  const sfx = ctx === 'write' ? 'Write' : 'Batch';
+  const aiText    = document.getElementById('iterAi'     + sfx).value.trim();
+  const humanText = document.getElementById('iterHuman'  + sfx).value.trim();
+  const reason    = document.getElementById('iterReason' + sfx).value.trim();
+  const statusEl  = document.getElementById('iterStatus' + sfx);
+  if (!aiText)    { statusEl.textContent = 'AI原片段不能为空'; return; }
+  if (!humanText) { statusEl.textContent = '改后版本不能为空'; return; }
+  statusEl.textContent = '归档中…';
+  try {
+    const r = await fetch('/api/archive-comparison', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ aiText, humanText, reason }),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    document.getElementById('iterAi'    + sfx).value = '';
+    document.getElementById('iterHuman' + sfx).value = '';
+    document.getElementById('iterReason'+ sfx).value = '';
+    statusEl.textContent = '';
+    toggleIterForm(ctx);
+    // 更新计数
+    const countEl = document.getElementById(ctx === 'write' ? 'ctxIter' : 'batchCtxIter');
+    if (countEl) {
+      const cur = parseInt(countEl.textContent) || 0;
+      countEl.textContent = (cur + 1) + ' 条';
+    }
+    showToast('✓ 修改偏好已归档', 'ok');
+  } catch(e) {
+    statusEl.textContent = '失败：' + e.message;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 标题灵感库
+// ═══════════════════════════════════════════════════════════════════
+const HOOK_COLORS = {
+  '新奇/反常识':    '#6366f1',
+  '利他/利益前置':  '#10b981',
+  '梦想生活/人格认同': '#f59e0b',
+  '品类新定义':     '#ef4444',
+  '好奇心缺口':     '#8b5cf6',
+  '未分类':         '#6b7280',
+};
+
+let _titleLib = [];
+let _titleHooks = [];
+
+async function refreshTitleLib() {
+  try {
+    const r = await fetch('/api/titles').then(x => x.json());
+    if (!r.ok) return;
+    _titleLib = r.titles || [];
+    _titleHooks = r.hooks || [];
+    renderTitleLib();
+  } catch(e) { console.warn('title lib load failed', e.message); }
+}
+
+function renderTitleLib() {
+  // stats
+  const statsEl = document.getElementById('tlStats');
+  if (statsEl) {
+    const counts = {};
+    _titleLib.forEach(t => { counts[t.hook || '未分类'] = (counts[t.hook || '未分类'] || 0) + 1; });
+    statsEl.innerHTML = Object.entries(counts).map(([h, n]) =>
+      `<span style="font-size:11px;padding:2px 10px;border-radius:10px;background:${HOOK_COLORS[h]||'#6b7280'}22;color:${HOOK_COLORS[h]||'#6b7280'};border:1px solid ${HOOK_COLORS[h]||'#6b7280'}44">${h} · ${n}</span>`
+    ).join('');
+    if (!_titleLib.length) statsEl.innerHTML = '<span style="font-size:12px;color:var(--dim)">暂无收录</span>';
+  }
+
+  const listEl = document.getElementById('tlList');
+  if (!listEl) return;
+  if (!_titleLib.length) { listEl.innerHTML = '<div style="color:var(--dim);font-size:13px;text-align:center;padding:24px">还没有收录任何标题。生成后点「⭐收录」，或在此手动添加。</div>'; return; }
+
+  const sorted = [..._titleLib].reverse();
+  listEl.innerHTML = sorted.map(t => `
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm)">
+      <div style="flex:1">
+        <div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:4px">${escHtml(t.title)}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span style="font-size:10px;padding:1px 8px;border-radius:8px;background:${HOOK_COLORS[t.hook]||'#6b7280'}22;color:${HOOK_COLORS[t.hook]||'#6b7280'}">${escHtml(t.hook||'未分类')}</span>
+          ${t.source === 'generated' ? '<span style="font-size:10px;color:var(--dim)">生成</span>' : t.source === 'reference' ? '<span style="font-size:10px;color:var(--dim)">参考</span>' : ''}
+          ${t.note ? `<span style="font-size:11px;color:var(--muted)">${escHtml(t.note)}</span>` : ''}
+          <span style="font-size:10px;color:var(--dim)">${t.date||''}</span>
+        </div>
+      </div>
+      <button onclick="deleteTitleFromLib('${escJs(t.id)}')" style="flex-shrink:0;font-size:11px;padding:2px 7px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--dim);cursor:pointer" title="删除">×</button>
+    </div>`).join('');
+}
+
+async function addTitleToLib(title, hook, note, source) {
+  const t = title || document.getElementById('tlAddTitle')?.value.trim();
+  const h = hook || document.getElementById('tlAddHook')?.value || '未分类';
+  const n = note || document.getElementById('tlAddNote')?.value.trim() || '';
+  const s = source || 'manual';
+  if (!t) { showToast('请输入标题', 'err'); return; }
+  try {
+    const r = await fetch('/api/titles/add', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title: t, hook: h, note: n, source: s }),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    if (document.getElementById('tlAddTitle')) {
+      document.getElementById('tlAddTitle').value = '';
+      document.getElementById('tlAddHook').value = '';
+      document.getElementById('tlAddNote').value = '';
+    }
+    await refreshTitleLib();
+    showToast('✓ 已收录到标题灵感库', 'ok');
+    return r.id;
+  } catch(e) { showToast('收录失败：' + e.message, 'err'); }
+}
+
+async function deleteTitleFromLib(id) {
+  try {
+    await fetch('/api/titles/' + id, { method: 'DELETE' }).then(x => x.json());
+    _titleLib = _titleLib.filter(t => t.id !== id);
+    renderTitleLib();
+  } catch(e) { showToast('删除失败', 'err'); }
+}
+
+// 渲染撰写台结果区的备选标题收录面板
+function renderTitleChips(titles) {
+  const el = document.getElementById('titleChips');
+  if (!el) return;
+  if (!titles || !titles.length) { el.innerHTML = '<div style="font-size:12px;color:var(--dim)">（未从正文提取到备选标题）</div>'; return; }
+  el.innerHTML = titles.map((title, i) => `
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm)">
+      <span style="flex:1;font-size:12px;color:var(--text);line-height:1.5">${escHtml(title)}</span>
+      <select id="titleHook-${i}" style="font-size:11px;padding:2px 4px;background:var(--bg2);border:1px solid var(--border2);border-radius:4px;color:var(--muted);outline:none;max-width:130px">
+        <option value="">钩子类型…</option>
+        <option>新奇/反常识</option>
+        <option>利他/利益前置</option>
+        <option>梦想生活/人格认同</option>
+        <option>品类新定义</option>
+        <option>好奇心缺口</option>
+      </select>
+      <button onclick="collectTitle(${i},'${escJs(title)}')" style="font-size:11px;padding:2px 8px;background:var(--bg2);border:1px solid var(--gold);color:var(--gold2);border-radius:4px;cursor:pointer;white-space:nowrap;flex-shrink:0" id="titleCollectBtn-${i}">⭐ 收录</button>
+    </div>`).join('');
+}
+
+async function collectTitle(i, title) {
+  const hook = document.getElementById('titleHook-' + i)?.value || '未分类';
+  const id = await addTitleToLib(title, hook, '', 'generated');
+  if (id) {
+    const btn = document.getElementById('titleCollectBtn-' + i);
+    if (btn) { btn.textContent = '✓ 已收录'; btn.disabled = true; btn.style.color = 'var(--green)'; btn.style.borderColor = 'var(--green)'; }
+  }
+}
+
+// ─── 撰写台保存到发布表 ─────────────────────────────────────────────
+async function collectBatchTitle(jobId) {
+  const title = document.getElementById('brc-title-' + jobId)?.value.trim();
+  if (!title) { showToast('标题为空', 'err'); return; }
+  const hook = prompt('选择钩子类型（输入序号）:\n1 新奇/反常识\n2 利他/利益前置\n3 梦想生活/人格认同\n4 品类新定义\n5 好奇心缺口', '');
+  const hooks = ['新奇/反常识','利他/利益前置','梦想生活/人格认同','品类新定义','好奇心缺口'];
+  const h = hooks[parseInt(hook) - 1] || '未分类';
+  const id = await addTitleToLib(title, h, '', 'generated');
+  if (id) {
+    const btn = document.getElementById('brc-collect-' + jobId);
+    if (btn) { btn.textContent = '✓ 已收录'; btn.disabled = true; btn.style.color = 'var(--green)'; }
+  }
+}
+
+async function saveToPublish() {
+  const title  = (document.getElementById('publishTitle')?.value || '').trim();
+  const body   = (document.getElementById('publishBody')?.value  || '').trim();
+  const tags   = (document.getElementById('publishTags')?.value  || '').trim();
+  const status = document.getElementById('publishStatus');
+  if (!body) { showToast('正文不能为空', 'err'); return; }
+  status.textContent = '保存中…';
+  try {
+    const r = await fetch('/api/save-to-publish', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title, body, tags }),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    status.textContent = '✓ 已保存到发布表';
+    showToast('✓ 已保存到小红书发布表', 'ok');
+  } catch(e) {
+    status.textContent = '失败：' + e.message;
+    showToast('保存失败：' + e.message, 'err');
+  }
 }
 </script>
 </body>
