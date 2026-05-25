@@ -41,16 +41,16 @@ const BASE_TEMPLATES = {
   B: {
     id: 'base-B', name: '基础写法', isBase: true,
     desc: '场景种草型写作顺序（自动注入）',
-    body: '写作顺序：旧刻板印象或个人偏见 → 开瓶/第一口的惊喜瞬间 → 感官图像化描写（三层口感） → 代入具体生活场景（普通周五/外卖/独酌） → 自然带出分享欲\n标题至少一条含明显反差（原本以为……结果……）\n关键：开场不要直接夸产品，要先建立"我原本不信"的人物心理，反差才有力量',
-    example: `第一次喝到这种「白酒」，真的有点被惊艳到。
+    body: '场景种草型核心：靠具体的人、具体的时刻、具体的感官细节让读者感到"这说的就是我"，不是直接夸产品。\n\n以下是这个框架下的几种细分切入方向，每次根据卖点/人群/方向选一种（或自由组合），不要每次走同一条路：\n- 生活切片：某个具体的日常时刻（等外卖/下班/配火锅/独处夜晚），产品自然出现其中\n- 感官探索：从口感/嗅觉/视觉入手（气泡炸开/苹果酸甜/尾韵回甘），从感受写到产品背后\n- 情绪共鸣：某种情绪状态（需要微醺的夜晚/想喝点什么但不想断片），产品是那个对应物\n- 意外发现：某个细节或事实引发好奇（配料表/度数/产区），信息本身成为切入点\n- 人格认同：描述"那种人"的生活切片，让读者觉得说的就是自己\n- 颠覆认知：原本以为XX，结果发现YY——可以是第一次体验，也可以是对比记忆\n\n品牌事实融入方式：翻译成感受和体验，不直接报数据参数，每段取1-2个锚点。',
+    example: `周五晚上，外卖还没送到，随手开了瓶菠萝口味的每天烈刻。
 
-以前总觉得白酒是长辈桌上的局，要么太辣喉，要么度数直接劝退。但这瓶「每天烈刻」完全打破了我的认知。开瓶的瞬间，居然没有那种刺鼻的酒精味，反而是扑面而来的苹果香和海棠果的甜润气息。
+一倒出来就是气泡——细腻那种，不是啤酒那种大泡，是香槟那种绵密感。第一口进去，菠萝汁的甜酸先出来，气泡在舌尖噼啪，最后有一点点回甘，那个尾韵才是白酒的感觉，但压根不辣嗓子。
 
-倒进杯子里，那个气泡绵密得简直像香槟一样。用了茅台产区的10年藏糯高粱做基酒，难怪入口有那种很高级的松香和麦子底蕴，但一点都不冲。
+配料上写着用茅台产区糯高粱做基酒，喝的时候能隐约感到那点谷物香，但被包裹得很轻。10度，半瓶喝完身上暖了，脑子还是清的，这才是想要的状态——不断片，只是刚好微醺。
 
-10度的酒感刚刚好，属于「微醺不醉」的黄金区间。果香和酒香在嘴里打架，喝起来清爽利落，完全没有传统白酒的油腻感。
+它是0糖0卡的，我专门看过配料表，没有添加糖。对于平时控糖又想放松一下的人，这点属性不是卖点，是救命稻草。
 
-关键是0糖0卡！对于想喝两口又怕胖的人来说，简直是救命稻草。周末在家点个外卖，看个电影，开一瓶这个，氛围感瞬间拉满。`,
+今晚这顿外卖等得很值。`,
   },
   C: {
     id: 'base-C', name: '基础写法', isBase: true,
@@ -452,12 +452,12 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
   const frameworkLogicBlock = baseTemplate
     ? refArticle
       ? `## 框架${framework}内容逻辑（内容方向参考，结构节奏以参考范文为准）\n\n${baseTemplate.body}`
-      : `## 框架${framework}写作逻辑（必须严格遵守）\n\n${baseTemplate.body}`
+      : `## 框架${framework}写作逻辑\n\n${baseTemplate.body}`
     : '';
 
   // ③-1 框架参考示例（该框架的标杆正文，学习节奏/句式/收口）
   const frameworkExampleBlock = baseTemplate?.example
-    ? `## 框架${framework}参考示例（学习其写作节奏、句式结构和情绪收口，内容必须完全原创，不得抄袭字句）\n\n${baseTemplate.example}`
+    ? `## 框架${framework}参考示例（展示该框架下的一种切入方式，仅供节奏/句式/感官描写参考。内容必须完全原创，切入角度不必局限于此例）\n\n${baseTemplate.example}`
     : '';
 
   // ③a 仿写参考范文（用户在参考文案库中选择后注入）
@@ -605,7 +605,7 @@ function buildBatchPrompt(ctx, direction, sellingPoint, framework, persona = nul
 
   const templates = loadTemplates();
   const baseTemplate = (templates[framework] || []).find(t => t.isBase);
-  const frameworkBlock = baseTemplate ? `## 框架${framework}写作逻辑（必须遵守）\n${baseTemplate.body}` : '';
+  const frameworkBlock = baseTemplate ? `## 框架${framework}写作逻辑\n${baseTemplate.body}` : '';
   const batchExampleBlock = baseTemplate?.example && !refArticle
     ? `## 框架${framework}参考示例（学习节奏和句式，内容必须完全原创）\n\n${baseTemplate.example}`
     : '';
