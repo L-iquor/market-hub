@@ -11,6 +11,10 @@ output/
 # 运行时状态
 debt-tracker-state.json
 data/
+
+# 战局台（独立项目，不属于 market-hub，不上传 GitHub）
+zhangjutai.html
+server-zhangjutai.js
 _tmp_*.json
 _test.txt
 *.lock
