@@ -714,8 +714,8 @@ function parsePlan(text) {
 
 // ─── 发送飞书群消息（cc-connect bot REDACTED）───────────
 const https = require('https');
-const CC_APP_ID     = 'REDACTED';
-const CC_APP_SECRET = 'REDACTED';
+const CC_APP_ID     = process.env.FEISHU_APP_ID     || 'REDACTED';
+const CC_APP_SECRET = process.env.FEISHU_APP_SECRET || '';
 
 function httpsPost(url, body, headers) {
   return new Promise((resolve, reject) => {
@@ -1506,6 +1506,127 @@ app.get('/api/health', (req, res) => {
     contextCached: !!state.contextCache,
     contextAge: state.contextCache ? Math.round((Date.now() - state.contextCacheTime) / 1000) + 's' : 'none',
   });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Ares Chat API
+// ═══════════════════════════════════════════════════════════════════
+const Anthropic = require('@anthropic-ai/sdk');
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const aresHistories = {};
+
+function loadAresSystemPrompt() {
+  const skillPath = path.join(os.homedir(), '.claude', 'skills', 'aris-marketing', 'SKILL.md');
+  let skill = '';
+  try { skill = fs.readFileSync(skillPath, 'utf8'); } catch {}
+  return `你是 Ares 的营销判断引擎，蒸馏自她在内容创作、市场营销上积累的真实判断。
+
+关键原则：
+- 不给选项列表，直接给判断和结论
+- 像真正懂这个品牌的人一样说话，不像顾问
+- 审稿时逐句指出问题，不是泛泛评价
+- 热点评估给契合度评分(1-10)和具体角度，不是"可以考虑"
+- 发现值得记录的洞见时主动提示"这个值得存下来"
+
+品牌：每天烈刻气泡白酒
+产品事实（至少用一个）：茅台产区10年基酒 / 10度 / 0糖0卡 / 细腻气泡 / 不辣嗓子 / 青提·菠萝口味
+目标用户：25-32岁女性，微醺场景，情绪消费驱动
+
+---
+${skill}
+
+今天：${new Date().toLocaleDateString('zh-CN')}`;
+}
+
+// GET /api/ares/hot-topics
+app.get('/api/ares/hot-topics', (req, res) => {
+  try {
+    const r = larkCli(['--as', 'user', 'base', '+record-list',
+      '--base-token', 'REDACTED',
+      '--table-id', 'tblto6HMz9sjdgTp',
+      '--limit', '8', '--format', 'json']);
+    const items = (r.data?.items || []).map(rec => {
+      const fields = rec.fields || {};
+      return { title: fields['帖子标题'] || fields['搜索词'] || '—', date: fields['日期'] || '' };
+    }).filter(x => x.title !== '—');
+    res.json({ ok: true, items });
+  } catch(e) { res.json({ ok: false, items: [], error: e.message }); }
+});
+
+// GET /api/ares/recent-kb
+app.get('/api/ares/recent-kb', (req, res) => {
+  try {
+    const r = larkCli(['--as', 'user', 'base', '+record-list',
+      '--base-token', 'REDACTED',
+      '--table-id', 'tbl8GgYJbuObKWtE',
+      '--limit', '8', '--format', 'json',
+      '--field-id', 'key takeaway', '--field-id', '内容类型', '--field-id', '个人想法']);
+    const items = (r.data?.items || []).map(rec => {
+      const f = rec.fields || {};
+      const takeaway = f['key takeaway'] || f['个人想法'] || '';
+      const type = Array.isArray(f['内容类型']) ? f['内容类型'][0] : (f['内容类型'] || '');
+      return { takeaway, type };
+    }).filter(x => x.takeaway);
+    res.json({ ok: true, items });
+  } catch(e) { res.json({ ok: false, items: [], error: e.message }); }
+});
+
+// POST /api/ares/chat  (SSE streaming)
+app.post('/api/ares/chat', async (req, res) => {
+  const { message, sessionId = 'default' } = req.body;
+  if (!aresHistories[sessionId]) aresHistories[sessionId] = [];
+  aresHistories[sessionId].push({ role: 'user', content: message });
+  if (aresHistories[sessionId].length > 30) {
+    aresHistories[sessionId] = aresHistories[sessionId].slice(-30);
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  try {
+    const stream = anthropic.messages.stream({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2048,
+      system: loadAresSystemPrompt(),
+      messages: aresHistories[sessionId],
+    });
+
+    let full = '';
+    stream.on('text', (text) => {
+      full += text;
+      res.write(`data: ${JSON.stringify({ text })}\n\n`);
+    });
+    await stream.finalMessage();
+    aresHistories[sessionId].push({ role: 'assistant', content: full });
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
+  } catch(e) {
+    res.write(`data: ${JSON.stringify({ error: e.message })}\n\n`);
+    res.end();
+  }
+});
+
+// POST /api/ares/save-insight
+app.post('/api/ares/save-insight', (req, res) => {
+  const { content, category = '方法论', type = '方法论' } = req.body;
+  try {
+    larkCli(['--as', 'user', 'base', '+record-upsert',
+      '--base-token', 'REDACTED',
+      '--table-id', 'tbl8GgYJbuObKWtE',
+      '--fields', JSON.stringify({
+        '个人想法': '[Ares对话洞见] ' + content.slice(0, 200),
+        '大类': [category],
+        '内容类型': [type],
+      })]);
+    res.json({ ok: true });
+  } catch(e) { res.json({ ok: false, error: e.message }); }
+});
+
+// DELETE /api/ares/chat/:sessionId
+app.delete('/api/ares/chat/:sessionId', (req, res) => {
+  delete aresHistories[req.params.sessionId];
+  res.json({ ok: true });
 });
 
 const PORT = CFG.server.port;

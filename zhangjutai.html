@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>战局台</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #09090f;
+  --surface: rgba(18,18,32,0.85);
+  --border: rgba(120,80,220,0.15);
+  --border-hi: rgba(139,92,246,0.45);
+  --text: #f1f5f9;
+  --muted: #64748b;
+  --purple: #8b5cf6;
+  --purple-light: #a78bfa;
+  --gold: #f59e0b;
+  --green: #10b981;
+  --red: #ef4444;
+  --blue: #60a5fa;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system,'PingFang SC','SF Pro Text',sans-serif;
+  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+}
+/* cosmic bg */
+body::before {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse at 12% 55%, rgba(139,92,246,.12) 0%, transparent 55%),
+    radial-gradient(ellipse at 88% 18%, rgba(16,185,129,.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 62% 88%, rgba(245,158,11,.07) 0%, transparent 45%);
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgba(139,92,246,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139,92,246,.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+.topbar, .layout { position: relative; z-index: 1; }
+
+/* ── Top Bar ── */
+.topbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(9,9,15,.85);
+  backdrop-filter: blur(20px);
+  flex-shrink: 0;
+}
+.topbar-brand {
+  font-size: 13px; font-weight: 800; letter-spacing: .18em;
+  background: linear-gradient(120deg, var(--purple-light), var(--gold) 70%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; white-space: nowrap;
+}
+.topbar-sep { width: 1px; height: 16px; background: var(--border); }
+.topbar-label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.topbar input {
+  flex: 1; background: rgba(255,255,255,.04); border: 1px solid var(--border);
+  color: var(--text); padding: 7px 12px; border-radius: 8px; font-size: 13px; outline: none;
+  transition: border-color .2s;
+}
+.topbar input:focus { border-color: var(--purple); }
+.topbar-btn {
+  background: linear-gradient(135deg, var(--purple), #5b21b6);
+  color: #fff; border: none; padding: 7px 16px; border-radius: 8px;
+  font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  box-shadow: 0 0 14px rgba(139,92,246,.35);
+  transition: opacity .15s, transform .1s;
+}
+.topbar-btn:hover { opacity: .88; transform: translateY(-1px); }
+.topbar-status { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.kb-badge {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; color: #6ee7b7;
+  background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2);
+  padding: 3px 9px; border-radius: 20px; white-space: nowrap; flex-shrink: 0;
+  transition: opacity .3s;
+}
+.kb-badge.off { color: var(--muted); border-color: var(--border); background: none; }
+.kb-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); box-shadow: 0 0 5px var(--green); flex-shrink: 0; }
+.kb-badge.off .kb-dot { background: #475569; box-shadow: none; }
+
+/* ── Layout ── */
+.layout { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 218px; flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  background: rgba(9,9,15,.6);
+  backdrop-filter: blur(20px);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.sidebar-section { padding: 14px 12px 8px; }
+.sidebar-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.sidebar-section-title { font-size: 9px; font-weight: 700; color: var(--muted); letter-spacing: .14em; text-transform: uppercase; }
+.sidebar-add {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 17px; width: 22px; height: 22px; display: flex; align-items: center;
+  justify-content: center; border-radius: 5px; transition: color .15s, background .15s;
+}
+.sidebar-add:hover { color: var(--purple); background: rgba(139,92,246,.1); }
+.sidebar-list { list-style: none; }
+.sidebar-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-radius: 8px; cursor: pointer;
+  font-size: 13px; color: var(--text); margin-bottom: 2px;
+  user-select: none; position: relative; transition: background .15s;
+}
+.sidebar-item:hover { background: rgba(139,92,246,.07); }
+.sidebar-item.selected { background: rgba(139,92,246,.14); color: var(--purple-light); }
+.sidebar-item.selected::before {
+  content: ''; position: absolute; left: 0; top: 5px; bottom: 5px;
+  width: 2px; background: var(--purple); border-radius: 0 2px 2px 0;
+  box-shadow: 0 0 8px var(--purple);
+}
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-active  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.dot-dormant { background: var(--gold); }
+.dot-archived { background: #475569; }
+.dot-waiting { background: var(--gold); }
+.dot-done    { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.dot-dead    { background: #475569; }
+.dot-replied { background: var(--blue); }
+.sidebar-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-divider { height: 1px; background: var(--border); margin: 4px 12px 0; }
+
+/* ── Main ── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.empty-state {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px;
+  color: var(--muted); font-size: 13px;
+}
+.empty-icon { font-size: 36px; opacity: .25; }
+
+/* ── Project View ── */
+.project-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.project-header {
+  padding: 13px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; flex-shrink: 0;
+  background: rgba(9,9,15,.45); backdrop-filter: blur(10px);
+}
+.project-title {
+  font-size: 15px; font-weight: 700;
+  background: linear-gradient(120deg, var(--text) 40%, var(--purple-light));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.project-desc { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+.project-header-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+.btn-sm {
+  background: rgba(255,255,255,.04); border: 1px solid var(--border);
+  color: var(--muted); padding: 5px 10px; border-radius: 6px; font-size: 11px;
+  cursor: pointer; transition: all .15s;
+}
+.btn-sm:hover { border-color: var(--border-hi); color: var(--purple-light); background: rgba(139,92,246,.08); }
+.btn-sm.danger:hover { border-color: rgba(239,68,68,.4); color: var(--red); background: rgba(239,68,68,.07); }
+.status-select {
+  background: rgba(255,255,255,.04); border: 1px solid var(--border);
+  color: var(--text); padding: 5px 8px; border-radius: 6px; font-size: 11px;
+  cursor: pointer; outline: none;
+}
+
+/* ── Split pane ── */
+.project-body { flex: 1; display: flex; overflow: hidden; }
+.decisions-panel {
+  width: 210px; flex-shrink: 0; border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: rgba(9,9,15,.3);
+}
+.decisions-header {
+  padding: 10px 12px 8px; font-size: 9px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .14em;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 4px;
+}
+.kb-injected {
+  font-size: 8px; font-weight: 500; letter-spacing: 0;
+  color: var(--green); opacity: .7; white-space: nowrap; text-transform: none;
+}
+.decisions-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.decision-item {
+  font-size: 11px; color: var(--text); padding: 8px 24px 8px 10px;
+  border-left: 2px solid var(--gold);
+  background: rgba(245,158,11,.06); border-radius: 0 6px 6px 0;
+  line-height: 1.55; position: relative;
+  box-shadow: inset 0 0 0 1px rgba(245,158,11,.1);
+}
+.del-dec {
+  position: absolute; top: 5px; right: 5px;
+  background: none; border: none; color: #475569; cursor: pointer; font-size: 10px;
+  opacity: 0; transition: opacity .15s, color .15s;
+}
+.decision-item:hover .del-dec { opacity: 1; }
+.del-dec:hover { color: var(--red) !important; }
+
+/* ── Chat ── */
+.chat-pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 16px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+/* message wrapper handles hover actions */
+.msg-row {
+  display: flex; gap: 6px; align-items: flex-start;
+}
+.msg-row.user { align-self: flex-end; flex-direction: row-reverse; max-width: 86%; }
+.msg-row.assistant { align-self: flex-start; max-width: 86%; }
+
+.msg-actions {
+  display: flex; flex-direction: column; gap: 3px;
+  opacity: 0; transition: opacity .15s; flex-shrink: 0; padding-top: 6px;
+}
+.msg-row:hover .msg-actions { opacity: 1; }
+
+.msg-act-btn {
+  background: rgba(15,15,28,.9); border: 1px solid var(--border);
+  color: var(--muted); padding: 3px 8px; border-radius: 5px;
+  font-size: 10px; cursor: pointer; white-space: nowrap;
+  backdrop-filter: blur(10px); transition: color .15s, border-color .15s;
+}
+.msg-act-btn:hover { color: var(--text); border-color: var(--border-hi); }
+.msg-act-btn.red:hover { color: var(--red); border-color: rgba(239,68,68,.4); }
+
+.chat-msg {
+  padding: 10px 14px; border-radius: 12px;
+  font-size: 13px; line-height: 1.68; white-space: pre-wrap; word-break: break-word;
+  flex: 1;
+}
+.chat-msg.user {
+  background: linear-gradient(135deg, rgba(139,92,246,.2), rgba(91,33,182,.13));
+  border: 1px solid rgba(139,92,246,.28);
+  border-bottom-right-radius: 3px;
+}
+.chat-msg.assistant {
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 3px;
+}
+
+/* edit mode inside msg-row */
+.msg-edit-wrap { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.msg-edit-area {
+  width: 100%; background: rgba(255,255,255,.06);
+  border: 1px solid var(--purple); color: var(--text);
+  padding: 9px 12px; border-radius: 9px; font-size: 13px;
+  font-family: inherit; resize: none; outline: none;
+  min-height: 64px; line-height: 1.6;
+}
+.msg-edit-btns { display: flex; gap: 6px; justify-content: flex-end; }
+.edit-cancel {
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  padding: 5px 13px; border-radius: 6px; font-size: 11px; cursor: pointer;
+}
+.edit-cancel:hover { color: var(--text); }
+.edit-submit {
+  background: linear-gradient(135deg, var(--purple), #5b21b6);
+  border: none; color: #fff; padding: 5px 13px;
+  border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;
+}
+.edit-submit:hover { opacity: .88; }
+
+/* input area */
+.chat-input-area {
+  padding: 11px 14px; border-top: 1px solid var(--border);
+  background: rgba(9,9,15,.65); backdrop-filter: blur(12px); flex-shrink: 0;
+}
+.model-toggle-row {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 7px;
+}
+.model-btn {
+  font-size: 10px; padding: 3px 10px; border-radius: 20px; border: 1px solid var(--border);
+  background: none; color: var(--muted); cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.model-btn.active {
+  border-color: var(--purple); color: var(--purple-light);
+  background: rgba(139,92,246,.1); box-shadow: 0 0 8px rgba(139,92,246,.2);
+}
+.model-btn:hover:not(.active) { border-color: rgba(139,92,246,.4); color: var(--text); }
+.chat-input-row { display: flex; gap: 8px; align-items: flex-end; }
+.chat-input {
+  flex: 1; background: rgba(255,255,255,.05); border: 1px solid var(--border);
+  color: var(--text); padding: 10px 14px; border-radius: 10px;
+  font-size: 13px; resize: none; outline: none;
+  min-height: 42px; max-height: 120px; font-family: inherit; line-height: 1.5;
+  transition: border-color .2s, box-shadow .2s;
+}
+.chat-input:focus { border-color: var(--purple); box-shadow: 0 0 0 2px rgba(139,92,246,.12); }
+.chat-send {
+  background: linear-gradient(135deg, var(--purple), #5b21b6);
+  color: #fff; border: none; padding: 10px 18px; border-radius: 10px;
+  font-weight: 600; font-size: 13px; cursor: pointer; align-self: flex-end;
+  box-shadow: 0 0 14px rgba(139,92,246,.3); transition: opacity .15s, box-shadow .15s;
+}
+.chat-send:hover { opacity: .88; box-shadow: 0 0 22px rgba(139,92,246,.45); }
+.chat-send:disabled { opacity: .35; cursor: default; box-shadow: none; }
+
+/* typing indicator */
+.typing-dots { display: flex; gap: 4px; align-items: center; padding: 3px 0; }
+.typing-dots span {
+  width: 5px; height: 5px; background: var(--purple); border-radius: 50%;
+  animation: tdot 1.2s infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: .2s; }
+.typing-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes tdot {
+  0%,60%,100% { transform: translateY(0); opacity: .3; }
+  30% { transform: translateY(-5px); opacity: 1; }
+}
+
+/* ── Followup view ── */
+.followup-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 20px 24px; max-width: 640px; }
+.followup-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+.followup-title {
+  font-size: 15px; font-weight: 700; flex: 1;
+  background: linear-gradient(120deg, var(--text) 40%, var(--purple-light));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.fu-updates { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.fu-update-item {
+  padding: 10px 14px; border-left: 2px solid rgba(139,92,246,.35);
+  background: rgba(255,255,255,.03); border-radius: 0 8px 8px 0;
+  font-size: 13px; line-height: 1.55;
+}
+.fu-update-time { font-size: 10px; color: var(--muted); margin-top: 3px; }
+.fu-add-update { display: flex; gap: 8px; margin-top: 14px; flex-shrink: 0; }
+.fu-input {
+  flex: 1; background: rgba(255,255,255,.05); border: 1px solid var(--border);
+  color: var(--text); padding: 9px 12px; border-radius: 8px; font-size: 13px; outline: none;
+  transition: border-color .2s;
+}
+.fu-input:focus { border-color: var(--purple); }
+.fu-submit {
+  background: rgba(139,92,246,.14); border: 1px solid rgba(139,92,246,.3);
+  color: var(--purple-light); padding: 9px 16px; border-radius: 8px;
+  font-size: 13px; cursor: pointer; transition: background .15s;
+}
+.fu-submit:hover { background: rgba(139,92,246,.24); }
+
+/* ── Modals ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.65); backdrop-filter: blur(8px);
+  z-index: 100; align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: rgba(14,14,26,.97); border: 1px solid var(--border);
+  border-radius: 12px; padding: 22px; width: 400px;
+  display: flex; flex-direction: column; gap: 12px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.55), 0 0 0 1px rgba(139,92,246,.08);
+  backdrop-filter: blur(24px);
+}
+.modal h3 {
+  font-size: 14px; font-weight: 700;
+  background: linear-gradient(120deg, var(--text) 40%, var(--purple-light));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.modal input, .modal textarea {
+  width: 100%; background: rgba(255,255,255,.05); border: 1px solid var(--border);
+  color: var(--text); padding: 9px 12px; border-radius: 8px; font-size: 13px; outline: none;
+  font-family: inherit; transition: border-color .2s;
+}
+.modal textarea { resize: vertical; min-height: 80px; }
+.modal input:focus, .modal textarea:focus { border-color: var(--purple); }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.btn-primary {
+  background: linear-gradient(135deg, var(--purple), #5b21b6);
+  color: #fff; border: none; padding: 8px 18px; border-radius: 7px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 0 14px rgba(139,92,246,.3);
+}
+.btn-primary:hover { opacity: .88; }
+.btn-cancel {
+  background: rgba(255,255,255,.04); border: 1px solid var(--border);
+  color: var(--muted); padding: 8px 18px; border-radius: 7px; font-size: 13px; cursor: pointer;
+}
+.btn-cancel:hover { color: var(--text); }
+
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: rgba(14,14,26,.96); border: 1px solid rgba(139,92,246,.4);
+  color: var(--text); padding: 9px 18px; border-radius: 10px;
+  font-size: 12px; z-index: 200; opacity: 0;
+  transition: opacity .2s, transform .2s; transform: translateY(8px);
+  pointer-events: none; backdrop-filter: blur(20px);
+  box-shadow: 0 6px 24px rgba(0,0,0,.4);
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(139,92,246,.2); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(139,92,246,.4); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="topbar-brand">战 局 台</span>
+  <div class="topbar-sep"></div>
+  <span class="topbar-label">发日程</span>
+  <input id="scheduleInput" type="text" placeholder="直接发进飞书日程助理群..." />
+  <button class="topbar-btn" onclick="sendSchedule()">发送</button>
+  <span class="topbar-status" id="scheduleStatus"></span>
+  <div class="topbar-sep"></div>
+  <span class="kb-badge off" id="kbBadge" title="飞书知识库接入状态">
+    <span class="kb-dot"></span>
+    <span id="kbBadgeText">知识库加载中</span>
+  </span>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-section-header">
+        <span class="sidebar-section-title">项目</span>
+        <button class="sidebar-add" onclick="openNewProject()" title="新建">+</button>
+      </div>
+      <ul class="sidebar-list" id="projectList"></ul>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-header">
+        <span class="sidebar-section-title">跟进</span>
+        <button class="sidebar-add" onclick="openNewFollowup()" title="新建">+</button>
+      </div>
+      <ul class="sidebar-list" id="followupList"></ul>
+    </div>
+  </div>
+
+  <div class="main" id="mainContent">
+    <div class="empty-state">
+      <div class="empty-icon">⚡</div>
+      <div>选择一个项目开始推演</div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalNewProject">
+  <div class="modal">
+    <h3>新建项目</h3>
+    <input id="newProjectName" type="text" placeholder="项目名称" />
+    <textarea id="newProjectDesc" placeholder="背景描述（选填）"></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modalNewProject')">取消</button>
+      <button class="btn-primary" onclick="createProject()">创建</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalNewFollowup">
+  <div class="modal">
+    <h3>新建跟进</h3>
+    <input id="newFollowupTitle" type="text" placeholder="一行说清楚在等什么" />
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modalNewFollowup')">取消</button>
+      <button class="btn-primary" onclick="createFollowup()">创建</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalDecision">
+  <div class="modal">
+    <h3>固化决定</h3>
+    <textarea id="decisionContent" placeholder="一句话说清楚这个决定..." rows="3"></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modalDecision')">取消</button>
+      <button class="btn-primary" onclick="submitDecision()">固化</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let projects = [], followups = [];
+let selectedType = null, selectedId = null;
+let pendingDecisionProjectId = null;
+let isStreaming = false;
+let editingIndex = -1;
+let kbLoaded = false;
+let currentModel = localStorage.getItem('ztai_model') || 'deepseek-v4-pro';
+
+function setModel(m) {
+  currentModel = m;
+  localStorage.setItem('ztai_model', m);
+  const btnFlash = document.getElementById('btnFlash');
+  const btnPro = document.getElementById('btnPro');
+  if (btnFlash) btnFlash.classList.toggle('active', m === 'deepseek-v4-flash');
+  if (btnPro) btnPro.classList.toggle('active', m === 'deepseek-v4-pro');
+}
+
+function syncModelButtons() {
+  const btnFlash = document.getElementById('btnFlash');
+  const btnPro = document.getElementById('btnPro');
+  if (btnFlash) btnFlash.classList.toggle('active', currentModel === 'deepseek-v4-flash');
+  if (btnPro) btnPro.classList.toggle('active', currentModel === 'deepseek-v4-pro');
+}
+
+async function init() {
+  await Promise.all([loadProjects(), loadFollowups()]);
+  renderSidebar();
+  loadKbStatus();
+}
+
+async function loadKbStatus() {
+  try {
+    const r = await fetch('/api/kb-status');
+    const d = await r.json();
+    kbLoaded = d.loaded;
+    const badge = document.getElementById('kbBadge');
+    const txt = document.getElementById('kbBadgeText');
+    if (d.loaded) {
+      badge.classList.remove('off');
+      txt.textContent = `知识库 ${d.count} 条`;
+    } else {
+      badge.classList.add('off');
+      txt.textContent = '知识库未加载';
+    }
+  } catch {}
+}
+async function loadProjects() {
+  const r = await fetch('/api/projects'); projects = await r.json();
+}
+async function loadFollowups() {
+  const r = await fetch('/api/followups'); followups = await r.json();
+}
+
+const DOTCLS = {
+  active:'dot-active',dormant:'dot-dormant',archived:'dot-archived',
+  waiting:'dot-waiting',replied:'dot-replied',done:'dot-done',dead:'dot-dead'
+};
+
+function renderSidebar() {
+  document.getElementById('projectList').innerHTML =
+    projects.filter(p=>p.status!=='archived').map(p=>`
+      <li class="sidebar-item ${selectedType==='project'&&selectedId===p.id?'selected':''}"
+          onclick="selectProject('${p.id}')">
+        <span class="dot ${DOTCLS[p.status]||'dot-dormant'}"></span>
+        <span class="sidebar-item-name">${esc(p.name)}</span>
+      </li>`).join('');
+  document.getElementById('followupList').innerHTML =
+    followups.filter(f=>f.status!=='dead'&&f.status!=='done').map(f=>`
+      <li class="sidebar-item ${selectedType==='followup'&&selectedId===f.id?'selected':''}"
+          onclick="selectFollowup('${f.id}')">
+        <span class="dot ${DOTCLS[f.status]||'dot-waiting'}"></span>
+        <span class="sidebar-item-name">${esc(f.title)}</span>
+      </li>`).join('');
+}
+
+// ── Project ───────────────────────────────────────────────────────────────────
+function selectProject(id) {
+  selectedType='project'; selectedId=id; editingIndex=-1;
+  renderSidebar();
+  const p = projects.find(p=>p.id===id);
+  if(p) { renderProjectView(p); syncModelButtons(); }
+}
+
+function renderProjectView(project) {
+  document.getElementById('mainContent').innerHTML = `
+    <div class="project-view">
+      <div class="project-header">
+        <div style="flex:1;min-width:0">
+          <div class="project-title">${esc(project.name)}</div>
+          ${project.description?`<div class="project-desc">${esc(project.description)}</div>`:''}
+        </div>
+        <div class="project-header-actions">
+          <select class="status-select" onchange="updateProjectStatus('${project.id}',this.value)">
+            <option value="active" ${project.status==='active'?'selected':''}>活跃</option>
+            <option value="dormant" ${project.status==='dormant'?'selected':''}>休眠</option>
+            <option value="archived" ${project.status==='archived'?'selected':''}>归档</option>
+          </select>
+          <button class="btn-sm" onclick="openDecisionModal('${project.id}')">✓ 固化</button>
+          <button class="btn-sm danger" onclick="clearHistory('${project.id}')">清空对话</button>
+          <button class="btn-sm danger" onclick="deleteProject('${project.id}')">删除</button>
+        </div>
+      </div>
+      <div class="project-body">
+        <div class="decisions-panel">
+          <div class="decisions-header">
+            <span>固化决策</span>
+            ${kbLoaded?`<span class="kb-injected">⬡ 知识库已注入</span>`:''}
+          </div>
+          <div class="decisions-list" id="decisionsList">${renderDecisions(project)}</div>
+        </div>
+        <div class="chat-pane">
+          <div class="chat-messages" id="chatMessages">${renderMessages(project)}</div>
+          <div class="chat-input-area">
+            <div class="model-toggle-row">
+              <button class="model-btn" id="btnFlash" onclick="setModel('deepseek-v4-flash')">⚡ V4 Flash</button>
+              <button class="model-btn" id="btnPro" onclick="setModel('deepseek-v4-pro')">🧠 V4 Pro</button>
+            </div>
+            <div class="chat-input-row">
+              <textarea class="chat-input" id="chatInput"
+                placeholder="说说情况，开始推演..." rows="1"
+                onkeydown="chatKeydown(event,'${project.id}')"
+                oninput="autoResize(this)"></textarea>
+              <button class="chat-send" id="chatSend" onclick="sendChat('${project.id}')">发送</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  scrollBottom();
+}
+
+function renderDecisions(project) {
+  if(!project.decisions.length)
+    return '<div style="color:var(--muted);font-size:11px">暂无固化决策</div>';
+  return project.decisions.map(d=>`
+    <div class="decision-item">
+      ${esc(d.content)}
+      <button class="del-dec" onclick="deleteDecision('${project.id}','${d.id}')">✕</button>
+    </div>`).join('');
+}
+
+function renderMessages(project) {
+  const msgs = project.messages;
+  if(!msgs.length)
+    return '<div style="color:var(--muted);font-size:13px;margin:auto;opacity:.5">开始推演这个项目</div>';
+
+  return msgs.map((m,i) => {
+    if(editingIndex===i && m.role==='user') {
+      return `<div class="msg-row user">
+        <div class="msg-edit-wrap">
+          <textarea class="msg-edit-area" id="editArea_${i}" rows="3"></textarea>
+          <div class="msg-edit-btns">
+            <button class="edit-cancel" onclick="cancelEdit(${i},'${project.id}')">取消</button>
+            <button class="edit-submit" onclick="submitEdit(${i},'${project.id}')">重新发送</button>
+          </div>
+        </div>
+      </div>`;
+    }
+    const isUser = m.role==='user';
+    const actions = isUser
+      ? `<div class="msg-actions">
+           <button class="msg-act-btn" onclick="startEdit(${i},'${project.id}')">编辑</button>
+           <button class="msg-act-btn red" onclick="deleteMsg(${i},'${project.id}')">删除</button>
+         </div>`
+      : `<div class="msg-actions">
+           <button class="msg-act-btn" onclick="prefillDecision(${i})">固化</button>
+           <button class="msg-act-btn red" onclick="deleteMsg(${i},'${project.id}')">删除</button>
+         </div>`;
+    return `<div class="msg-row ${m.role}">
+      ${actions}
+      <div class="chat-msg ${m.role}">${esc(m.content)}</div>
+    </div>`;
+  }).join('');
+}
+
+// after rendering edit mode, fill the textarea value (avoids HTML escaping issues)
+function fillEditArea(msgIdx, projectId) {
+  const p = projects.find(p=>p.id===projectId);
+  const area = document.getElementById(`editArea_${msgIdx}`);
+  if(area && p) {
+    area.value = p.messages[msgIdx]?.content || '';
+    area.focus();
+    autoResize(area);
+  }
+}
+
+function startEdit(msgIdx, projectId) {
+  if(isStreaming) return;
+  editingIndex = msgIdx;
+  const p = projects.find(p=>p.id===projectId);
+  document.getElementById('chatMessages').innerHTML = renderMessages(p);
+  fillEditArea(msgIdx, projectId);
+}
+
+function cancelEdit(msgIdx, projectId) {
+  editingIndex = -1;
+  const p = projects.find(p=>p.id===projectId);
+  document.getElementById('chatMessages').innerHTML = renderMessages(p);
+}
+
+async function submitEdit(msgIdx, projectId) {
+  const area = document.getElementById(`editArea_${msgIdx}`);
+  if(!area) return;
+  const newContent = area.value.trim();
+  if(!newContent) return;
+  const p = projects.find(p=>p.id===projectId);
+  p.messages = p.messages.slice(0, msgIdx);
+  editingIndex = -1;
+  await fetch(`/api/projects/${projectId}`,{
+    method:'PATCH',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({messages:p.messages})
+  });
+  renderProjectView(p);
+  const inp = document.getElementById('chatInput');
+  inp.value = newContent;
+  autoResize(inp);
+  sendChat(projectId);
+}
+
+async function deleteMsg(msgIdx, projectId) {
+  const p = projects.find(p=>p.id===projectId);
+  const count = (p.messages[msgIdx]?.role==='user' && p.messages[msgIdx+1]?.role==='assistant') ? 2 : 1;
+  p.messages.splice(msgIdx, count);
+  await fetch(`/api/projects/${projectId}`,{
+    method:'PATCH',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({messages:p.messages})
+  });
+  // reload from server to guarantee context is actually clean
+  await loadProjects();
+  const updated = projects.find(p=>p.id===projectId);
+  if(updated) { document.getElementById('chatMessages').innerHTML = renderMessages(updated); scrollBottom(); }
+}
+
+async function clearHistory(projectId) {
+  const p = projects.find(p=>p.id===projectId);
+  if(!p) return;
+  p.messages = [];
+  await fetch(`/api/projects/${projectId}`,{
+    method:'PATCH',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({messages:[]})
+  });
+  await loadProjects();
+  document.getElementById('chatMessages').innerHTML = renderMessages(p);
+  toast('对话记录已清空');
+}
+
+function prefillDecision(msgIdx) {
+  const p = projects.find(p=>p.id===selectedId);
+  if(!p) return;
+  const msg = p.messages[msgIdx];
+  if(!msg) return;
+  document.getElementById('decisionContent').value = msg.content.slice(0,300);
+  pendingDecisionProjectId = selectedId;
+  openModal('modalDecision');
+}
+
+async function sendChat(projectId) {
+  if(isStreaming) return;
+  const inp = document.getElementById('chatInput');
+  const msg = inp.value.trim();
+  if(!msg) return;
+  inp.value=''; inp.style.height='';
+  isStreaming=true;
+  document.getElementById('chatSend').disabled=true;
+
+  const p = projects.find(p=>p.id===projectId);
+  p.messages.push({role:'user',content:msg,timestamp:new Date().toISOString()});
+  const msgsEl = document.getElementById('chatMessages');
+  msgsEl.innerHTML = renderMessages(p);
+
+  const row = document.createElement('div');
+  row.className='msg-row assistant';
+  const bubble = document.createElement('div');
+  bubble.className='chat-msg assistant';
+  bubble.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
+  row.appendChild(bubble);
+  msgsEl.appendChild(row);
+  scrollBottom();
+
+  let fullText='';
+  let countingDown=false;
+  try {
+    const res = await fetch(`/api/projects/${projectId}/chat`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:msg, model:currentModel})
+    });
+    const reader=res.body.getReader(), dec=new TextDecoder();
+    let buf='';
+    while(true) {
+      const {done,value}=await reader.read();
+      if(done) break;
+      buf+=dec.decode(value,{stream:true});
+      const lines=buf.split('\n'); buf=lines.pop();
+      for(const line of lines) {
+        if(!line.startsWith('data: ')) continue;
+        try {
+          const d=JSON.parse(line.slice(6));
+          if(d.waiting) {
+            countingDown=true;
+            let secs=d.waiting;
+            const tick=()=>{
+              if(!countingDown) return;
+              bubble.textContent=`受限中，${secs}s 后自动重试...`;
+              if(secs>0){secs--;setTimeout(tick,1000);}
+            };
+            tick();
+          }
+          if(d.text) {
+            countingDown=false;
+            if(!fullText) bubble.innerHTML='';
+            fullText+=d.text;
+            bubble.textContent=fullText;
+            scrollBottom();
+          }
+          if(d.done) {
+            p.messages.push({role:'assistant',content:fullText,timestamp:new Date().toISOString()});
+            msgsEl.innerHTML=renderMessages(p);
+            scrollBottom();
+            if(kbLoaded) toast('↑ 已存飞书');
+          }
+          if(d.error) { countingDown=false; bubble.textContent='出错了：'+d.error; }
+        } catch{}
+      }
+    }
+  } catch(err) { bubble.textContent='发送失败：'+err.message; }
+
+  isStreaming=false;
+  document.getElementById('chatSend').disabled=false;
+}
+
+function chatKeydown(e,pid) {
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat(pid);}
+}
+function autoResize(el) {
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,120)+'px';
+}
+function scrollBottom() {
+  const el=document.getElementById('chatMessages');
+  if(el) el.scrollTop=el.scrollHeight;
+}
+
+async function updateProjectStatus(id,status) {
+  await fetch(`/api/projects/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});
+  await loadProjects(); renderSidebar();
+  if(status==='archived'&&selectedId===id) {
+    selectedType=null;selectedId=null;
+    document.getElementById('mainContent').innerHTML='<div class="empty-state"><div class="empty-icon">⚡</div><div>项目已归档</div></div>';
+  }
+}
+async function deleteProject(id) {
+  if(!confirm('确认删除这个项目？')) return;
+  await fetch(`/api/projects/${id}`,{method:'DELETE'});
+  await loadProjects(); selectedType=null;selectedId=null;
+  document.getElementById('mainContent').innerHTML='<div class="empty-state"><div class="empty-icon">⚡</div><div>选择一个项目开始推演</div></div>';
+  renderSidebar();
+}
+async function deleteDecision(projectId, decId) {
+  const p=projects.find(x=>x.id===projectId);
+  if(!p) return;
+  p.decisions=p.decisions.filter(d=>d.id!==decId);
+  await fetch(`/api/projects/${projectId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({decisions:p.decisions})});
+  document.getElementById('decisionsList').innerHTML=renderDecisions(p);
+}
+
+function openDecisionModal(projectId) {
+  pendingDecisionProjectId=projectId;
+  document.getElementById('decisionContent').value='';
+  openModal('modalDecision');
+}
+async function submitDecision() {
+  const content=document.getElementById('decisionContent').value.trim();
+  if(!content) return;
+  await fetch(`/api/projects/${pendingDecisionProjectId}/decisions`,{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content})
+  });
+  await loadProjects(); closeModal('modalDecision'); toast('决定已固化');
+  const p=projects.find(x=>x.id===pendingDecisionProjectId);
+  if(p&&selectedId===p.id) document.getElementById('decisionsList').innerHTML=renderDecisions(p);
+}
+
+// ── Followup ──────────────────────────────────────────────────────────────────
+function selectFollowup(id) {
+  selectedType='followup';selectedId=id;renderSidebar();
+  const fu=followups.find(f=>f.id===id);
+  if(fu) renderFollowupView(fu);
+}
+function renderFollowupView(fu) {
+  const updates=fu.updates.map(u=>`
+    <div class="fu-update-item">
+      ${esc(u.content)}
+      <div class="fu-update-time">${fmtTime(u.timestamp)}</div>
+    </div>`).join('')||'<div style="color:var(--muted);font-size:12px">暂无更新</div>';
+  document.getElementById('mainContent').innerHTML=`
+    <div class="followup-view">
+      <div class="followup-title-row">
+        <span class="followup-title">${esc(fu.title)}</span>
+        <select class="status-select" onchange="updateFollowupStatus('${fu.id}',this.value)">
+          <option value="waiting" ${fu.status==='waiting'?'selected':''}>等待中</option>
+          <option value="replied" ${fu.status==='replied'?'selected':''}>已回复</option>
+          <option value="done" ${fu.status==='done'?'selected':''}>完成</option>
+          <option value="dead" ${fu.status==='dead'?'selected':''}>泡汤了</option>
+        </select>
+        <button class="btn-sm danger" onclick="deleteFollowup('${fu.id}')">删除</button>
+      </div>
+      <div class="fu-updates">${updates}</div>
+      <div class="fu-add-update">
+        <input class="fu-input" id="fuInput" type="text" placeholder="一行更新..."
+          onkeydown="fuKeydown(event,'${fu.id}')" />
+        <button class="fu-submit" onclick="addFollowupUpdate('${fu.id}')">记录</button>
+      </div>
+    </div>`;
+}
+async function addFollowupUpdate(id) {
+  const inp=document.getElementById('fuInput');
+  const content=inp.value.trim(); if(!content) return;
+  await fetch(`/api/followups/${id}/updates`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content})});
+  inp.value=''; await loadFollowups();
+  const fu=followups.find(f=>f.id===id); if(fu) renderFollowupView(fu);
+}
+function fuKeydown(e,id){if(e.key==='Enter'){e.preventDefault();addFollowupUpdate(id);}}
+async function updateFollowupStatus(id,status) {
+  await fetch(`/api/followups/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status})});
+  await loadFollowups(); renderSidebar();
+}
+async function deleteFollowup(id) {
+  if(!confirm('确认删除？')) return;
+  await fetch(`/api/followups/${id}`,{method:'DELETE'});
+  await loadFollowups(); selectedType=null;selectedId=null;
+  document.getElementById('mainContent').innerHTML='<div class="empty-state"><div class="empty-icon">⚡</div><div>选择一个项目或跟进事项</div></div>';
+  renderSidebar();
+}
+
+// ── Create ────────────────────────────────────────────────────────────────────
+function openNewProject(){openModal('modalNewProject');}
+function openNewFollowup(){openModal('modalNewFollowup');}
+async function createProject() {
+  const name=document.getElementById('newProjectName').value.trim(); if(!name) return;
+  const desc=document.getElementById('newProjectDesc').value.trim();
+  const r=await fetch('/api/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,description:desc})});
+  const p=await r.json(); await loadProjects(); closeModal('modalNewProject');
+  document.getElementById('newProjectName').value=''; document.getElementById('newProjectDesc').value='';
+  renderSidebar(); selectProject(p.id);
+}
+async function createFollowup() {
+  const title=document.getElementById('newFollowupTitle').value.trim(); if(!title) return;
+  const r=await fetch('/api/followups',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title})});
+  const fu=await r.json(); await loadFollowups(); closeModal('modalNewFollowup');
+  document.getElementById('newFollowupTitle').value=''; renderSidebar(); selectFollowup(fu.id);
+}
+
+// ── Schedule ──────────────────────────────────────────────────────────────────
+async function sendSchedule() {
+  const inp=document.getElementById('scheduleInput'); const text=inp.value.trim(); if(!text) return;
+  const st=document.getElementById('scheduleStatus'); st.textContent='发送中...';
+  try {
+    const r=await fetch('/api/schedule',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    const d=await r.json();
+    if(d.ok){inp.value='';st.textContent='✓ 已发送';setTimeout(()=>st.textContent='',3000);toast('已发进日程助理群');}
+    else st.textContent='发送失败';
+  } catch(err){st.textContent='错误：'+err.message;}
+}
+document.getElementById('scheduleInput').addEventListener('keydown',e=>{if(e.key==='Enter')sendSchedule();});
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function toast(msg){
+  const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2500);
+}
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtTime(iso){
+  if(!iso) return '';
+  return new Date(iso).toLocaleDateString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+document.querySelectorAll('.modal-overlay').forEach(el=>{
+  el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});
+});
+
+init();
+</script>
+</body>
+</html>

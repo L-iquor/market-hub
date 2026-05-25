@@ -590,6 +590,7 @@ label { font-size:13px; color:var(--muted); }
   <button class="tab-btn" onclick="switchTab('comparison')">✏️ 修改对比</button>
   <button class="tab-btn" onclick="switchTab('title-lib')">🌟 标题灵感库</button>
   <button class="tab-btn" onclick="switchTab('prompt-base')">⚙️ 提示词基础</button>
+  <button class="tab-btn" onclick="switchTab('ares')">💬 Ares</button>
 </div>
 
 <!-- ══ Tab: 使用说明 ══ -->
@@ -1482,6 +1483,223 @@ label { font-size:13px; color:var(--muted); }
 
   </div>
 </div><!-- /tab-prompt-base -->
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- Ares Chat Tab                                                      -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<div id="tab-ares" style="display:none; height:calc(100vh - 128px)">
+  <div class="ares-layout">
+    <!-- 左：对话区 -->
+    <div class="ares-chat-col">
+      <div class="ares-chat-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:18px">💬</span>
+          <div>
+            <div style="font-size:14px;font-weight:600">Ares 营销判断引擎</div>
+            <div style="font-size:11px;color:var(--muted)">蒸馏自知识库 · 每次对话都在迭代</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="ares-session-dot" id="aresStatusDot"></span>
+          <button class="ares-clear-btn" onclick="aresClearHistory()">清空对话</button>
+        </div>
+      </div>
+
+      <!-- 快捷操作 -->
+      <div class="ares-quick-chips">
+        <button class="ares-chip" onclick="aresQuick('hot')">🔥 热点评估</button>
+        <button class="ares-chip" onclick="aresQuick('review')">✏️ 审稿</button>
+        <button class="ares-chip" onclick="aresQuick('strategy')">🧭 策略建议</button>
+        <button class="ares-chip" onclick="aresQuick('learn')">📚 消化新内容</button>
+      </div>
+
+      <!-- 消息流 -->
+      <div class="ares-messages" id="aresMessages">
+        <div class="ares-msg ares-msg-ai">
+          <div class="ares-msg-bubble">
+            你好 Ares。我已读取知识库和金句改稿标准。<br>
+            有热点要评估、稿子要审、策略要聊，直接说。
+          </div>
+        </div>
+      </div>
+
+      <!-- 输入区 -->
+      <div class="ares-input-area">
+        <textarea
+          id="aresInput"
+          class="ares-textarea"
+          placeholder="说你想说的……"
+          rows="3"
+          onkeydown="aresKeydown(event)"
+        ></textarea>
+        <div class="ares-input-actions">
+          <span style="font-size:11px;color:var(--dim)">⌘+Enter 发送</span>
+          <button class="ares-send-btn" id="aresSendBtn" onclick="aresSend()">发送</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右：上下文面板 -->
+    <div class="ares-context-col">
+      <div class="ares-ctx-section">
+        <div class="ares-ctx-label">🔥 今日热点</div>
+        <div id="aresHotTopics" class="ares-ctx-list">
+          <div style="color:var(--dim);font-size:12px">加载中...</div>
+        </div>
+        <button class="ares-ctx-inject" onclick="aresInjectHot()">↙ 注入对话</button>
+      </div>
+
+      <div class="ares-ctx-section">
+        <div class="ares-ctx-label">📚 最近知识库</div>
+        <div id="aresRecentKB" class="ares-ctx-list">
+          <div style="color:var(--dim);font-size:12px">加载中...</div>
+        </div>
+      </div>
+
+      <div class="ares-ctx-section">
+        <div class="ares-ctx-label">💡 本次洞见</div>
+        <div id="aresSavedInsights" class="ares-ctx-list">
+          <div style="color:var(--dim);font-size:12px">对话后点「存为洞见」</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /tab-ares -->
+
+<style>
+/* ── Ares Chat Tab ───────────────────────────────────────────────────── */
+.ares-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  height: 100%;
+  overflow: hidden;
+}
+.ares-chat-col {
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+.ares-chat-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  background: var(--bg2); flex-shrink: 0;
+}
+.ares-session-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--dim); display: inline-block;
+}
+.ares-session-dot.ok { background: var(--green); }
+.ares-session-dot.busy { background: var(--gold); animation: pulse 1s infinite; }
+.ares-clear-btn {
+  font-size: 12px; color: var(--muted); background: none;
+  border: 1px solid var(--border); border-radius: 5px;
+  padding: 4px 10px; cursor: pointer;
+}
+.ares-clear-btn:hover { color: var(--text); border-color: var(--border2); }
+
+.ares-quick-chips {
+  display: flex; gap: 8px; padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2); flex-shrink: 0; flex-wrap: wrap;
+}
+.ares-chip {
+  font-size: 12px; padding: 5px 12px; border-radius: 16px;
+  border: 1px solid var(--border); background: var(--bg3);
+  color: var(--text); cursor: pointer; transition: all .15s;
+}
+.ares-chip:hover { border-color: var(--gold); color: var(--gold2); }
+
+.ares-messages {
+  flex: 1; overflow-y: auto; padding: 20px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.ares-msg { display: flex; flex-direction: column; }
+.ares-msg-user { align-items: flex-end; }
+.ares-msg-ai  { align-items: flex-start; }
+
+.ares-msg-bubble {
+  max-width: 80%; padding: 12px 16px; border-radius: 12px;
+  font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: break-word;
+}
+.ares-msg-user .ares-msg-bubble {
+  background: var(--gold3); border: 1px solid rgba(212,168,67,.3);
+  border-bottom-right-radius: 3px;
+}
+.ares-msg-ai .ares-msg-bubble {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-bottom-left-radius: 3px;
+}
+.ares-msg-actions {
+  display: flex; gap: 6px; margin-top: 6px; opacity: 0;
+  transition: opacity .15s;
+}
+.ares-msg:hover .ares-msg-actions { opacity: 1; }
+.ares-msg-action-btn {
+  font-size: 11px; padding: 3px 9px; border-radius: 5px;
+  border: 1px solid var(--border); background: var(--bg2);
+  color: var(--muted); cursor: pointer;
+}
+.ares-msg-action-btn:hover { color: var(--gold2); border-color: var(--gold); }
+.ares-msg-action-btn.insight { color: var(--gold); border-color: rgba(212,168,67,.4); }
+
+.ares-input-area {
+  border-top: 1px solid var(--border); padding: 16px 20px;
+  background: var(--bg2); flex-shrink: 0;
+}
+.ares-textarea {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-size: 14px;
+  padding: 12px 14px; resize: none; line-height: 1.6;
+  font-family: inherit; transition: border-color .15s;
+}
+.ares-textarea:focus { outline: none; border-color: var(--gold); }
+.ares-input-actions {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 10px;
+}
+.ares-send-btn {
+  background: var(--gold); color: #000; border: none;
+  padding: 8px 22px; border-radius: 7px; font-size: 13px;
+  font-weight: 600; cursor: pointer; transition: background .15s;
+}
+.ares-send-btn:hover { background: var(--gold2); }
+.ares-send-btn:disabled { background: var(--dim); cursor: not-allowed; }
+
+/* ── 右侧上下文面板 ── */
+.ares-context-col {
+  overflow-y: auto; padding: 16px;
+  display: flex; flex-direction: column; gap: 20px;
+  background: var(--bg2);
+}
+.ares-ctx-section { display: flex; flex-direction: column; gap: 8px; }
+.ares-ctx-label {
+  font-size: 11px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .8px;
+}
+.ares-ctx-list {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.ares-ctx-item {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 7px; padding: 9px 11px;
+  font-size: 12px; line-height: 1.5; cursor: pointer;
+  transition: border-color .15s;
+}
+.ares-ctx-item:hover { border-color: var(--gold); }
+.ares-ctx-item-label { font-size: 10px; color: var(--muted); margin-bottom: 3px; }
+.ares-ctx-inject {
+  font-size: 11px; color: var(--muted); background: none;
+  border: 1px solid var(--border); border-radius: 5px;
+  padding: 4px 10px; cursor: pointer; align-self: flex-start;
+}
+.ares-ctx-inject:hover { color: var(--gold2); border-color: var(--gold); }
+
+.ares-insight-saved {
+  background: rgba(212,168,67,.08); border: 1px solid rgba(212,168,67,.25);
+  border-radius: 7px; padding: 8px 10px; font-size: 12px;
+  color: var(--gold2); line-height: 1.5;
+}
+</style>
 
 <script>
 // ─── 全局状态 ──────────────────────────────────────────────────────
@@ -3069,7 +3287,7 @@ async function submitRefAdd() {
 }
 
 // ─── Tab 切换 ─────────────────────────────────────────────────────
-const ALL_TABS = ['guide', 'write', 'materials', 'batch', 'references', 'research', 'templates', 'comparison', 'title-lib', 'prompt-base'];
+const ALL_TABS = ['guide', 'write', 'materials', 'batch', 'references', 'research', 'templates', 'comparison', 'title-lib', 'prompt-base', 'ares'];
 function switchTab(tab) {
   ALL_TABS.forEach(t => {
     document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none';
@@ -3099,6 +3317,7 @@ function switchTab(tab) {
   }
   if (tab === 'title-lib') refreshTitleLib();
   if (tab === 'prompt-base') pbInit();
+  if (tab === 'ares') aresInit();
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -3657,6 +3876,188 @@ async function collectBatchTitle(jobId) {
     const btn = document.getElementById('brc-collect-' + jobId);
     if (btn) { btn.textContent = '✓ 已收录'; btn.disabled = true; btn.style.color = 'var(--green)'; }
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Ares Chat
+// ═══════════════════════════════════════════════════════════════════
+let aresInited = false;
+let aresStreaming = false;
+const ARES_SESSION = 'ares-' + Date.now();
+
+async function aresInit() {
+  if (aresInited) return;
+  aresInited = true;
+  await Promise.all([aresLoadHotTopics(), aresLoadRecentKB()]);
+}
+
+async function aresLoadHotTopics() {
+  const el = document.getElementById('aresHotTopics');
+  try {
+    const r = await fetch('/api/ares/hot-topics').then(x => x.json());
+    if (!r.ok || !r.items?.length) { el.innerHTML = '<div style="color:var(--dim);font-size:12px">暂无热点数据</div>'; return; }
+    el.innerHTML = r.items.map(item => `
+      <div class="ares-ctx-item" onclick="aresInjectText('热点：${item.title}')">
+        <div class="ares-ctx-item-label">${item.date || ''}</div>
+        ${item.title}
+      </div>`).join('');
+  } catch(e) { el.innerHTML = '<div style="color:var(--dim);font-size:12px">加载失败</div>'; }
+}
+
+async function aresLoadRecentKB() {
+  const el = document.getElementById('aresRecentKB');
+  try {
+    const r = await fetch('/api/ares/recent-kb').then(x => x.json());
+    if (!r.ok || !r.items?.length) { el.innerHTML = '<div style="color:var(--dim);font-size:12px">暂无数据</div>'; return; }
+    el.innerHTML = r.items.map(item => `
+      <div class="ares-ctx-item" onclick="aresInjectText('参考这条知识库内容：${item.takeaway}')">
+        <div class="ares-ctx-item-label">${item.type || ''}</div>
+        ${item.takeaway?.slice(0,80) || '—'}…
+      </div>`).join('');
+  } catch(e) { el.innerHTML = '<div style="color:var(--dim);font-size:12px">加载失败</div>'; }
+}
+
+function aresInjectHot() {
+  const items = document.querySelectorAll('#aresHotTopics .ares-ctx-item');
+  if (!items.length) return;
+  const titles = Array.from(items).map(el => el.innerText.trim()).join('\n');
+  document.getElementById('aresInput').value = `帮我评估以下热点，哪个最适合我们做内容：\n${titles}`;
+  document.getElementById('aresInput').focus();
+}
+
+function aresInjectText(text) {
+  const ta = document.getElementById('aresInput');
+  ta.value = (ta.value ? ta.value + '\n' : '') + text;
+  ta.focus();
+}
+
+function aresQuick(type) {
+  const ta = document.getElementById('aresInput');
+  const templates = {
+    hot: '帮我评估这个热点：\n[粘贴热点内容]',
+    review: '帮我审一下这段文案：\n\n[粘贴文案]',
+    strategy: '我们现在内容方向该怎么走？结合最近的热点和知识库给我判断。',
+    learn: '我刚看了这个内容，帮我提炼对我们有用的部分，并决定要不要存知识库：\n\n[粘贴内容]',
+  };
+  ta.value = templates[type] || '';
+  ta.focus();
+  const start = ta.value.indexOf('[');
+  if (start !== -1) { ta.setSelectionRange(start, ta.value.indexOf(']') + 1); }
+}
+
+function aresKeydown(e) {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); aresSend(); }
+}
+
+function aresSetStatus(s) {
+  const dot = document.getElementById('aresStatusDot');
+  dot.className = 'ares-session-dot ' + s;
+}
+
+function aresAddMessage(role, text, msgId) {
+  const container = document.getElementById('aresMessages');
+  const div = document.createElement('div');
+  div.className = `ares-msg ares-msg-${role}`;
+  if (msgId) div.id = msgId;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'ares-msg-bubble';
+  bubble.textContent = text;
+  div.appendChild(bubble);
+
+  if (role === 'ai') {
+    const actions = document.createElement('div');
+    actions.className = 'ares-msg-actions';
+    actions.innerHTML = `
+      <button class="ares-msg-action-btn" onclick="navigator.clipboard.writeText(this.closest('.ares-msg').querySelector('.ares-msg-bubble').textContent)">📋 复制</button>
+      <button class="ares-msg-action-btn insight" onclick="aresSaveInsight(this)">✨ 存为洞见</button>`;
+    div.appendChild(actions);
+  }
+
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return bubble;
+}
+
+async function aresSend() {
+  const ta = document.getElementById('aresInput');
+  const msg = ta.value.trim();
+  if (!msg || aresStreaming) return;
+
+  ta.value = '';
+  aresAddMessage('user', msg);
+  aresStreaming = true;
+  aresSetStatus('busy');
+  document.getElementById('aresSendBtn').disabled = true;
+
+  const streamId = 'ares-stream-' + Date.now();
+  const bubble = aresAddMessage('ai', '…', streamId);
+  let full = '';
+
+  try {
+    const resp = await fetch('/api/ares/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, sessionId: ARES_SESSION }),
+    });
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    bubble.textContent = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const lines = decoder.decode(value).split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const d = JSON.parse(line.slice(6));
+          if (d.text) { full += d.text; bubble.textContent = full; }
+          if (d.done || d.error) break;
+        } catch {}
+      }
+      document.getElementById('aresMessages').scrollTop = 9999;
+    }
+  } catch(e) {
+    bubble.textContent = '发送失败：' + e.message;
+  }
+
+  aresStreaming = false;
+  aresSetStatus('ok');
+  document.getElementById('aresSendBtn').disabled = false;
+}
+
+async function aresSaveInsight(btn) {
+  const bubble = btn.closest('.ares-msg').querySelector('.ares-msg-bubble');
+  const text = bubble.textContent;
+  btn.textContent = '保存中…';
+  try {
+    const r = await fetch('/api/ares/save-insight', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text }),
+    }).then(x => x.json());
+
+    if (r.ok) {
+      btn.textContent = '✓ 已存';
+      btn.style.color = 'var(--green)';
+      const saved = document.getElementById('aresSavedInsights');
+      saved.innerHTML = (saved.innerHTML.includes('点「存为洞见') ? '' : saved.innerHTML) +
+        `<div class="ares-insight-saved">${text.slice(0, 120)}${text.length > 120 ? '…' : ''}</div>`;
+    } else {
+      btn.textContent = '❌ 失败';
+    }
+  } catch(e) { btn.textContent = '❌ 失败'; }
+}
+
+async function aresClearHistory() {
+  await fetch(`/api/ares/chat/${ARES_SESSION}`, { method: 'DELETE' }).catch(() => {});
+  const msgs = document.getElementById('aresMessages');
+  msgs.innerHTML = `<div class="ares-msg ares-msg-ai">
+    <div class="ares-msg-bubble">对话已清空。有什么要聊的？</div>
+  </div>`;
+  aresSetStatus('');
 }
 
 async function saveToPublish() {
