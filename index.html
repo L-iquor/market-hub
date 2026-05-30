@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -619,6 +619,7 @@ label { font-size:13px; color:var(--muted); }
 <div class="tab-nav">
   <button class="tab-btn" onclick="switchTab('guide')">📖 使用说明</button>
   <button class="tab-btn active" onclick="switchTab('write')">✍️ 撰写台</button>
+  <button class="tab-btn" onclick="switchTab('matrix')">🗺️ 测试矩阵</button>
   <button class="tab-btn" onclick="switchTab('materials')">🗂️ 素材库</button>
   <button class="tab-btn" onclick="switchTab('batch')">📋 批量生产</button>
   <button class="tab-btn" onclick="switchTab('references')">📄 参考文案库</button>
@@ -627,7 +628,6 @@ label { font-size:13px; color:var(--muted); }
   <button class="tab-btn" onclick="switchTab('comparison')">✏️ 修改对比</button>
   <button class="tab-btn" onclick="switchTab('title-lib')">🌟 标题灵感库</button>
   <button class="tab-btn" onclick="switchTab('prompt-base')">⚙️ 提示词基础</button>
-  <button class="tab-btn" onclick="switchTab('ares')">💬 Ares</button>
 </div>
 
 <!-- ══ Tab: 使用说明 ══ -->
@@ -643,6 +643,8 @@ label { font-size:13px; color:var(--muted); }
         <div class="guide-flow-arrow">→</div>
         <div class="guide-flow-step">⚡ Claude 生成</div>
         <div class="guide-flow-arrow">→</div>
+        <div class="guide-flow-step">🩺 体检改稿</div>
+        <div class="guide-flow-arrow">→</div>
         <div class="guide-flow-step">⭐ 收录好标题</div>
         <div class="guide-flow-arrow">→</div>
         <div class="guide-flow-step">📤 保存发布表</div>
@@ -653,94 +655,53 @@ label { font-size:13px; color:var(--muted); }
 
     <div class="guide-sections">
 
-      <!-- 撰写台 -->
+      <!-- 快速上手 -->
       <div class="guide-section">
-        <h2>✍️ 撰写台——单篇生成</h2>
+        <h2>⚡ 上手流程</h2>
+        <ul class="guide-tip-list">
+          <li>① <b>选框架 + 卖点</b>：撰写台选框架（推荐 B）+ 1-2 个具体卖点，点「生成文案」</li>
+          <li>② <b>体检 + 改稿</b>：点「🩺 体检」看 AI 诊断报告；不满意的地方直接编辑正文</li>
+          <li>③ <b>归档修改</b>：改完后点侧栏「＋」归档一条修改对比——这是让 AI 学你语感的关键</li>
+          <li>④ <b>收录好标题</b>：点 ⭐ 把高点击欲望的标题存入灵感库</li>
+          <li>⑤ <b>保存发布</b>：填好标题/正文/话题，点「保存到发布表」写入飞书</li>
+        </ul>
+      </div>
+
+      <!-- 撰写台参数 -->
+      <div class="guide-section">
+        <h2>✍️ 撰写台参数</h2>
         <div class="guide-cards">
           <div class="guide-card">
             <div class="guide-card-title">内容框架（必选）</div>
             <div class="guide-card-body">
-              决定文案的叙事逻辑：<br>
-              <b>A 问题解决</b> — 读者有明确痛点（辣嗓/上头/甜腻），产品作为解法登场<br>
-              <b>B 场景种草</b> — 靠氛围感、反差感、新奇感驱动点击和收藏<br>
-              <b>C 对比评测</b> — 受众多疑，需要配料/工艺/产区硬核信任背书<br>
-              <b>D 教程干货</b> — 靠"教会你怎么喝/选/搭"获取收藏流量
+              <b>A 问题解决</b> — 读者有明确痛点，产品作为解法<br>
+              <b>B 场景种草</b> — 靠氛围感/反差感/新奇感驱动收藏<br>
+              <b>C 对比评测</b> — 需要配料/工艺/产区硬核背书<br>
+              <b>D 教程干货</b> — 靠"教你怎么喝/选/搭"获收藏流量
             </div>
           </div>
           <div class="guide-card">
             <div class="guide-card-title">卖点（必选，最多3个）</div>
             <div class="guide-card-body">
-              主推的产品特点。从下拉菜单选，或自定义输入。<br>
-              卖点越具体，文案越聚焦。<b>不要选"全部"</b>——堆砌卖点会让文案失焦。<br>
-              卖点数据来自飞书<b>货·品类与卖点表</b>。
+              越具体越好，<b>不要选"全部"</b>——堆卖点让文案失焦。<br>
+              下拉选，或直接输入自定义卖点回车确认。
             </div>
           </div>
           <div class="guide-card">
-            <div class="guide-card-title">人群 · 场景（可选）</div>
+            <div class="guide-card-title">可选参数</div>
             <div class="guide-card-body">
-              选择后，Claude 会把措辞和场景细节对准这类人群/场景。<br>
-              不选则写法更通用。数据来自飞书<b>人·用户画像表</b>和<b>场·使用场景表</b>。
+              <b>人群/场景</b> — 文案措辞对准具体读者群<br>
+              <b>参考笔记</b> — 仿写模式，复制爆款结构<br>
+              <b>补充方向</b> — 临时注入节日/情绪/场景方向<br>
+              <b>活人感语料</b> — 注入口语表达防广告腔
             </div>
           </div>
           <div class="guide-card">
-            <div class="guide-card-title">参考笔记（可选）</div>
+            <div class="guide-card-title">🩺 爆款体检</div>
             <div class="guide-card-body">
-              选择后进入<b>仿写模式</b>：Claude 会模仿该笔记的整体结构、情绪节奏和句式，但内容完全原创。<br>
-              适合复制爆款结构。数据来自<b>参考文案库 Tab</b>。
-            </div>
-          </div>
-          <div class="guide-card">
-            <div class="guide-card-title">活人感语料（可选）</div>
-            <div class="guide-card-body">
-              注入当下真实的口语化表达，例如"第二天不头疼""明亮的果感"。<br>
-              Claude 会学习这些语感融入文案，防止输出"广告腔"。<br>
-              语料只在当次生成中有效，不永久保存。
-            </div>
-          </div>
-          <div class="guide-card">
-            <div class="guide-card-title">补充方向（可选）</div>
-            <div class="guide-card-body">
-              临时注入任何创作方向：节日/季节/特殊场景/目标调性。<br>
-              例：<b>夏天、姐妹局、反差感、情绪低落时</b><br>
-              每次生成前填，不影响固定配置，下次生成不会保留。
-            </div>
-          </div>
-          <div class="guide-card">
-            <div class="guide-card-title">风格模板（可选）</div>
-            <div class="guide-card-body">
-              叠加一个具体的写作风格。Claude 会模仿该模板的句式节奏，同时保持框架逻辑。<br>
-              模板在<b>模板库 Tab</b> 中管理。
-            </div>
-          </div>
-          <div class="guide-card">
-            <div class="guide-card-title">生成结果操作</div>
-            <div class="guide-card-body">
-              生成后：<br>
-              1. 结果直接可编辑，修改后可归档到<b>修改对比</b><br>
-              2. 点击 <b>⭐</b> 将好标题存入灵感库<br>
-              3. 确认标题/正文/话题后，点<b>保存到发布表</b>进入飞书发布流程
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 批量生产 -->
-      <div class="guide-section">
-        <h2>📋 批量生产——一次生成多篇</h2>
-        <div class="guide-cards">
-          <div class="guide-card">
-            <div class="guide-card-title">适用场景</div>
-            <div class="guide-card-body">
-              内容日历规划、一口气出多个角度的稿件。同一卖点 + 同一框架，批量跑出不同切入角的文案。
-            </div>
-          </div>
-          <div class="guide-card">
-            <div class="guide-card-title">操作流程</div>
-            <div class="guide-card-body">
-              1. 选框架 + 填写卖点和方向<br>
-              2. 点「添加任务」加入队列，可添加多个不同方向<br>
-              3. 点「开始批量生成」逐条运行<br>
-              4. 每条结果可展开查看，⭐ 收录好标题
+              生成后点「🩺 体检」，约 1-2 分钟返回诊断报告：<br>
+              AI味检测 · 具体度评分 · 互动钩子 · 标题分析 · 致命问题 Top3 + 改写示范。<br>
+              基于小红书 2026 CES 算法标准。
             </div>
           </div>
         </div>
@@ -748,91 +709,33 @@ label { font-size:13px; color:var(--muted); }
 
       <!-- 学习系统 -->
       <div class="guide-section">
-        <h2>🧠 学习系统——让 AI 越来越懂你</h2>
+        <h2>🧠 越用越准——学习系统</h2>
         <div class="guide-cards">
           <div class="guide-card">
             <div class="guide-card-title">修改对比（最重要）</div>
             <div class="guide-card-body">
-              每次对 AI 稿件做了修改，把<b>AI原文片段</b>和<b>改后版本</b>归档一条。<br>
-              积累越多，Claude 越了解你的语感偏好，不需要每次反复调整。<br>
-              在撰写台侧栏点 <b>＋</b> 快速录入，或在<b>修改对比 Tab</b> 管理。
+              每次改了 AI 稿，把<b>改前片段</b>和<b>改后版本</b>归档一条。<br>
+              积累 10+ 条后，生成质量明显提升——AI 会越来越懂你的语感。<br>
+              撰写台侧栏点 <b>＋</b> 快速录入。
             </div>
           </div>
           <div class="guide-card">
-            <div class="guide-card-title">参考文案库</div>
+            <div class="guide-card-title">参考文案库 · 标题灵感库</div>
             <div class="guide-card-body">
-              存放高质量爆款笔记。AI 生成时会学习这些文案的结构特征。<br>
-              选「参考笔记」进仿写模式时，AI 直接以它为结构蓝本。
-            </div>
-          </div>
-          <div class="guide-card">
-            <div class="guide-card-title">标题灵感库</div>
-            <div class="guide-card-body">
-              收录点击欲望强的好标题，按钩子类型分类（新奇/利他/品类新定义等）。<br>
-              AI 生成标题时会参考库中的角度多样性，防止每次出相同套路的标题。<br>
-              在生成结果区点 <b>⭐</b> 快速收录。数据存在飞书<b>好标题灵感库</b>表。
+              <b>参考文案库</b>：存爆款笔记，选中后进仿写模式直接以它为结构蓝本。<br>
+              <b>标题灵感库</b>：⭐ 收录好标题，AI 生成时参考钩子多样性，防止重复套路。
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 提示词系统 -->
+      <!-- 批量生产 -->
       <div class="guide-section">
-        <h2>🔍 提示词系统——完全透明可控</h2>
-        <div class="guide-cards">
-          <div class="guide-card">
-            <div class="guide-card-title">🔍 提示词预览</div>
-            <div class="guide-card-body">
-              点击撰写台的「🔍 提示词」按钮，查看本次生成用到的完整提示词。<br>
-              顶部摘要显示本次选了哪些参数 + 飞书学习材料条数。
-            </div>
-          </div>
-          <div class="guide-card">
-            <div class="guide-card-title">永久修改（写入文件）</div>
-            <div class="guide-card-body">
-              展开<b>可保存</b>标注的模块（撰写规范/品牌事实/框架写作逻辑/输出格式等），直接编辑 textarea，点<b>💾 保存到文件</b>，下次每次生成都生效。
-            </div>
-          </div>
-          <div class="guide-card">
-            <div class="guide-card-title">临时修改（本次有效）</div>
-            <div class="guide-card-body">
-              点「展开完整原文」→ 在 textarea 里修改任何内容 → 点<b>「📝 用此提示词生成」</b>。<br>
-              只影响这一次生成，不覆盖任何文件。
-            </div>
-          </div>
-          <div class="guide-card">
-            <div class="guide-card-title">撰写指令 / 产品信息</div>
-            <div class="guide-card-body">
-              撰写台底部的折叠区域。撰写指令是 AI 的写作规则；产品信息是 SKU/价格/主推方向。<br>
-              可随时编辑，保存后下次生成立即生效。也可在提示词预览里编辑。
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 飞书联动 -->
-      <div class="guide-section">
-        <h2>📡 飞书数据联动</h2>
+        <h2>📋 批量生产</h2>
         <ul class="guide-tip-list">
-          <li><b>素材库（人/货/场）</b> → 飞书「内容生产素材库」base · 用户画像表 / 品类卖点表 / 使用场景表</li>
-          <li><b>修改偏好记录</b> → 飞书「特征工程-金句修改对比」表 · 每次归档自动写入</li>
-          <li><b>参考爆款文案</b> → 飞书「参考-图文文案」表 · 每次生成读取最新 N 条</li>
-          <li><b>标题灵感库</b> → 飞书「好标题灵感库」表（在小红书发布 base 下）· ⭐ 收录时写入</li>
-          <li><b>保存到发布表</b> → 飞书「小红书自动发布表」· 后续由自动化流程处理</li>
-          <li><b>生成结果推送</b> → 飞书群消息 · 每次生成完成后自动发送全文摘要</li>
-        </ul>
-      </div>
-
-      <!-- 快速上手 -->
-      <div class="guide-section">
-        <h2>⚡ 快速上手流程</h2>
-        <ul class="guide-tip-list">
-          <li>① <b>先维护素材</b>：进「素材库」确认人/货/场数据已录入飞书</li>
-          <li>② <b>选框架 + 卖点</b>：撰写台选 B 框架 + 1-2 个具体卖点，点「生成文案」</li>
-          <li>③ <b>看结果改稿</b>：不满意的地方直接编辑，改完后点「＋」归档修改对比</li>
-          <li>④ <b>收录好标题</b>：看到点击欲望强的标题点 ⭐ 存入灵感库</li>
-          <li>⑤ <b>保存发布</b>：确认标题/正文/话题，点「保存到发布表」</li>
-          <li>⑥ <b>反复迭代</b>：修改对比积累到 10+ 条后，生成质量会明显提升</li>
+          <li>适合内容日历规划，同一卖点批量出不同切入角的文案</li>
+          <li>选框架 + 卖点 → 「加入队列」→ 「开始批量生成」→ 结果逐条显示，自动归档飞书</li>
+          <li>每条结果可展开查看，⭐ 收录好标题</li>
         </ul>
       </div>
 
@@ -1321,9 +1224,27 @@ label { font-size:13px; color:var(--muted); }
       <div id="rModeDesc" style="font-size:11px;color:var(--dim);margin-bottom:8px">
         分析写作结构与技法，输出可附加到撰写指令的优化建议
       </div>
-      <div class="section-label">粘贴竞品笔记（多篇用空行分隔）</div>
-      <textarea class="notes-textarea" id="competitorNotes"
-        placeholder="将竞品笔记全文粘贴到这里…&#10;&#10;可同时粘贴多篇。"></textarea>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn btn-sm" id="rSrcPasteBtn" onclick="setNoteSrc('paste')" style="background:var(--gold);color:#000;border-color:var(--gold)">✏️ 手动粘贴</button>
+        <button class="btn btn-sm" id="rSrcFeishuBtn" onclick="setNoteSrc('feishu')">🪁 从飞书拉取</button>
+      </div>
+      <!-- 粘贴模式 -->
+      <div id="rPasteMode">
+        <div class="section-label">粘贴竞品笔记（多篇用空行分隔）</div>
+        <textarea class="notes-textarea" id="competitorNotes"
+          placeholder="将竞品笔记全文粘贴到这里…&#10;&#10;可同时粘贴多篇。"></textarea>
+      </div>
+      <!-- 飞书拉取模式 -->
+      <div id="rFeishuMode" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div class="section-label" style="margin:0">低度酒参考笔记</div>
+          <button class="btn btn-sm" onclick="loadFeishuRefs()">↺ 拉取</button>
+        </div>
+        <div id="rRefList" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;margin-bottom:8px">
+          <div style="font-size:12px;color:var(--dim)">点击「拉取」从飞书读取参考笔记</div>
+        </div>
+        <div style="font-size:11px;color:var(--dim)" id="rRefSelCount">已选 0 篇</div>
+      </div>
       <button class="btn-generate" id="analyzeBtn" onclick="runResearch()">
         开始分析
       </button>
@@ -1345,9 +1266,22 @@ label { font-size:13px; color:var(--muted); }
       <div id="writingResult" style="display:none;flex-direction:column;gap:16px">
         <div class="result-header">
           <div class="result-title">写作方法分析</div>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-primary btn-sm" onclick="applyAnalysis()">→ 附加到撰写指令</button>
             <button class="btn btn-sm" onclick="applyAnalysisToProductInfo()">→ 附加到产品信息</button>
+            <button class="btn btn-sm" onclick="showSaveSceneForm()" style="border-color:var(--gold);color:var(--gold2)">＋ 存场景到场表</button>
+          </div>
+        </div>
+        <!-- 存场景表单 -->
+        <div id="saveSceneForm" style="display:none;background:var(--bg2);border:1px solid var(--gold);border-radius:8px;padding:12px;margin-top:4px;display:none;flex-direction:column;gap:8px">
+          <div style="font-size:12px;font-weight:600;color:var(--gold2)">存入场表</div>
+          <input id="newSceneName" placeholder="场景名称（必填）" style="font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);outline:none;width:100%;box-sizing:border-box">
+          <input id="newSceneMood" placeholder="情绪分类（如：独处放松）" style="font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);outline:none;width:100%;box-sizing:border-box">
+          <input id="newSceneVisual" placeholder="画面描述（可选）" style="font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);outline:none;width:100%;box-sizing:border-box">
+          <input id="newSceneSrcNote" placeholder="来源笔记标题（可选）" style="font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);outline:none;width:100%;box-sizing:border-box">
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary btn-sm" onclick="saveSceneToLibrary()">保存</button>
+            <button class="btn btn-sm" onclick="document.getElementById('saveSceneForm').style.display='none'">取消</button>
           </div>
         </div>
         <div class="analysis-result" id="analysisContent"></div>
@@ -1363,6 +1297,27 @@ label { font-size:13px; color:var(--muted); }
         <div>
           <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--gold2)">建议添加到货表格</div>
           <div id="sellingSuggestions" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 研究台提示词编辑器 -->
+  <div style="padding:0 28px 28px">
+    <div class="prompt-bar" id="researchPromptBar">
+      <div class="prompt-bar-head" onclick="toggleResearchPromptBar()">
+        <div>
+          <span class="label" id="researchPromptBarLabel">📝 写作方法·分析指令</span>
+          <span class="hint">可编辑 · 保存后下次分析立即生效</span>
+        </div>
+        <span id="researchPromptChevron" style="color:var(--muted);font-size:12px">▼ 展开</span>
+      </div>
+      <div class="prompt-bar-body" id="researchPromptBarBody">
+        <textarea class="prompt-textarea" id="researchPromptTextarea" placeholder="加载中…" style="min-height:280px"></textarea>
+        <div class="prompt-bar-footer">
+          <button class="btn btn-primary btn-sm" onclick="saveResearchPrompt()">💾 保存</button>
+          <button class="btn btn-sm" onclick="loadResearchPromptPanel()">↺ 重新读取</button>
+          <span class="prompt-save-status" id="researchPromptStatus"></span>
         </div>
       </div>
     </div>
@@ -1536,221 +1491,48 @@ label { font-size:13px; color:var(--muted); }
   </div>
 </div><!-- /tab-prompt-base -->
 
-<!-- ══════════════════════════════════════════════════════════════════ -->
-<!-- Ares Chat Tab                                                      -->
-<!-- ══════════════════════════════════════════════════════════════════ -->
-<div id="tab-ares" style="display:none; height:calc(100vh - 128px)">
-  <div class="ares-layout">
-    <!-- 左：对话区 -->
-    <div class="ares-chat-col">
-      <div class="ares-chat-header">
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:18px">💬</span>
-          <div>
-            <div style="font-size:14px;font-weight:600">Ares 营销判断引擎</div>
-            <div style="font-size:11px;color:var(--muted)">蒸馏自知识库 · 每次对话都在迭代</div>
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <span class="ares-session-dot" id="aresStatusDot"></span>
-          <button class="ares-clear-btn" onclick="aresClearHistory()">清空对话</button>
-        </div>
+<!-- ══ Tab: 测试矩阵 ══ -->
+<div id="tab-matrix" style="display:none;overflow-y:auto;height:calc(100vh - 128px)">
+  <div style="padding:24px 28px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--text)">测试矩阵</div>
+        <div style="font-size:12px;color:var(--dim);margin-top:2px">场景 × 货角度 覆盖情况 · 点击格子跳转撰写台</div>
       </div>
-
-      <!-- 快捷操作 -->
-      <div class="ares-quick-chips">
-        <button class="ares-chip" onclick="aresQuick('hot')">🔥 热点评估</button>
-        <button class="ares-chip" onclick="aresQuick('review')">✏️ 审稿</button>
-        <button class="ares-chip" onclick="aresQuick('strategy')">🧭 策略建议</button>
-        <button class="ares-chip" onclick="aresQuick('learn')">📚 消化新内容</button>
-      </div>
-
-      <!-- 消息流 -->
-      <div class="ares-messages" id="aresMessages">
-        <div class="ares-msg ares-msg-ai">
-          <div class="ares-msg-bubble">
-            你好 Ares。我已读取知识库和金句改稿标准。<br>
-            有热点要评估、稿子要审、策略要聊，直接说。
-          </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;gap:6px;font-size:11px;color:var(--muted);align-items:center">
+          <span style="display:inline-block;width:10px;height:10px;background:var(--bg3);border:1px solid var(--border);border-radius:2px"></span>未测
+          <span style="display:inline-block;width:10px;height:10px;background:rgba(212,168,67,.2);border:1px solid rgba(212,168,67,.4);border-radius:2px"></span>1-2篇
+          <span style="display:inline-block;width:10px;height:10px;background:rgba(212,168,67,.45);border:1px solid var(--gold);border-radius:2px"></span>3篇+
         </div>
-      </div>
-
-      <!-- 输入区 -->
-      <div class="ares-input-area">
-        <textarea
-          id="aresInput"
-          class="ares-textarea"
-          placeholder="说你想说的……"
-          rows="3"
-          onkeydown="aresKeydown(event)"
-        ></textarea>
-        <div class="ares-input-actions">
-          <span style="font-size:11px;color:var(--dim)">⌘+Enter 发送</span>
-          <button class="ares-send-btn" id="aresSendBtn" onclick="aresSend()">发送</button>
-        </div>
+        <button class="btn btn-sm" onclick="loadMatrix()">↺ 刷新</button>
       </div>
     </div>
-
-    <!-- 右：上下文面板 -->
-    <div class="ares-context-col">
-      <div class="ares-ctx-section">
-        <div class="ares-ctx-label">🔥 今日热点</div>
-        <div id="aresHotTopics" class="ares-ctx-list">
-          <div style="color:var(--dim);font-size:12px">加载中...</div>
-        </div>
-        <button class="ares-ctx-inject" onclick="aresInjectHot()">↙ 注入对话</button>
-      </div>
-
-      <div class="ares-ctx-section">
-        <div class="ares-ctx-label">📚 最近知识库</div>
-        <div id="aresRecentKB" class="ares-ctx-list">
-          <div style="color:var(--dim);font-size:12px">加载中...</div>
-        </div>
-      </div>
-
-      <div class="ares-ctx-section">
-        <div class="ares-ctx-label">💡 本次洞见</div>
-        <div id="aresSavedInsights" class="ares-ctx-list">
-          <div style="color:var(--dim);font-size:12px">对话后点「存为洞见」</div>
-        </div>
-      </div>
-    </div>
+    <div id="matrixLoading" style="text-align:center;padding:40px;color:var(--dim);font-size:13px">加载中…</div>
+    <div id="matrixGrid" style="display:none;overflow-x:auto"></div>
   </div>
-</div><!-- /tab-ares -->
+</div><!-- /tab-matrix -->
 
 <style>
-/* ── Ares Chat Tab ───────────────────────────────────────────────────── */
-.ares-layout {
-  display: grid;
-  grid-template-columns: 1fr 280px;
-  height: 100%;
-  overflow: hidden;
-}
-.ares-chat-col {
-  display: flex; flex-direction: column;
-  border-right: 1px solid var(--border);
-  overflow: hidden;
-}
-.ares-chat-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; border-bottom: 1px solid var(--border);
-  background: var(--bg2); flex-shrink: 0;
-}
-.ares-session-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--dim); display: inline-block;
-}
-.ares-session-dot.ok { background: var(--green); }
-.ares-session-dot.busy { background: var(--gold); animation: pulse 1s infinite; }
-.ares-clear-btn {
-  font-size: 12px; color: var(--muted); background: none;
-  border: 1px solid var(--border); border-radius: 5px;
-  padding: 4px 10px; cursor: pointer;
-}
-.ares-clear-btn:hover { color: var(--text); border-color: var(--border2); }
-
-.ares-quick-chips {
-  display: flex; gap: 8px; padding: 12px 20px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg2); flex-shrink: 0; flex-wrap: wrap;
-}
-.ares-chip {
-  font-size: 12px; padding: 5px 12px; border-radius: 16px;
-  border: 1px solid var(--border); background: var(--bg3);
-  color: var(--text); cursor: pointer; transition: all .15s;
-}
-.ares-chip:hover { border-color: var(--gold); color: var(--gold2); }
-
-.ares-messages {
-  flex: 1; overflow-y: auto; padding: 20px;
-  display: flex; flex-direction: column; gap: 16px;
-}
-.ares-msg { display: flex; flex-direction: column; }
-.ares-msg-user { align-items: flex-end; }
-.ares-msg-ai  { align-items: flex-start; }
-
-.ares-msg-bubble {
-  max-width: 80%; padding: 12px 16px; border-radius: 12px;
-  font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: break-word;
-}
-.ares-msg-user .ares-msg-bubble {
-  background: var(--gold3); border: 1px solid rgba(212,168,67,.3);
-  border-bottom-right-radius: 3px;
-}
-.ares-msg-ai .ares-msg-bubble {
-  background: var(--bg3); border: 1px solid var(--border);
-  border-bottom-left-radius: 3px;
-}
-.ares-msg-actions {
-  display: flex; gap: 6px; margin-top: 6px; opacity: 0;
-  transition: opacity .15s;
-}
-.ares-msg:hover .ares-msg-actions { opacity: 1; }
-.ares-msg-action-btn {
-  font-size: 11px; padding: 3px 9px; border-radius: 5px;
-  border: 1px solid var(--border); background: var(--bg2);
-  color: var(--muted); cursor: pointer;
-}
-.ares-msg-action-btn:hover { color: var(--gold2); border-color: var(--gold); }
-.ares-msg-action-btn.insight { color: var(--gold); border-color: rgba(212,168,67,.4); }
-
-.ares-input-area {
-  border-top: 1px solid var(--border); padding: 16px 20px;
-  background: var(--bg2); flex-shrink: 0;
-}
-.ares-textarea {
-  width: 100%; background: var(--bg3); border: 1px solid var(--border);
-  border-radius: 8px; color: var(--text); font-size: 14px;
-  padding: 12px 14px; resize: none; line-height: 1.6;
-  font-family: inherit; transition: border-color .15s;
-}
-.ares-textarea:focus { outline: none; border-color: var(--gold); }
-.ares-input-actions {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-top: 10px;
-}
-.ares-send-btn {
-  background: var(--gold); color: #000; border: none;
-  padding: 8px 22px; border-radius: 7px; font-size: 13px;
-  font-weight: 600; cursor: pointer; transition: background .15s;
-}
-.ares-send-btn:hover { background: var(--gold2); }
-.ares-send-btn:disabled { background: var(--dim); cursor: not-allowed; }
-
-/* ── 右侧上下文面板 ── */
-.ares-context-col {
-  overflow-y: auto; padding: 16px;
-  display: flex; flex-direction: column; gap: 20px;
-  background: var(--bg2);
-}
-.ares-ctx-section { display: flex; flex-direction: column; gap: 8px; }
-.ares-ctx-label {
-  font-size: 11px; color: var(--muted);
-  text-transform: uppercase; letter-spacing: .8px;
-}
-.ares-ctx-list {
-  display: flex; flex-direction: column; gap: 6px;
-}
-.ares-ctx-item {
-  background: var(--bg3); border: 1px solid var(--border);
-  border-radius: 7px; padding: 9px 11px;
-  font-size: 12px; line-height: 1.5; cursor: pointer;
-  transition: border-color .15s;
-}
-.ares-ctx-item:hover { border-color: var(--gold); }
-.ares-ctx-item-label { font-size: 10px; color: var(--muted); margin-bottom: 3px; }
-.ares-ctx-inject {
-  font-size: 11px; color: var(--muted); background: none;
-  border: 1px solid var(--border); border-radius: 5px;
-  padding: 4px 10px; cursor: pointer; align-self: flex-start;
-}
-.ares-ctx-inject:hover { color: var(--gold2); border-color: var(--gold); }
-
-.ares-insight-saved {
-  background: rgba(212,168,67,.08); border: 1px solid rgba(212,168,67,.25);
-  border-radius: 7px; padding: 8px 10px; font-size: 12px;
-  color: var(--gold2); line-height: 1.5;
-}
+/* ── 测试矩阵 ── */
+.mx-table { border-collapse: collapse; min-width: 100%; font-size: 12px; }
+.mx-table th { background: var(--bg2); color: var(--muted); font-weight: 500;
+  padding: 8px 12px; border: 1px solid var(--border); text-align: left;
+  white-space: nowrap; position: sticky; top: 0; z-index: 1; }
+.mx-table td { border: 1px solid var(--border); padding: 0; vertical-align: top; }
+.mx-table td.mx-scene-label { padding: 8px 12px; font-weight: 500; color: var(--text);
+  background: var(--bg2); white-space: nowrap; min-width: 120px; }
+.mx-cell { padding: 8px 10px; cursor: pointer; transition: filter .15s; min-width: 90px;
+  min-height: 52px; display: flex; flex-direction: column; gap: 3px; }
+.mx-cell:hover { filter: brightness(1.2); }
+.mx-cell-count { font-size: 13px; font-weight: 700; color: var(--text); }
+.mx-cell-ces { font-size: 10px; color: var(--muted); }
+.mx-cell-empty { background: var(--bg3); }
+.mx-cell-low { background: rgba(212,168,67,.2); }
+.mx-cell-high { background: rgba(212,168,67,.45); }
+/* save scene form fix */
+#saveSceneForm { display: none; }
+#saveSceneForm.visible { display: flex; }
 </style>
 
 <script>
@@ -2599,15 +2381,58 @@ function setResearchMode(mode) {
   document.getElementById('rModeSelling').className = isWriting ? 'btn btn-sm' : 'btn btn-primary btn-sm';
   document.getElementById('rModeDesc').textContent = isWriting
     ? '分析写作结构与技法，输出可附加到撰写指令的优化建议'
-    : '提取竞品卖点表达角度，生成可添加到货表格和产品信息文档的建议';
+    : '提取卖点表达角度，生成可添加到货表格和产品信息文档的建议';
   document.getElementById('writingResult').style.display = 'none';
   document.getElementById('sellingResult').style.display = 'none';
   document.getElementById('researchEmptyState').style.display = 'flex';
+  // 同步更新提示词编辑栏标签和内容
+  document.getElementById('researchPromptBarLabel').textContent =
+    isWriting ? '📝 写作方法·分析指令' : '💡 卖点提取·分析指令';
+  loadResearchPromptPanel();
+}
+
+// ── 研究台提示词编辑栏 ──
+let _researchPromptOpen = false;
+function toggleResearchPromptBar() {
+  _researchPromptOpen = !_researchPromptOpen;
+  document.getElementById('researchPromptBarBody').style.display = _researchPromptOpen ? 'block' : 'none';
+  document.getElementById('researchPromptChevron').textContent = _researchPromptOpen ? '▲ 收起' : '▼ 展开';
+  if (_researchPromptOpen) loadResearchPromptPanel();
+}
+
+async function loadResearchPromptPanel() {
+  const ta = document.getElementById('researchPromptTextarea');
+  if (!_researchPromptOpen) return;
+  try {
+    const r = await fetch(`/api/research-prompt/${researchMode}`).then(x => x.json());
+    if (r.ok) ta.value = r.content;
+  } catch(e) { ta.value = '（读取失败）'; }
+}
+
+async function saveResearchPrompt() {
+  const content = document.getElementById('researchPromptTextarea').value;
+  const st = document.getElementById('researchPromptStatus');
+  st.textContent = '保存中…';
+  try {
+    const r = await fetch(`/api/research-prompt/${researchMode}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ content }),
+    }).then(x => x.json());
+    st.textContent = r.ok ? '✓ 已保存' : '失败：' + r.error;
+  } catch(e) { st.textContent = '失败：' + e.message; }
+  setTimeout(() => { document.getElementById('researchPromptStatus').textContent = ''; }, 3000);
 }
 
 async function runResearch() {
-  const notes = document.getElementById('competitorNotes').value.trim();
-  if (!notes) { showToast('请粘贴竞品笔记', 'err'); return; }
+  const feishuMode = document.getElementById('rFeishuMode').style.display !== 'none';
+  let notes;
+  if (feishuMode) {
+    notes = getSelectedRefText();
+    if (!notes.trim()) { showToast('请先勾选至少一篇飞书参考笔记', 'err'); return; }
+  } else {
+    notes = document.getElementById('competitorNotes').value.trim();
+    if (!notes) { showToast('请粘贴竞品笔记', 'err'); return; }
+  }
   if (researchMode === 'writing') await analyzeCompetitor(notes);
   else await analyzeSellingPoints(notes);
 }
@@ -2695,6 +2520,7 @@ async function addSuggestionToGoods(i) {
       '角度类型': s['角度类型'] || '',
       '是否主卖点': s['是否主卖点'] || '否',
       '核心描述': s['核心描述'] || '',
+      '来源':     '竞品提炼',
     };
     Object.keys(fields).forEach(k => { if (!fields[k]) delete fields[k]; });
     const res = await fetch('/api/materials/add', {
@@ -3340,7 +3166,7 @@ async function submitRefAdd() {
 }
 
 // ─── Tab 切换 ─────────────────────────────────────────────────────
-const ALL_TABS = ['guide', 'write', 'materials', 'batch', 'references', 'research', 'templates', 'comparison', 'title-lib', 'prompt-base', 'ares'];
+const ALL_TABS = ['guide', 'write', 'matrix', 'materials', 'batch', 'references', 'research', 'templates', 'comparison', 'title-lib', 'prompt-base'];
 function switchTab(tab) {
   ALL_TABS.forEach(t => {
     document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none';
@@ -3370,7 +3196,7 @@ function switchTab(tab) {
   }
   if (tab === 'title-lib') refreshTitleLib();
   if (tab === 'prompt-base') pbInit();
-  if (tab === 'ares') aresInit();
+  if (tab === 'matrix') loadMatrix();
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -3932,185 +3758,194 @@ async function collectBatchTitle(jobId) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// Ares Chat
+// 测试矩阵
 // ═══════════════════════════════════════════════════════════════════
-let aresInited = false;
-let aresStreaming = false;
-const ARES_SESSION = 'ares-' + Date.now();
-
-async function aresInit() {
-  if (aresInited) return;
-  aresInited = true;
-  await Promise.all([aresLoadHotTopics(), aresLoadRecentKB()]);
-}
-
-async function aresLoadHotTopics() {
-  const el = document.getElementById('aresHotTopics');
+async function loadMatrix() {
+  const grid    = document.getElementById('matrixGrid');
+  const loading = document.getElementById('matrixLoading');
+  loading.style.display = 'block';
+  grid.style.display = 'none';
   try {
-    const r = await fetch('/api/ares/hot-topics').then(x => x.json());
-    if (!r.ok || !r.items?.length) { el.innerHTML = '<div style="color:var(--dim);font-size:12px">暂无热点数据</div>'; return; }
-    el.innerHTML = r.items.map(item => `
-      <div class="ares-ctx-item" onclick="aresInjectText('热点：${item.title}')">
-        <div class="ares-ctx-item-label">${item.date || ''}</div>
-        ${item.title}
-      </div>`).join('');
-  } catch(e) { el.innerHTML = '<div style="color:var(--dim);font-size:12px">加载失败</div>'; }
-}
-
-async function aresLoadRecentKB() {
-  const el = document.getElementById('aresRecentKB');
-  try {
-    const r = await fetch('/api/ares/recent-kb').then(x => x.json());
-    if (!r.ok || !r.items?.length) { el.innerHTML = '<div style="color:var(--dim);font-size:12px">暂无数据</div>'; return; }
-    el.innerHTML = r.items.map(item => `
-      <div class="ares-ctx-item" onclick="aresInjectText('参考这条知识库内容：${item.takeaway}')">
-        <div class="ares-ctx-item-label">${item.type || ''}</div>
-        ${item.takeaway?.slice(0,80) || '—'}…
-      </div>`).join('');
-  } catch(e) { el.innerHTML = '<div style="color:var(--dim);font-size:12px">加载失败</div>'; }
-}
-
-function aresInjectHot() {
-  const items = document.querySelectorAll('#aresHotTopics .ares-ctx-item');
-  if (!items.length) return;
-  const titles = Array.from(items).map(el => el.innerText.trim()).join('\n');
-  document.getElementById('aresInput').value = `帮我评估以下热点，哪个最适合我们做内容：\n${titles}`;
-  document.getElementById('aresInput').focus();
-}
-
-function aresInjectText(text) {
-  const ta = document.getElementById('aresInput');
-  ta.value = (ta.value ? ta.value + '\n' : '') + text;
-  ta.focus();
-}
-
-function aresQuick(type) {
-  const ta = document.getElementById('aresInput');
-  const templates = {
-    hot: '帮我评估这个热点：\n[粘贴热点内容]',
-    review: '帮我审一下这段文案：\n\n[粘贴文案]',
-    strategy: '我们现在内容方向该怎么走？结合最近的热点和知识库给我判断。',
-    learn: '我刚看了这个内容，帮我提炼对我们有用的部分，并决定要不要存知识库：\n\n[粘贴内容]',
-  };
-  ta.value = templates[type] || '';
-  ta.focus();
-  const start = ta.value.indexOf('[');
-  if (start !== -1) { ta.setSelectionRange(start, ta.value.indexOf(']') + 1); }
-}
-
-function aresKeydown(e) {
-  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); aresSend(); }
-}
-
-function aresSetStatus(s) {
-  const dot = document.getElementById('aresStatusDot');
-  dot.className = 'ares-session-dot ' + s;
-}
-
-function aresAddMessage(role, text, msgId) {
-  const container = document.getElementById('aresMessages');
-  const div = document.createElement('div');
-  div.className = `ares-msg ares-msg-${role}`;
-  if (msgId) div.id = msgId;
-
-  const bubble = document.createElement('div');
-  bubble.className = 'ares-msg-bubble';
-  bubble.textContent = text;
-  div.appendChild(bubble);
-
-  if (role === 'ai') {
-    const actions = document.createElement('div');
-    actions.className = 'ares-msg-actions';
-    actions.innerHTML = `
-      <button class="ares-msg-action-btn" onclick="navigator.clipboard.writeText(this.closest('.ares-msg').querySelector('.ares-msg-bubble').textContent)">📋 复制</button>
-      <button class="ares-msg-action-btn insight" onclick="aresSaveInsight(this)">✨ 存为洞见</button>`;
-    div.appendChild(actions);
-  }
-
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
-  return bubble;
-}
-
-async function aresSend() {
-  const ta = document.getElementById('aresInput');
-  const msg = ta.value.trim();
-  if (!msg || aresStreaming) return;
-
-  ta.value = '';
-  aresAddMessage('user', msg);
-  aresStreaming = true;
-  aresSetStatus('busy');
-  document.getElementById('aresSendBtn').disabled = true;
-
-  const streamId = 'ares-stream-' + Date.now();
-  const bubble = aresAddMessage('ai', '…', streamId);
-  let full = '';
-
-  try {
-    const resp = await fetch('/api/ares/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: msg, sessionId: ARES_SESSION }),
-    });
-
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
-    bubble.textContent = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const lines = decoder.decode(value).split('\n');
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        try {
-          const d = JSON.parse(line.slice(6));
-          if (d.text) { full += d.text; bubble.textContent = full; }
-          if (d.done || d.error) break;
-        } catch {}
-      }
-      document.getElementById('aresMessages').scrollTop = 9999;
-    }
+    const r = await fetch('/api/matrix').then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    renderMatrix(r.scenes, r.angles, r.published);
   } catch(e) {
-    bubble.textContent = '发送失败：' + e.message;
+    loading.textContent = '加载失败：' + e.message;
+  }
+}
+
+function renderMatrix(scenes, angles, published) {
+  const loading = document.getElementById('matrixLoading');
+  const grid    = document.getElementById('matrixGrid');
+
+  // 聚合：key = "场景||角度"
+  const agg = {};
+  published.forEach(p => {
+    if (!p.scene && !p.angle) return;
+    const key = `${p.scene||''}||${p.angle||''}`;
+    if (!agg[key]) agg[key] = { count: 0, cesMax: 0, records: [] };
+    const ces = (p.收藏||0)*1 + (p.点赞||0)*1 + (p.评论||0)*4;
+    agg[key].count++;
+    agg[key].cesMax = Math.max(agg[key].cesMax, ces);
+    agg[key].records.push(p);
+  });
+
+  if (!scenes.length && !angles.length) {
+    loading.textContent = '场景库和货角度库暂无数据，请先在飞书添加';
+    loading.style.display = 'block';
+    return;
   }
 
-  aresStreaming = false;
-  aresSetStatus('ok');
-  document.getElementById('aresSendBtn').disabled = false;
+  let html = '<table class="mx-table"><thead><tr><th>场景 \\ 货角度</th>';
+  angles.forEach(a => { html += `<th>${escHtml(a.name)}<br><span style="font-size:10px;color:var(--dim);font-weight:400">${escHtml(a.dim||'')}</span></th>`; });
+  html += '</tr></thead><tbody>';
+
+  scenes.forEach(sc => {
+    html += `<tr><td class="mx-scene-label">${escHtml(sc.name)}<br><span style="font-size:10px;color:var(--dim);font-weight:400">${escHtml(sc.mood||'')}</span></td>`;
+    angles.forEach(an => {
+      const key  = `${sc.name||''}||${an.name||''}`;
+      const cell = agg[key];
+      if (!cell) {
+        html += `<td><div class="mx-cell mx-cell-empty" onclick="prefillWrite(${JSON.stringify(sc.name)},${JSON.stringify(an.name)})"><span style="font-size:10px;color:var(--dim)">未测试</span></div></td>`;
+      } else {
+        const cls  = cell.count >= 3 ? 'mx-cell-high' : 'mx-cell-low';
+        const title = cell.records.map(r => `${r.title||r.link||'无标题'} CES:${(r.收藏||0)+(r.点赞||0)+(r.评论||0)*4}`).join('\n');
+        html += `<td title="${escHtml(title)}"><div class="mx-cell ${cls}" onclick="prefillWrite(${JSON.stringify(sc.name)},${JSON.stringify(an.name)})">
+          <div class="mx-cell-count">${cell.count} 篇</div>
+          <div class="mx-cell-ces">最高 CES ${cell.cesMax}</div>
+        </div></td>`;
+      }
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  grid.innerHTML = html;
+  loading.style.display = 'none';
+  grid.style.display = 'block';
 }
 
-async function aresSaveInsight(btn) {
-  const bubble = btn.closest('.ares-msg').querySelector('.ares-msg-bubble');
-  const text = bubble.textContent;
-  btn.textContent = '保存中…';
-  try {
-    const r = await fetch('/api/ares/save-insight', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: text }),
-    }).then(x => x.json());
-
-    if (r.ok) {
-      btn.textContent = '✓ 已存';
-      btn.style.color = 'var(--green)';
-      const saved = document.getElementById('aresSavedInsights');
-      saved.innerHTML = (saved.innerHTML.includes('点「存为洞见') ? '' : saved.innerHTML) +
-        `<div class="ares-insight-saved">${text.slice(0, 120)}${text.length > 120 ? '…' : ''}</div>`;
-    } else {
-      btn.textContent = '❌ 失败';
+function prefillWrite(sceneName, angleName) {
+  switchTab('write');
+  // 选中场景
+  const scSel = document.getElementById('sceneSelect');
+  if (scSel) {
+    for (const opt of scSel.options) {
+      if (opt.textContent.trim() === sceneName) { scSel.value = opt.value; scSel.dispatchEvent(new Event('change')); break; }
     }
-  } catch(e) { btn.textContent = '❌ 失败'; }
+  }
+  // 选中货角度
+  const spSel = document.getElementById('spItemSelect');
+  if (spSel) {
+    for (const opt of spSel.options) {
+      if (opt.textContent.includes(angleName)) { spSel.value = opt.value; spSel.dispatchEvent(new Event('change')); break; }
+    }
+  }
+  showToast(`已预填：${sceneName} × ${angleName}`, 'ok');
 }
 
-async function aresClearHistory() {
-  await fetch(`/api/ares/chat/${ARES_SESSION}`, { method: 'DELETE' }).catch(() => {});
-  const msgs = document.getElementById('aresMessages');
-  msgs.innerHTML = `<div class="ares-msg ares-msg-ai">
-    <div class="ares-msg-bubble">对话已清空。有什么要聊的？</div>
-  </div>`;
-  aresSetStatus('');
+// ═══════════════════════════════════════════════════════════════════
+// 竞品研究台：飞书拉取 & 存库
+// ═══════════════════════════════════════════════════════════════════
+let _feishuRefs = [];
+let _selectedRefIds = new Set();
+
+function setNoteSrc(mode) {
+  const pasteBtn   = document.getElementById('rSrcPasteBtn');
+  const feishuBtn  = document.getElementById('rSrcFeishuBtn');
+  const pasteMode  = document.getElementById('rPasteMode');
+  const feishuMode = document.getElementById('rFeishuMode');
+  if (mode === 'paste') {
+    pasteMode.style.display  = 'block';
+    feishuMode.style.display = 'none';
+    pasteBtn.style.cssText   = 'background:var(--gold);color:#000;border-color:var(--gold)';
+    feishuBtn.style.cssText  = '';
+  } else {
+    pasteMode.style.display  = 'none';
+    feishuMode.style.display = 'block';
+    feishuBtn.style.cssText  = 'background:var(--gold);color:#000;border-color:var(--gold)';
+    pasteBtn.style.cssText   = '';
+  }
+}
+
+async function loadFeishuRefs() {
+  const list = document.getElementById('rRefList');
+  list.innerHTML = '<div style="font-size:12px;color:var(--dim)">拉取中…</div>';
+  try {
+    const r = await fetch('/api/references/list').then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    _feishuRefs = r.references;
+    _selectedRefIds = new Set(r.selectedIds || []);
+    renderRefList();
+  } catch(e) {
+    list.innerHTML = `<div style="font-size:12px;color:#f87171">拉取失败：${escHtml(e.message)}</div>`;
+  }
+}
+
+function renderRefList() {
+  const list = document.getElementById('rRefList');
+  const cnt  = document.getElementById('rRefSelCount');
+  if (!_feishuRefs.length) { list.innerHTML = '<div style="font-size:12px;color:var(--dim)">暂无低度酒参考笔记</div>'; return; }
+  list.innerHTML = _feishuRefs.map(ref => {
+    const sel = _selectedRefIds.has(ref.id);
+    return `<div style="display:flex;gap:8px;align-items:flex-start;padding:7px 9px;background:${sel?'rgba(212,168,67,.12)':'var(--bg3)'};border:1px solid ${sel?'rgba(212,168,67,.4)':'var(--border)'};border-radius:7px;cursor:pointer" onclick="toggleRefSel('${ref.id}',this)">
+      <input type="checkbox" ${sel?'checked':''} style="margin-top:2px;flex-shrink:0" onclick="event.stopPropagation();toggleRefSel('${ref.id}',this.closest('div'))">
+      <div style="min-width:0">
+        <div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(ref.title||'（无标题）')}</div>
+        <div style="font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(ref.preview||'')}</div>
+      </div>
+    </div>`;
+  }).join('');
+  cnt.textContent = `已选 ${_selectedRefIds.size} 篇`;
+}
+
+function toggleRefSel(id, el) {
+  const cb = el.querySelector('input[type=checkbox]');
+  if (_selectedRefIds.has(id)) {
+    _selectedRefIds.delete(id);
+    if (cb) cb.checked = false;
+    el.style.background = 'var(--bg3)';
+    el.style.borderColor = 'var(--border)';
+  } else {
+    _selectedRefIds.add(id);
+    if (cb) cb.checked = true;
+    el.style.background = 'rgba(212,168,67,.12)';
+    el.style.borderColor = 'rgba(212,168,67,.4)';
+  }
+  document.getElementById('rRefSelCount').textContent = `已选 ${_selectedRefIds.size} 篇`;
+}
+
+function getSelectedRefText() {
+  const sel = _feishuRefs.filter(r => _selectedRefIds.has(r.id));
+  return sel.map(r => `【${r.title||'无标题'}】\n${r.full}`).join('\n\n---\n\n');
+}
+
+function showSaveSceneForm() {
+  const f = document.getElementById('saveSceneForm');
+  f.classList.toggle('visible');
+  f.style.display = f.classList.contains('visible') ? 'flex' : 'none';
+}
+
+async function saveSceneToLibrary() {
+  const name    = document.getElementById('newSceneName').value.trim();
+  const mood    = document.getElementById('newSceneMood').value.trim();
+  const visual  = document.getElementById('newSceneVisual').value.trim();
+  const srcNote = document.getElementById('newSceneSrcNote').value.trim();
+  if (!name) { showToast('场景名称不能为空', 'err'); return; }
+  try {
+    const r = await fetch('/api/materials/save-scene', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name, mood, visual, srcNote }),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    showToast(`✓ 场景「${name}」已存入场表`, 'ok');
+    document.getElementById('saveSceneForm').style.display = 'none';
+    document.getElementById('saveSceneForm').classList.remove('visible');
+    ['newSceneName','newSceneMood','newSceneVisual','newSceneSrcNote'].forEach(id => { document.getElementById(id).value = ''; });
+    matLoaded = false;
+  } catch(e) {
+    showToast('保存失败：' + e.message, 'err');
+  }
 }
 
 async function runDiagnose() {
@@ -4227,10 +4062,14 @@ async function saveToPublish() {
   const status = document.getElementById('publishStatus');
   if (!body) { showToast('正文不能为空', 'err'); return; }
   status.textContent = '保存中…';
+  // 读取当前选中的场景和卖点，写入矩阵标签
+  const sceneName = st.scene?.name || '';
+  const angleName = st.spItems.length > 0 ? st.spItems.map(x => x.name).join('+') : (st.sellingPoint || '');
+  const fwLabel   = { A:'A·问题解决', B:'B·场景种草', C:'C·对比评测', D:'D·教程干货' }[st.framework] || '';
   try {
     const r = await fetch('/api/save-to-publish', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ title, body, tags }),
+      body: JSON.stringify({ title, body, tags, scene: sceneName, angle: angleName, framework: fwLabel }),
     }).then(x => x.json());
     if (!r.ok) throw new Error(r.error);
     status.textContent = '✓ 已保存到发布表';

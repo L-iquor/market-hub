@@ -145,14 +145,31 @@ const MATERIALS_CFG = {
   },
   货: {
     tableId: 'tblzgf8xfGlSca84',
-    fields: { name: 'flds5zRyer', dim: 'fld2z9D7vj', angle: 'fldBfOrJvW', main: 'fldBxW8jBI', desc: 'fldg5Va9ZV' },
-    fieldNames: { name: '卖点简称', dim: '维度', angle: '角度类型', main: '是否主卖点', desc: '核心描述' },
+    fields: { name: 'flds5zRyer', dim: 'fld2z9D7vj', angle: 'fldBfOrJvW', main: 'fldBxW8jBI', desc: 'fldg5Va9ZV', src: 'fldNWNn8tJ' },
+    fieldNames: { name: '卖点简称', dim: '维度', angle: '角度类型', main: '是否主卖点', desc: '核心描述', src: '来源' },
   },
   场: {
     tableId: 'tblq0Y4KX4gJ7FMO',
-    fields: { name: 'fld89kuUYZ', mood: 'fldAxo8dLq', visual: 'fldiKL55MW', guide: 'fldnt1I4eU' },
-    fieldNames: { name: '场景名称', mood: '情绪分类', visual: '画面描述', guide: '团队指导' },
+    fields: { name: 'fld89kuUYZ', mood: 'fldAxo8dLq', visual: 'fldiKL55MW', guide: 'fldnt1I4eU', srcNote: 'fldoaEljbM' },
+    fieldNames: { name: '场景名称', mood: '情绪分类', visual: '画面描述', guide: '团队指导', srcNote: '来源笔记' },
   },
+};
+
+// 发布数据表字段 ID 映射
+const OUTPUT_FIELDS = {
+  标题:     'fld8r1kMve',
+  正文:     'fld7V7kUMc',
+  话题:     'fld35qjtsW',
+  发布计划: 'fldJX7DnZv',
+  是否发布: 'fldNhY7hvG',
+  发布链接: 'fld1R5bywz',
+  场景名称: 'fldJhuKffL',
+  货角度:   'fldZHRkRbj',
+  框架类型: 'fldwvpo34f',
+  收藏数:   'fld167R4VM',
+  点赞数:   'flduZ36FeP',
+  评论数:   'fldqv3TKYd',
+  测试结论: 'fld5v30x60',
 };
 
 function readMatTable(tableId) {
@@ -198,12 +215,14 @@ function fetchMaterials() {
       angle: extractField(r, idx, { id: f货.angle }),
       main:  extractField(r, idx, { id: f货.main }),
       desc:  extractField(r, idx, { id: f货.desc }),
+      src:   extractField(r, idx, { id: f货.src }),
     })),
     场: parse(MATERIALS_CFG.场.tableId, (r, idx) => ({
-      name:   extractField(r, idx, { id: f场.name }),
-      mood:   extractField(r, idx, { id: f场.mood }),
-      visual: extractField(r, idx, { id: f场.visual }),
-      guide:  extractField(r, idx, { id: f场.guide }),
+      name:    extractField(r, idx, { id: f场.name }),
+      mood:    extractField(r, idx, { id: f场.mood }),
+      visual:  extractField(r, idx, { id: f场.visual }),
+      guide:   extractField(r, idx, { id: f场.guide }),
+      srcNote: extractField(r, idx, { id: f场.srcNote }),
     })),
   };
 }
@@ -896,15 +915,104 @@ app.post('/api/archive-comparison', (req, res) => {
 // 撰写台一键保存到小红书发布表
 app.post('/api/save-to-publish', (req, res) => {
   try {
-    const { title, body, tags } = req.body;
+    const { title, body, tags, scene, angle, framework } = req.body;
     if (!body || !body.trim()) return res.json({ ok: false, error: '正文不能为空' });
-    writeOutputRecord({
+    const fields = {
       '标题':    title  || '',
       '正文':    body.trim(),
       '话题':    tags   || '',
       '发布计划': '立即发布',
       '是否发布': '否',
-    });
+    };
+    if (scene)     fields['场景名称'] = scene;
+    if (angle)     fields['货角度']   = angle;
+    if (framework) fields['框架类型'] = framework;
+    writeOutputRecord(fields);
+    res.json({ ok: true });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// 覆盖矩阵：场×货 与发布记录交叉
+app.get('/api/matrix', (req, res) => {
+  try {
+    const materials = fetchMaterials();
+    const pubRes = larkCli(['base', '+record-list', '--base-token', OUTPUT_BASE, '--table-id', OUTPUT_TABLE, '--limit', '200', '--format', 'json']);
+    const pubRecs = pubRes.data.data || [];
+    const pubFids = pubRes.data.field_id_list || [];
+    const pubIdx  = {};
+    pubFids.forEach((fid, i) => { pubIdx[fid] = i; });
+
+    const published = pubRecs.map(r => ({
+      scene:     extractField(r, pubIdx, { id: OUTPUT_FIELDS.场景名称 }),
+      angle:     extractField(r, pubIdx, { id: OUTPUT_FIELDS.货角度 }),
+      framework: extractField(r, pubIdx, { id: OUTPUT_FIELDS.框架类型 }),
+      收藏:      Number(extractField(r, pubIdx, { id: OUTPUT_FIELDS.收藏数 })) || 0,
+      点赞:      Number(extractField(r, pubIdx, { id: OUTPUT_FIELDS.点赞数 })) || 0,
+      评论:      Number(extractField(r, pubIdx, { id: OUTPUT_FIELDS.评论数 })) || 0,
+      结论:      extractField(r, pubIdx, { id: OUTPUT_FIELDS.测试结论 }),
+      link:      extractField(r, pubIdx, { id: OUTPUT_FIELDS.发布链接 }),
+      title:     extractField(r, pubIdx, { id: OUTPUT_FIELDS.标题 }),
+    })).filter(r => r.scene || r.angle);
+
+    res.json({ ok: true, scenes: materials.场, angles: materials.货, published });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// 参考笔记列表（供竞品研究台拉取）
+app.get('/api/references/list', (req, res) => {
+  try {
+    const refCfg = CFG.feishu.tables.reference;
+    const { records, idxMap, recordIds } = readTable(refCfg);
+    const all = records.map((r, i) => ({
+      id:      recordIds[i],
+      title:   extractField(r, idxMap, refCfg.fields.标题),
+      tag:     extractField(r, idxMap, refCfg.fields.标签),
+      brand:   extractField(r, idxMap, refCfg.fields.品牌),
+      preview: (extractField(r, idxMap, refCfg.fields.文案内容) || '').slice(0, 80),
+      full:    extractField(r, idxMap, refCfg.fields.文案内容) || '',
+    })).filter(r => r.brand === refCfg.filterBrand);
+    const selectedIds = loadSelectedRefIds();
+    res.json({ ok: true, references: all, selectedIds });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// 竞品分析结果存入场表
+app.post('/api/materials/save-scene', (req, res) => {
+  try {
+    const { name, mood, visual, guide, srcNote } = req.body;
+    if (!name) return res.json({ ok: false, error: '场景名称不能为空' });
+    const f = MATERIALS_CFG.场.fields;
+    const fields = { [MATERIALS_CFG.场.fieldNames.name]: name };
+    if (mood)    fields[MATERIALS_CFG.场.fieldNames.mood]    = mood;
+    if (visual)  fields[MATERIALS_CFG.场.fieldNames.visual]  = visual;
+    if (guide)   fields[MATERIALS_CFG.场.fieldNames.guide]   = guide;
+    if (srcNote) fields[MATERIALS_CFG.场.fieldNames.srcNote] = srcNote;
+    writeMatRecord(MATERIALS_CFG.场.tableId, fields);
+    res.json({ ok: true });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// 竞品分析结果存入货表
+app.post('/api/materials/save-angle', (req, res) => {
+  try {
+    const { name, dim, angle, desc } = req.body;
+    if (!name) return res.json({ ok: false, error: '卖点简称不能为空' });
+    const fields = {
+      [MATERIALS_CFG.货.fieldNames.name]:  name,
+      [MATERIALS_CFG.货.fieldNames.src]:   '竞品提炼',
+    };
+    if (dim)   fields[MATERIALS_CFG.货.fieldNames.dim]   = dim;
+    if (angle) fields[MATERIALS_CFG.货.fieldNames.angle] = angle;
+    if (desc)  fields[MATERIALS_CFG.货.fieldNames.desc]  = desc;
+    writeMatRecord(MATERIALS_CFG.货.tableId, fields);
     res.json({ ok: true });
   } catch (e) {
     res.json({ ok: false, error: e.message });
@@ -1103,6 +1211,33 @@ app.post('/api/batch-archive', (req, res) => {
   }
 });
 
+// ─── 竞品研究台提示词（文件化）──────────────────────────────────────
+const RESEARCH_PROMPTS = {
+  writing: path.join(__dirname, 'research-prompt-writing.md'),
+  selling: path.join(__dirname, 'research-prompt-selling.md'),
+};
+
+function loadResearchPrompt(mode) {
+  return readFileCached(RESEARCH_PROMPTS[mode] || RESEARCH_PROMPTS.writing);
+}
+
+app.get('/api/research-prompt/:mode', (req, res) => {
+  const { mode } = req.params;
+  if (!RESEARCH_PROMPTS[mode]) return res.json({ ok: false, error: '无效 mode' });
+  res.json({ ok: true, content: loadResearchPrompt(mode) });
+});
+
+app.post('/api/research-prompt/:mode', (req, res) => {
+  const { mode } = req.params;
+  if (!RESEARCH_PROMPTS[mode]) return res.json({ ok: false, error: '无效 mode' });
+  const { content } = req.body;
+  if (typeof content !== 'string' || !content.trim()) return res.json({ ok: false, error: '内容不能为空' });
+  const p = RESEARCH_PROMPTS[mode];
+  fs.writeFileSync(p, content, 'utf8');
+  invalidateFile(p);
+  res.json({ ok: true });
+});
+
 // ─── 竞品分析 ──────────────────────────────────────────────────────
 app.post('/api/analyze-competitor', async (req, res) => {
   try {
@@ -1110,6 +1245,7 @@ app.post('/api/analyze-competitor', async (req, res) => {
     if (!notes || !notes.trim()) return res.json({ ok: false, error: '请粘贴竞品笔记' });
 
     const { brand } = CFG;
+    const taskPrompt = loadResearchPrompt('writing');
     const prompt = `你是一个小红书内容策略专家。
 
 ## 品牌背景
@@ -1119,25 +1255,10 @@ ${brand.name}·${brand.category}·定位：${brand.positioning}
 ## 当前撰写模板
 ${currentTemplate || '（未提供）'}
 
-## 竞品笔记（待分析）
+## 待分析笔记
 ${notes}
 
-## 任务
-1. 拆解竞品笔记的核心技法：Hook结构、情绪触发点、卖点呈现、句式节奏、互动设计
-2. 对比我们的撰写模板：找出竞品用了但我们还没用的技法
-3. 给出 3-5 条具体的模板优化建议（附可直接放入模板的示例句式）
-
-输出格式：
-
-### 竞品技法拆解
-[分条列出，每条 50 字内]
-
-### 与现有模板对比
-[2-3 点对比，说清楚差距]
-
-### 模板优化建议
-【建议1】标题 + 说明 + 示例句式
-【建议2】...`;
+${taskPrompt}`;
 
     const rawText = await runClaudeAsync(prompt);
     res.json({ ok: true, analysis: rawText });
@@ -1461,7 +1582,8 @@ app.post('/api/extract-selling-points', async (req, res) => {
       }
     } catch (_) {}
 
-    const prompt = `你是产品文案策略专家，正在为品牌"${brand.name}"（${brand.category}，${brand.positioning}）分析竞品内容。
+    const taskPrompt = loadResearchPrompt('selling');
+    const prompt = `你是产品文案策略专家，正在为品牌"${brand.name}"（${brand.category}，${brand.positioning}）分析笔记内容。
 
 ## 我们产品的真实信息（分析必须以此为准，不得推断与此矛盾的卖点）
 ${productInfo || brand.facts.map(f => `- ${f}`).join('\n')}
@@ -1469,28 +1591,10 @@ ${productInfo || brand.facts.map(f => `- ${f}`).join('\n')}
 ## 我们已有的货卖点库
 ${currentGoods}
 
-## 竞品笔记
+## 待分析笔记
 ${notes}
 
-## 任务
-1. 提取竞品笔记的核心卖点维度和表达角度
-2. 对比我们已有卖点库，找出可借鉴的新维度或更好的描述方式
-3. 给出可直接添加到货卖点库的建议条目（仅适配我们产品真实信息的，不照搬竞品，不推断产品信息中未提及的事实）
-4. 给出可补充到产品信息文档的事实或描述角度
-
-## 输出格式（严格按此格式）
-
-### 竞品卖点拆解
-（分条：维度 · 角度类型 · 表达方式简述，3-6条）
-
-### 建议添加到货表格
-\`\`\`json
-[{"卖点简称":"（6字内）","维度":"0糖健康","角度类型":"场景型","是否主卖点":"否","核心描述":"50字内，说明用此角度怎么写文案"}]
-\`\`\`
-（维度只能是：0糖健康/口感/原料/工艺/价格/情绪；角度类型只能是：场景型/感官型/数据型/情绪型/对比型）
-
-### 建议补充到产品信息文档
-（2-4条可直接粘贴的描述，每条一行）`;
+${taskPrompt}`;
 
     const rawText = await runClaudeAsync(prompt);
 
