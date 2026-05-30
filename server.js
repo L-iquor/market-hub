@@ -85,7 +85,16 @@ const BASE_TEMPLATES = {
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 const staticDir = path.resolve(__dirname);
-app.use(express.static(staticDir, { index: 'index.html' }));
+app.use(express.static(staticDir, {
+  index: 'index.html',
+  etag: false,
+  lastModified: false,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-store');
+    }
+  },
+}));
 app.get('/', (req, res) => res.sendFile(path.join(staticDir, 'index.html')));
 
 // ─── 简单单用户会话状态 ─────────────────────────────────────────────
@@ -1494,6 +1503,113 @@ ${notes}
     res.json({ ok: true, analysis: rawText, suggestions });
   } catch (e) {
     console.error('[extract-selling-points]', e.message);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// ─── 爆款体检 ─────────────────────────────────────────────────────
+app.post('/api/diagnose', async (req, res) => {
+  try {
+    const { title, body, tags } = req.body;
+    if (!body?.trim()) return res.json({ ok: false, error: '正文不能为空' });
+
+    const prompt = `你是犀利但靠谱的小红书内容策略师，正在为「每天烈刻」气泡白酒品牌做笔记体检。所有诊断必须基于具体证据，不能模棱两可。
+
+## 待检笔记
+
+标题：${title || '（未填写）'}
+正文：
+${body}
+话题标签：${tags || '（未填写）'}
+
+---
+
+## 体检标准
+
+### CES 算法权重（核心目标）
+CES = 点赞×1 + 收藏×1 + 评论×4 + 转发×4 + 关注×8
+评论权重是点赞4倍，笔记设计必须偏向能拿评论的结构（争议/求助/二选一），而不只是拿点赞的美图。
+信息密度每增加一个可验证细节，CES+5%。
+
+### 标题诊断维度
+- 前18字必须含关键词（小红书首页只显示前18字）
+- 核心钩子放前10字
+- 16字以内，含1个emoji
+- 降权词：「绝绝子」「保姆级」「一篇看懂」「不看后悔」「震惊」
+
+### AI味检测（2026小红书音画识别模型会降权）
+以下任何一种出现即严重扣分：
+- 万能开头："Hi大家好""相信很多姐妹都""今天给大家分享"
+- 万能总结："希望对你有帮助""以上就是今天的分享"
+- 结构词："Tips:" "划重点！" "敲黑板！"
+- "X又不失X"句式："舒适又不失高级"
+- 关联词密度："不仅…而且…""既…又…"同一篇超过3次
+- 模板化段落：首先/其次/最后三段式，或"你是否也有…烦恼？其实只需要以下几点"
+- Emoji均匀分布：每段开头一个✨✅🎯（AI特征），单篇超过15个
+
+### 具体度诊断
+以下"具体"至少需要3种：
+- 具体数字："第4瓶""喝了3口之后"
+- 具体时间："上周五晚上"
+- 具体地点："三里屯那家烤鱼店"
+- 具体对话："朋友说'这个喝起来不像白酒啊'"
+- 具体感受："第一口气泡在舌尖噼啪完之后，有一点点回甘"
+
+### 互动钩子
+正文里有无触发评论的句子（问句/争议观点/求助/二选一）？
+互动钩子在中段比在结尾效果高，中段钩子更优。
+
+### 品牌每天烈刻专项检查
+- 有无把品牌事实翻译成感官感受（而非直接报数据）？
+- 有无广告腔（"满足您的…""品质保证"）？
+- 有无把0糖0卡说成减肥/医疗功效？
+
+---
+
+## 输出格式（严格按此，不加任何前置语）
+
+### 总评 X/10
+[一句直击要害的总评，不能模棱两可]
+
+### AI味 X/10
+[列出具体证据，引用原文词句，没有就说"未发现"]
+
+### 具体度 X/10
+[列出文中有/缺的具体类型，引用原文]
+
+### 标题 X/10
+[前10字钩子、关键词、降权词，引用原文]
+
+### 互动钩子 X/10
+[有几个、在哪个位置、是否在中段]
+
+### 致命问题 Top3
+1. **[问题]** — [为什么致命，引用具体规则]
+2. **[问题]** — [...]
+3. **[问题]** — [...]
+
+### 改写示范
+**标题改写（3条）：**
+- [改写1]
+- [改写2]
+- [改写3]
+
+**开头3行：**
+[直接写出改后版本]
+
+**加一个中段互动钩子：**
+[在正文第X段后加：...]
+
+### 一句话总结
+[有记忆点的一句话，不要废话]`;
+
+    const rawText = await runClaudeAsync(prompt, 240000);
+    // 只保留从"### 总评"开始的诊断内容，截掉 Claude 可能输出的前置废话
+    const cutIdx = rawText.search(/###\s*总评/);
+    const diagnosis = cutIdx >= 0 ? rawText.slice(cutIdx) : rawText;
+    res.json({ ok: true, diagnosis });
+  } catch (e) {
+    console.error('[diagnose]', e.message);
     res.json({ ok: false, error: e.message });
   }
 });

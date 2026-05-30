@@ -59,15 +59,29 @@ body {
 
 /* ── 撰写台布局 ── */
 .layout {
-  display: grid; grid-template-columns: 320px 1fr;
+  display: grid; grid-template-columns: var(--sidebar-w, 320px) 4px 1fr;
   gap: 0; height: calc(100vh - 128px);
 }
 .sidebar {
-  background: var(--bg2); border-right: 1px solid var(--border);
-  padding: 24px 20px; overflow-y: auto;
+  background: var(--bg2); border-right: none;
+  padding: 24px 20px; overflow-y: scroll;
   display: flex; flex-direction: column; gap: 20px;
 }
+.sidebar::-webkit-scrollbar { width:8px; }
+.sidebar::-webkit-scrollbar-track { background:var(--bg3); }
+.sidebar::-webkit-scrollbar-thumb { background:#555; border-radius:4px; }
+.sidebar::-webkit-scrollbar-thumb:hover { background:#888; }
 .main { padding: 24px 28px; overflow-y: auto; display:flex; flex-direction:column; gap:20px; }
+.resize-handle {
+  width:8px; cursor: col-resize; flex-shrink:0; position:relative;
+  background: var(--bg2); display:flex; align-items:center; justify-content:center;
+}
+.resize-handle::after {
+  content:''; display:block; width:2px; height:40px;
+  background:var(--border2); border-radius:2px; transition:background .15s;
+}
+.resize-handle:hover::after, .resize-handle.dragging::after { background: var(--gold); }
+.resize-handle:hover { background: rgba(212,168,67,.06); }
 
 /* ── 侧栏通用 ── */
 .section-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px; }
@@ -506,22 +520,44 @@ label { font-size:13px; color:var(--muted); }
 /* ── 问号提示徽章 ── */
 .tip {
   display:inline-flex; align-items:center; justify-content:center;
-  width:15px; height:15px; border-radius:50%; font-size:9px; font-weight:700;
-  background:var(--bg3); border:1px solid var(--border2); color:var(--dim);
-  cursor:help; margin-left:5px; vertical-align:middle; position:relative;
+  width:18px; height:18px; border-radius:50%; font-size:11px; font-weight:700;
+  background:#3a3a40; border:1px solid #666; color:#ccc;
+  cursor:pointer; margin-left:5px; vertical-align:middle;
   flex-shrink:0; line-height:1; user-select:none;
 }
-.tip:hover { border-color:var(--gold); color:var(--gold2); }
-.tip::after {
-  content: attr(data-tip);
-  display:none; position:absolute; left:0; bottom:calc(100% + 8px);
-  background:var(--bg4); border:1px solid var(--border2); border-radius:8px;
-  padding:9px 12px; font-size:11px; color:var(--text); line-height:1.7;
-  font-weight:400; width:250px; white-space:normal; z-index:5000;
-  box-shadow:0 4px 20px rgba(0,0,0,.7); pointer-events:none;
+.tip:hover { border-color:var(--gold); color:var(--gold2); background:#44441a; }
+.tip.pinned { border-color:var(--gold); color:var(--gold2); background:#44441a; }
+/* 浮层由 JS 控制，见 #tipFloater */
+#tipFloater {
+  display:none; position:fixed; z-index:9999;
+  background:#2a2a30; border:1px solid var(--gold); border-radius:10px;
+  padding:12px 14px; font-size:13px; color:#f0f0f0; line-height:1.8;
+  width:290px; white-space:normal;
+  box-shadow:0 6px 24px rgba(0,0,0,.9); pointer-events:none;
 }
-.tip.tip-right::after { left:auto; right:0; }
-.tip:hover::after { display:block; }
+
+/* ── 体检面板 ── */
+.diagnose-panel {
+  margin-top:12px; border-radius:var(--radius); overflow:hidden;
+  border:1px solid #a855f7; background:var(--bg2);
+}
+.diagnose-panel-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 16px; background:rgba(168,85,247,.1);
+  border-bottom:1px solid rgba(168,85,247,.3);
+}
+.diagnose-panel-title { font-size:12px; font-weight:600; color:#c084fc; }
+.diagnose-panel-body {
+  padding:16px 20px; font-size:13px; line-height:1.9;
+  white-space:pre-wrap; color:var(--text); max-height:600px; overflow-y:auto;
+}
+.btn-diagnose {
+  padding:5px 14px; border-radius:var(--radius-sm); border:1px solid #a855f7;
+  background:rgba(168,85,247,.12); color:#c084fc; cursor:pointer;
+  font-size:12px; font-weight:500; transition:all .15s; white-space:nowrap;
+}
+.btn-diagnose:hover { background:rgba(168,85,247,.25); }
+.btn-diagnose:disabled { opacity:.4; cursor:not-allowed; }
 
 /* ── 使用说明 Tab ── */
 .guide-wrap { max-width:900px; margin:0 auto; padding:32px 28px 60px; }
@@ -561,6 +597,7 @@ label { font-size:13px; color:var(--muted); }
 </style>
 </head>
 <body>
+<div id="tipFloater"></div>
 
 <!-- 顶栏 -->
 <div class="topbar">
@@ -805,8 +842,8 @@ label { font-size:13px; color:var(--muted); }
 
 <!-- ══ Tab 1: 撰写台 ══ -->
 <div id="tab-write">
-  <div class="layout">
-    <aside class="sidebar">
+  <div class="layout" id="writeLayout">
+    <aside class="sidebar" id="writeSidebar">
       <div>
         <div class="section-label">内容框架 <span class="tip tip-right" data-tip="决定文案叙事结构。A=有明确痛点（辣嗓/甜腻）；B=靠氛围/反差/新奇感；C=受众多疑需配料/工艺背书；D=靠教程干货获收藏">?</span></div>
         <div class="chip-row" id="fwChips">
@@ -914,6 +951,8 @@ label { font-size:13px; color:var(--muted); }
       </div>
     </aside>
 
+    <div class="resize-handle" id="sidebarResizeHandle"></div>
+
     <main class="main" id="mainArea">
       <div class="empty-state" id="emptyState">
         <div class="empty-icon">✍️</div>
@@ -923,9 +962,28 @@ label { font-size:13px; color:var(--muted); }
       <div id="resultArea" style="display:none">
         <div class="result-header">
           <div class="result-title">生成结果</div>
-          <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <span id="spBadge" class="sp-badge"></span>
             <span style="font-size:12px;color:var(--dim)" id="dirBadge"></span>
+            <button class="btn-diagnose" onclick="runDiagnose()" style="font-size:11px;padding:4px 10px">🩺 体检</button>
+          </div>
+        </div>
+
+        <!-- 保存到小红书发布表 -->
+        <div id="publishArea" style="padding:14px 16px;background:var(--bg2);border:1px solid var(--gold);border-radius:var(--radius)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <span style="font-size:12px;color:var(--gold2);font-weight:600">💾 保存到小红书发布表</span>
+            <span id="publishStatus" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <input id="publishTitle" placeholder="标题（从备选标题中选一条，可编辑）" style="font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;width:100%;box-sizing:border-box">
+            <textarea id="publishBody" rows="3" placeholder="正文（自动提取，可编辑）" style="font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;resize:vertical;line-height:1.6;width:100%;box-sizing:border-box"></textarea>
+            <input id="publishTags" placeholder="话题标签，如：#微醺气泡酒 #周末放松" style="font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;width:100%;box-sizing:border-box">
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn btn-primary btn-sm" onclick="saveToPublish()" style="padding:5px 16px">保存到发布表</button>
+              <button class="btn-diagnose" id="diagnoseBtn" onclick="runDiagnose()">🩺 体检</button>
+              <span id="diagnoseStatus" style="font-size:11px;color:var(--muted)"></span>
+            </div>
           </div>
         </div>
 
@@ -939,22 +997,16 @@ label { font-size:13px; color:var(--muted); }
 
         <!-- 备选标题收录 -->
         <div id="titlesPanel" style="margin-top:12px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)">
-          <div style="font-size:12px;color:var(--gold2);font-weight:600;margin-bottom:8px">备选标题 · 收录到灵感库 <span class="tip" data-tip="点 ⭐ 将标题存入飞书「好标题灵感库」。AI 下次生成标题时会参考库中的钩子类型和角度多样性，持续提升点击欲望">?</span></div>
+          <div style="font-size:12px;color:var(--gold2);font-weight:600;margin-bottom:8px">备选标题 · 收录到灵感库</div>
           <div id="titleChips" style="display:flex;flex-direction:column;gap:6px"></div>
         </div>
 
-        <!-- 保存到小红书发布表 -->
-        <div id="publishArea" style="margin-top:12px;padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <span style="font-size:12px;color:var(--gold2);font-weight:600">保存到小红书发布表 <span class="tip" data-tip="写入飞书「小红书自动发布表」。确认标题/正文/话题后点保存，后续由自动化流程处理发布，无需手动操作">?</span></span>
-            <span id="publishStatus" style="font-size:11px;color:var(--muted)"></span>
+        <div id="diagnosePanel" class="diagnose-panel" style="display:none">
+          <div class="diagnose-panel-head">
+            <span class="diagnose-panel-title">🩺 爆款体检报告</span>
+            <button onclick="document.getElementById('diagnosePanel').style.display='none'" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:0 4px">✕</button>
           </div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <input id="publishTitle" placeholder="标题（从备选标题中选一条，可编辑）" style="font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;width:100%;box-sizing:border-box">
-            <textarea id="publishBody" rows="4" placeholder="正文（自动提取，可编辑）" style="font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;resize:vertical;line-height:1.6;width:100%;box-sizing:border-box"></textarea>
-            <input id="publishTags" placeholder="话题标签，如：#微醺气泡酒 #周末放松" style="font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;width:100%;box-sizing:border-box">
-            <button class="btn btn-primary btn-sm" onclick="saveToPublish()" style="align-self:flex-start;padding:5px 16px">保存到发布表</button>
-          </div>
+          <div class="diagnose-panel-body" id="diagnoseResult"></div>
         </div>
 
       </div>
@@ -4060,6 +4112,113 @@ async function aresClearHistory() {
   </div>`;
   aresSetStatus('');
 }
+
+async function runDiagnose() {
+  const title  = (document.getElementById('publishTitle')?.value || '').trim();
+  const body   = (document.getElementById('publishBody')?.value  || '').trim();
+  const tags   = (document.getElementById('publishTags')?.value  || '').trim();
+  if (!body) { showToast('请先填写正文再体检', 'err'); return; }
+  const btn    = document.getElementById('diagnoseBtn');
+  const status = document.getElementById('diagnoseStatus');
+  const panel  = document.getElementById('diagnosePanel');
+  const result = document.getElementById('diagnoseResult');
+  btn.disabled = true;
+  btn.textContent = '🩺 体检中…';
+  status.textContent = '约 1-2 分钟…';
+  panel.style.display = 'none';
+  try {
+    const r = await fetch('/api/diagnose', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title, body, tags }),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    result.innerHTML = r.diagnosis
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/### (.+)/g, '<h3 style="color:#c084fc;font-size:13px;font-weight:700;margin:14px 0 4px">$1</h3>')
+      .replace(/\*\*(.+?)\*\*/g, '<b style="color:#f0f0f0">$1</b>')
+      .replace(/\n/g, '<br>');
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    status.textContent = '';
+  } catch(e) {
+    showToast('体检失败：' + e.message, 'err');
+    status.textContent = '';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🩺 体检';
+  }
+}
+
+// 滚动到保存区
+function scrollToPublish() {
+  document.getElementById('publishArea')?.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// 问号圆圈：点击弹出固定浮层，自动贴边不超出屏幕
+(function() {
+  const floater = document.getElementById('tipFloater');
+  let activeTip = null;
+  document.addEventListener('click', e => {
+    const tip = e.target.closest('.tip');
+    if (tip) {
+      if (activeTip === tip) { // 再点同一个关闭
+        floater.style.display = 'none';
+        tip.classList.remove('pinned');
+        activeTip = null;
+        return;
+      }
+      if (activeTip) activeTip.classList.remove('pinned');
+      activeTip = tip;
+      tip.classList.add('pinned');
+      floater.textContent = tip.dataset.tip || '';
+      floater.style.display = 'block';
+      // 计算位置：默认在圆圈下方
+      const r = tip.getBoundingClientRect();
+      const fw = 290, fh = floater.offsetHeight || 120;
+      let left = r.left;
+      let top  = r.bottom + 8;
+      // 右边超出：靠右对齐
+      if (left + fw > window.innerWidth - 8) left = window.innerWidth - fw - 8;
+      // 左边超出
+      if (left < 8) left = 8;
+      // 下边超出：改到圆圈上方
+      if (top + fh > window.innerHeight - 8) top = r.top - fh - 8;
+      floater.style.left = left + 'px';
+      floater.style.top  = top  + 'px';
+      e.stopPropagation();
+    } else {
+      floater.style.display = 'none';
+      if (activeTip) { activeTip.classList.remove('pinned'); activeTip = null; }
+    }
+  });
+})();
+
+// 侧边栏拖拽调宽
+(function() {
+  const handle  = document.getElementById('sidebarResizeHandle');
+  const sidebar = document.getElementById('writeSidebar');
+  const layout  = document.getElementById('writeLayout');
+  if (!handle || !sidebar || !layout) return;
+  let dragging = false, startX = 0, startW = 0;
+  handle.addEventListener('mousedown', e => {
+    dragging = true; startX = e.clientX; startW = sidebar.offsetWidth;
+    handle.classList.add('dragging');
+    document.body.style.cssText += 'cursor:col-resize!important;user-select:none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const w = Math.max(220, Math.min(560, startW + e.clientX - startX));
+    layout.style.gridTemplateColumns = `${w}px 4px 1fr`;
+  });
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+})();
 
 async function saveToPublish() {
   const title  = (document.getElementById('publishTitle')?.value || '').trim();
