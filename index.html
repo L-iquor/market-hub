@@ -3876,22 +3876,29 @@ function renderMatrix(scenes, angles, published) {
 
 async function prefillWrite(sceneName, angleName) {
   switchTab('write');
-  await loadMaterials();
+  await loadMaterials(true); // force reload to ensure fresh data
 
   const scIdx = matData.场.findIndex(s => s.name === sceneName);
+  const anIdx = matData.货.findIndex(a => a.name === angleName);
+
+  // 场景
   const scSel = document.getElementById('sceneSelect');
   if (scSel && scIdx >= 0) {
     scSel.value = String(scIdx);
     onSceneChange(scSel);
   }
 
-  const anIdx = matData.货.findIndex(a => a.name === angleName);
+  // 货角度：清空旧选择，直接 push
   if (anIdx >= 0) {
     st.spItems = [matData.货[anIdx]];
     renderSpChips();
+    // 同步 sellingPoint 字符串
+    st.sellingPoint = matData.货[anIdx].name;
   }
 
-  showToast(`已预填：${sceneName} × ${angleName}`, 'ok');
+  const scOk  = scIdx  >= 0 ? `✓场景[${scIdx}]` : `✗场景未找到`;
+  const anOk  = anIdx  >= 0 ? `✓角度[${anIdx}]` : `✗角度未找到`;
+  showToast(`${scOk} ${anOk} · ${sceneName}×${angleName}`, 'ok');
 }
 
 // ═══════════════════════════════════════════════════════════════════
