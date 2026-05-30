@@ -1316,11 +1316,29 @@ label { font-size:13px; color:var(--muted); }
         <div class="result-header">
           <div class="result-title">写作方法分析</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-primary btn-sm" onclick="applyAnalysis()">→ 附加到撰写指令</button>
+            <button class="btn btn-primary btn-sm" onclick="showExtractPanel()">✦ 提炼到撰写指令</button>
             <button class="btn btn-sm" onclick="applyAnalysisToProductInfo()">→ 附加到产品信息</button>
             <button class="btn btn-sm" onclick="showSaveSceneForm()" style="border-color:var(--gold);color:var(--gold2)">＋ 存场景到场表</button>
           </div>
         </div>
+
+        <!-- 提炼编辑面板 -->
+        <div id="extractPanel" style="display:none;background:var(--bg2);border:1px solid var(--gold);border-radius:10px;padding:16px;margin-top:8px;display:none;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--gold2)">提炼到撰写指令</div>
+              <div style="font-size:11px;color:var(--dim);margin-top:2px">已自动提取「模板优化建议」，可直接编辑后追加</div>
+            </div>
+            <button class="btn btn-sm" onclick="document.getElementById('extractPanel').style.cssText='display:none'">✕</button>
+          </div>
+          <textarea id="extractTextarea" style="min-height:260px;font-size:12px;line-height:1.7;padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text);outline:none;resize:vertical;width:100%;box-sizing:border-box;font-family:inherit" placeholder="提取中…"></textarea>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn btn-primary btn-sm" onclick="confirmExtractAppend()">✓ 确认追加到撰写指令</button>
+            <button class="btn btn-sm" onclick="document.getElementById('extractPanel').style.cssText='display:none'">取消</button>
+            <span id="extractStatus" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+        </div>
+
         <!-- 存场景表单 -->
         <div id="saveSceneForm" style="display:none;background:var(--bg2);border:1px solid var(--gold);border-radius:8px;padding:12px;margin-top:4px;display:none;flex-direction:column;gap:8px">
           <div style="font-size:12px;font-weight:600;color:var(--gold2)">存入场表</div>
@@ -2586,17 +2604,51 @@ async function addSuggestionToGoods(i) {
   }
 }
 
-async function applyAnalysis() {
+function showExtractPanel() {
   const analysis = document.getElementById('analysisContent').textContent.trim();
   if (!analysis) return;
-  let currentTemplate = '';
-  try { const r = await fetch('/api/writing-prompt').then(x=>x.json()); if (r.ok) currentTemplate = r.content; } catch {}
-  switchTab('write');
-  if (!promptOpen) togglePromptBar();
-  document.getElementById('promptTextarea').value =
-    currentTemplate + '\n\n---\n\n# 竞品分析建议（请阅读后整合到上方规则中，再删除此段）\n\n' + analysis;
-  document.getElementById('promptSaveStatus').textContent = '⚠️ 已附加竞品分析，整合后请保存';
-  showToast('已切换到撰写台，请在撰写指令中整合后保存', 'info');
+
+  // 提取「模板优化建议」段落
+  const match = analysis.match(/##\s*模板优化建议\n([\s\S]*?)(?=\n##|$)/i);
+  const extracted = match
+    ? match[1].trim()
+    : analysis; // fallback: 全文
+
+  const panel = document.getElementById('extractPanel');
+  panel.style.cssText = 'display:flex;flex-direction:column;gap:10px;background:var(--bg2);border:1px solid var(--gold);border-radius:10px;padding:16px;margin-top:8px';
+  document.getElementById('extractTextarea').value = extracted;
+  document.getElementById('extractStatus').textContent = '';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function confirmExtractAppend() {
+  const text = document.getElementById('extractTextarea').value.trim();
+  const status = document.getElementById('extractStatus');
+  if (!text) { status.textContent = '内容不能为空'; return; }
+  status.textContent = '追加中…';
+  try {
+    // 读取当前 writing-instructions.md 内容
+    const cur = await fetch('/api/writing-prompt').then(x=>x.json());
+    const current = cur.ok ? cur.content : '';
+
+    // 追加（带分隔线和来源注释）
+    const appended = current.trim() + '\n\n---\n\n## 竞品提炼·写作技法（' +
+      new Date().toLocaleDateString('zh-CN') + '）\n\n' + text;
+
+    const r = await fetch('/api/writing-prompt', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ content: appended }),
+    }).then(x=>x.json());
+
+    if (!r.ok) throw new Error(r.error);
+    status.textContent = '✓ 已追加';
+    showToast('✓ 已追加到撰写指令，下次生成自动生效', 'ok');
+    setTimeout(() => {
+      document.getElementById('extractPanel').style.cssText = 'display:none';
+    }, 1500);
+  } catch(e) {
+    status.textContent = '失败：' + e.message;
+  }
 }
 
 async function applyAnalysisToProductInfo() {
