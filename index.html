@@ -1358,11 +1358,36 @@ label { font-size:13px; color:var(--muted); }
       <div id="sellingResult" style="display:none;flex-direction:column;gap:16px">
         <div class="result-header">
           <div class="result-title">卖点表达提取</div>
-          <button class="btn btn-sm" onclick="applySellingToProductInfo()">→ 附加到产品信息文档</button>
+          <button class="btn btn-sm" onclick="showSellingProductPanel()" style="border-color:var(--gold);color:var(--gold2)">✦ 提炼到产品信息</button>
         </div>
         <div class="analysis-result" id="sellingAnalysisContent" style="margin-bottom:4px"></div>
+
+        <!-- 产品信息提炼面板 -->
+        <div id="sellingProductPanel" style="display:none;background:var(--bg2);border:1px solid var(--gold);border-radius:10px;padding:16px;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--gold2)">提炼到产品信息文档</div>
+              <div style="font-size:11px;color:var(--dim);margin-top:2px">已提取「建议补充到产品信息文档」部分，可编辑后追加</div>
+            </div>
+            <button class="btn btn-sm" onclick="document.getElementById('sellingProductPanel').style.display='none'">✕</button>
+          </div>
+          <textarea id="sellingProductTextarea" style="min-height:180px;font-size:12px;line-height:1.7;padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text);outline:none;resize:vertical;width:100%;box-sizing:border-box;font-family:inherit"></textarea>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn btn-primary btn-sm" onclick="confirmSellingProductAppend()">✓ 确认追加到产品信息</button>
+            <button class="btn btn-sm" onclick="document.getElementById('sellingProductPanel').style.display='none'">取消</button>
+            <span id="sellingProductStatus" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+        </div>
+
+        <!-- 货表格建议 -->
         <div>
-          <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--gold2)">建议添加到货表格</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-size:13px;font-weight:600;color:var(--gold2)">建议添加到货表格</div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span style="font-size:11px;color:var(--dim)">仅新增行，不改现有数据</span>
+              <button class="btn btn-sm" id="addAllBtn" onclick="addAllSuggestions()" style="border-color:var(--gold);color:var(--gold2)">全部添加</button>
+            </div>
+          </div>
           <div id="sellingSuggestions" style="display:flex;flex-direction:column;gap:8px"></div>
         </div>
       </div>
@@ -2547,18 +2572,45 @@ async function analyzeSellingPoints(notes) {
     // 渲染建议卖点卡片
     const suggestionsEl = document.getElementById('sellingSuggestions');
     if (res.suggestions && res.suggestions.length > 0) {
+      const dims   = ['0糖健康','口感','原料','工艺','价格','情绪'];
+      const angles = ['场景型','感官型','数据型','情绪型','对比型'];
+      const dimOpts   = dims.map(d => `<option>${d}</option>`).join('');
+      const angleOpts = angles.map(a => `<option>${a}</option>`).join('');
       suggestionsEl.innerHTML = res.suggestions.map((s, i) => `
-        <div class="mat-card" style="border-color:var(--border2)">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div class="mat-card" style="border-color:var(--border2)" id="sgCard-${i}">
+          <!-- 展示行 -->
+          <div class="sg-view-row" style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
             <div style="flex:1">
-              <div class="mat-card-name">${escHtml(s['卖点简称']||'')}</div>
-              ${s['维度'] ? `<span class="mat-card-tag" style="color:var(--gold2)">${escHtml(s['维度'])}</span>` : ''}
+              <div class="mat-card-name" style="margin-bottom:4px">${escHtml(s['卖点简称']||'')}</div>
+              ${s['维度']     ? `<span class="mat-card-tag" style="color:var(--gold2)">${escHtml(s['维度'])}</span>` : ''}
               ${s['角度类型'] ? `<span class="mat-card-tag">${escHtml(s['角度类型'])}</span>` : ''}
-              ${s['是否主卖点']==='是' ? '<span class="mat-card-tag" style="color:var(--green)">主</span>' : ''}
+              ${s['是否主卖点']==='是' ? '<span class="mat-card-tag" style="color:var(--green)">主卖点</span>' : ''}
             </div>
-            <button class="btn btn-primary btn-sm" style="flex-shrink:0;font-size:10px;padding:3px 8px" onclick="addSuggestionToGoods(${i})" id="addGoodsBtn-${i}">添加到货表格</button>
+            <div style="display:flex;gap:4px;flex-shrink:0">
+              <button class="btn btn-sm" style="font-size:10px;padding:3px 8px" onclick="toggleSgEdit(${i})">✏️ 改</button>
+              <button class="btn btn-primary btn-sm" style="font-size:10px;padding:3px 8px" onclick="addSuggestionToGoods(${i})" id="addGoodsBtn-${i}">＋ 添加</button>
+            </div>
           </div>
-          ${s['核心描述'] ? `<div class="mat-card-desc" style="margin-top:6px">${escHtml(s['核心描述'])}</div>` : ''}
+          ${s['核心描述'] ? `<div class="mat-card-desc sg-view-row" style="margin-top:6px">${escHtml(s['核心描述'])}</div>` : ''}
+          <!-- 编辑区（隐藏） -->
+          <div class="sg-edit-row" id="sgEdit-${i}" style="display:none;flex-direction:column;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+            <input id="sgName-${i}" value="${escHtml(s['卖点简称']||'')}" placeholder="卖点简称（6字内）"
+              style="font-size:12px;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);outline:none;width:100%;box-sizing:border-box">
+            <div style="display:flex;gap:6px">
+              <select id="sgDim-${i}" style="flex:1;font-size:12px;padding:4px 6px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text)">
+                ${dims.map(d=>`<option${d===s['维度']?' selected':''}>${d}</option>`).join('')}
+              </select>
+              <select id="sgAngle-${i}" style="flex:1;font-size:12px;padding:4px 6px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text)">
+                ${angles.map(a=>`<option${a===s['角度类型']?' selected':''}>${a}</option>`).join('')}
+              </select>
+            </div>
+            <textarea id="sgDesc-${i}" placeholder="核心描述（50字内）"
+              style="font-size:12px;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);outline:none;resize:vertical;width:100%;box-sizing:border-box;min-height:60px;line-height:1.6">${escHtml(s['核心描述']||'')}</textarea>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-primary btn-sm" onclick="confirmSgAdd(${i})" id="confirmSgBtn-${i}">✓ 确认添加</button>
+              <button class="btn btn-sm" onclick="toggleSgEdit(${i})">取消</button>
+            </div>
+          </div>
         </div>`).join('');
       window._sellingSuggestions = res.suggestions;
     } else {
@@ -2664,20 +2716,92 @@ async function applyAnalysisToProductInfo() {
   showToast('已附加到产品信息，请整合后保存', 'info');
 }
 
-async function applySellingToProductInfo() {
+function toggleSgEdit(i) {
+  const editRow = document.getElementById(`sgEdit-${i}`);
+  const isOpen  = editRow.style.display !== 'none';
+  document.querySelectorAll('[id^="sgEdit-"]').forEach(el => { el.style.display = 'none'; });
+  document.querySelectorAll('.sg-view-row').forEach(el => { el.style.display = ''; });
+  if (!isOpen) {
+    editRow.style.display = 'flex';
+    document.getElementById(`sgCard-${i}`).querySelectorAll('.sg-view-row').forEach(el => { el.style.display = 'none'; });
+  }
+}
+
+async function confirmSgAdd(i) {
+  const btn  = document.getElementById(`confirmSgBtn-${i}`);
+  const name = document.getElementById(`sgName-${i}`)?.value.trim();
+  const dim  = document.getElementById(`sgDim-${i}`)?.value;
+  const ang  = document.getElementById(`sgAngle-${i}`)?.value;
+  const desc = document.getElementById(`sgDesc-${i}`)?.value.trim();
+  if (!name) { showToast('卖点简称不能为空', 'err'); return; }
+  btn.disabled = true; btn.textContent = '添加中…';
+  try {
+    const fields = { '卖点简称': name, '维度': dim, '角度类型': ang, '核心描述': desc, '来源': '竞品提炼' };
+    Object.keys(fields).forEach(k => { if (!fields[k]) delete fields[k]; });
+    const res = await fetch('/api/materials/add', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type: '货', fields }),
+    }).then(x => x.json());
+    if (!res.ok) throw new Error(res.error);
+    const card = document.getElementById(`sgCard-${i}`);
+    card.style.opacity = '.5'; card.style.pointerEvents = 'none';
+    card.querySelector(`#sgEdit-${i}`).innerHTML = `<div style="font-size:12px;color:var(--green);padding:6px 0">✓ 已添加「${name}」</div>`;
+    matLoaded = false;
+    showToast(`✓「${name}」已添加到货表格`, 'ok');
+  } catch(e) { btn.disabled = false; btn.textContent = '✓ 确认添加'; showToast('添加失败：' + e.message, 'err'); }
+}
+
+async function addAllSuggestions() {
+  const suggestions = window._sellingSuggestions || [];
+  if (!suggestions.length) return;
+  const btn = document.getElementById('addAllBtn');
+  btn.disabled = true; btn.textContent = '添加中…';
+  let ok = 0, fail = 0;
+  for (let i = 0; i < suggestions.length; i++) {
+    const addBtn = document.getElementById(`addGoodsBtn-${i}`);
+    if (addBtn?.textContent.includes('已添加')) { ok++; continue; }
+    try { await addSuggestionToGoods(i); ok++; } catch { fail++; }
+    await new Promise(r => setTimeout(r, 400));
+  }
+  btn.disabled = false; btn.textContent = '全部添加';
+  showToast(`✓ 已添加 ${ok} 条${fail ? `, ${fail} 条失败` : ''}`, ok > 0 ? 'ok' : 'err');
+  matLoaded = false;
+}
+
+function showSellingProductPanel() {
   const text = document.getElementById('sellingAnalysisContent').textContent.trim();
-  if (!text) return;
-  // 提取"建议补充到产品信息文档"段落
-  const match = text.match(/###\s*建议补充到产品信息文档\n([\s\S]*?)(?=###|$)/);
-  const excerpt = match ? match[1].trim() : text;
-  let current = '';
-  try { const r = await fetch('/api/product-info').then(x=>x.json()); if (r.ok) current = r.content; } catch {}
-  switchTab('write');
-  if (!productInfoOpen) toggleProductInfoBar();
-  document.getElementById('productInfoTextarea').value =
-    current + '\n\n---\n\n# 竞品卖点提炼补充（整合后请删除此段）\n\n' + excerpt;
-  document.getElementById('productInfoStatus').textContent = '⚠️ 已附加建议，整合后请保存';
-  showToast('已附加到产品信息，请整合后保存', 'info');
+  const match = text.match(/###\s*建议补充到产品信息文档[\s\S]*?\n([\s\S]*?)(?=\n###|$)/i);
+  const extracted = match ? match[1].trim() : text;
+  const panel = document.getElementById('sellingProductPanel');
+  panel.style.display = 'flex'; panel.style.flexDirection = 'column';
+  document.getElementById('sellingProductTextarea').value = extracted;
+  document.getElementById('sellingProductStatus').textContent = '';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function confirmSellingProductAppend() {
+  const text   = document.getElementById('sellingProductTextarea').value.trim();
+  const status = document.getElementById('sellingProductStatus');
+  if (!text) { status.textContent = '内容不能为空'; return; }
+  status.textContent = '追加中…';
+  try {
+    const cur = await fetch('/api/product-info').then(x=>x.json());
+    const current = cur.ok ? cur.content : '';
+    const appended = current.trim() + '\n\n---\n\n## 竞品提炼·产品信息（' +
+      new Date().toLocaleDateString('zh-CN') + '）\n\n' + text;
+    const r = await fetch('/api/product-info', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ content: appended }),
+    }).then(x=>x.json());
+    if (!r.ok) throw new Error(r.error);
+    status.textContent = '✓ 已追加';
+    showToast('✓ 已追加到产品信息文档', 'ok');
+    setTimeout(() => { document.getElementById('sellingProductPanel').style.display = 'none'; }, 1500);
+  } catch(e) { status.textContent = '失败：' + e.message; }
+}
+
+async function applySellingToProductInfo() {
+  showSellingProductPanel();
 }
 
 // ═══════════════════════════════════════════════════════════════════
