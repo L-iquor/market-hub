@@ -3855,11 +3855,11 @@ function renderMatrix(scenes, angles, published) {
       const key  = `${sc.name||''}||${an.name||''}`;
       const cell = agg[key];
       if (!cell) {
-        html += `<td><div class="mx-cell mx-cell-empty" onclick="prefillWrite(${JSON.stringify(sc.name)},${JSON.stringify(an.name)})"><span style="font-size:10px;color:var(--dim)">未测试</span></div></td>`;
+        html += `<td><div class="mx-cell mx-cell-empty" data-scene="${escHtml(sc.name)}" data-angle="${escHtml(an.name)}" onclick="prefillWrite(this.dataset.scene,this.dataset.angle)"><span style="font-size:10px;color:var(--dim)">未测试</span></div></td>`;
       } else {
-        const cls  = cell.count >= 3 ? 'mx-cell-high' : 'mx-cell-low';
+        const cls   = cell.count >= 3 ? 'mx-cell-high' : 'mx-cell-low';
         const title = cell.records.map(r => `${r.title||r.link||'无标题'} CES:${(r.收藏||0)+(r.点赞||0)+(r.评论||0)*4}`).join('\n');
-        html += `<td title="${escHtml(title)}"><div class="mx-cell ${cls}" onclick="prefillWrite(${JSON.stringify(sc.name)},${JSON.stringify(an.name)})">
+        html += `<td title="${escHtml(title)}"><div class="mx-cell ${cls}" data-scene="${escHtml(sc.name)}" data-angle="${escHtml(an.name)}" onclick="prefillWrite(this.dataset.scene,this.dataset.angle)">
           <div class="mx-cell-count">${cell.count} 篇</div>
           <div class="mx-cell-ces">最高 CES ${cell.cesMax}</div>
         </div></td>`;
