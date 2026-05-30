@@ -729,6 +729,55 @@ label { font-size:13px; color:var(--muted); }
         </div>
       </div>
 
+      <!-- 测试矩阵 -->
+      <div class="guide-section">
+        <h2>🗺️ 测试矩阵</h2>
+        <div class="guide-cards">
+          <div class="guide-card">
+            <div class="guide-card-title">怎么看</div>
+            <div class="guide-card-body">
+              <b>行 = 场景，列 = 货角度</b>，每格是一个内容测试方向。<br>
+              灰格 = 从未发布 · 浅金 = 1-2篇 · 深金 = 3篇以上（格子内显示最高CES）
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">怎么用</div>
+            <div class="guide-card-body">
+              点击任意格子 → 自动跳到撰写台，场景和卖点已预填好，直接生成即可。<br>
+              <b>关键：</b>撰写台侧边栏的「场景」和「卖点」选好后保存，才会计入矩阵统计。
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">数据从哪来</div>
+            <div class="guide-card-body">
+              场景来自飞书「场·使用场景表」，货角度来自飞书「货·卖点表」。<br>
+              竞品分析后点「存场景到场表」可直接新增场景行。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 竞品研究台 -->
+      <div class="guide-section">
+        <h2>🔍 竞品研究台</h2>
+        <div class="guide-cards">
+          <div class="guide-card">
+            <div class="guide-card-title">从飞书拉取笔记（推荐）</div>
+            <div class="guide-card-body">
+              ① 点「🪁 从飞书拉取」→ 点「拉取」→ 勾选要分析的笔记（5-10篇为佳）<br>
+              ② 选择分析模式（写作方法 or 卖点提取）→ 点「开始分析」<br>
+              ③ 结果出来后：<b>写作方法</b>可点「存场景到场表」新建场景；<b>卖点提取</b>可点「添加到货表格」直接写入飞书
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">手动粘贴</div>
+            <div class="guide-card-body">
+              直接粘贴笔记全文，多篇用空行分隔。适合临时分析不在飞书库里的笔记。
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 批量生产 -->
       <div class="guide-section">
         <h2>📋 批量生产</h2>
@@ -774,7 +823,7 @@ label { font-size:13px; color:var(--muted); }
       <!-- 卖点选择（最多3个） -->
       <div>
         <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
-          <span>卖点 <span class="tip tip-right" data-tip="主推的产品特点，最多3个。越具体越好，不要堆砌所有卖点——聚焦1-2个让文案更有力。数据来自飞书「货·品类与卖点表」">?</span></span>
+          <span style="display:flex;align-items:center;gap:6px">卖点 <span class="tip tip-right" data-tip="主推的产品特点，最多3个。越具体越好，不要堆砌所有卖点——聚焦1-2个让文案更有力。数据来自飞书「货·品类与卖点表」">?</span><span style="font-size:9px;color:var(--gold2);background:rgba(212,168,67,.15);border:1px solid rgba(212,168,67,.3);border-radius:4px;padding:1px 5px;font-weight:500">→ 矩阵</span></span>
           <span style="font-size:10px;color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">最多3个</span>
         </div>
         <div id="spChips" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
@@ -786,7 +835,7 @@ label { font-size:13px; color:var(--muted); }
 
       <!-- 场景选择（可选） -->
       <div>
-        <div class="section-label">场景 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span> <span class="tip tip-right" data-tip="给文案一个具体使用场景，让读者更容易代入。例：下班独酌、姐妹聚会、周末放松。数据来自飞书「场·使用场景表」">?</span></div>
+        <div class="section-label" style="display:flex;align-items:center;gap:6px">场景 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span> <span class="tip tip-right" data-tip="给文案一个具体使用场景，让读者更容易代入。例：下班独酌、姐妹聚会、周末放松。数据来自飞书「场·使用场景表」">?</span><span style="font-size:9px;color:var(--gold2);background:rgba(212,168,67,.15);border:1px solid rgba(212,168,67,.3);border-radius:4px;padding:1px 5px;font-weight:500">→ 矩阵</span></div>
         <select class="sp-select" id="sceneSelect" onchange="onSceneChange(this)">
           <option value="">不指定场景</option>
         </select>
@@ -3825,22 +3874,23 @@ function renderMatrix(scenes, angles, published) {
   grid.style.display = 'block';
 }
 
-function prefillWrite(sceneName, angleName) {
+async function prefillWrite(sceneName, angleName) {
   switchTab('write');
-  // 选中场景
+  await loadMaterials();
+
+  const scIdx = matData.场.findIndex(s => s.name === sceneName);
   const scSel = document.getElementById('sceneSelect');
-  if (scSel) {
-    for (const opt of scSel.options) {
-      if (opt.textContent.trim() === sceneName) { scSel.value = opt.value; scSel.dispatchEvent(new Event('change')); break; }
-    }
+  if (scSel && scIdx >= 0) {
+    scSel.value = String(scIdx);
+    onSceneChange(scSel);
   }
-  // 选中货角度
-  const spSel = document.getElementById('spItemSelect');
-  if (spSel) {
-    for (const opt of spSel.options) {
-      if (opt.textContent.includes(angleName)) { spSel.value = opt.value; spSel.dispatchEvent(new Event('change')); break; }
-    }
+
+  const anIdx = matData.货.findIndex(a => a.name === angleName);
+  if (anIdx >= 0) {
+    st.spItems = [matData.货[anIdx]];
+    renderSpChips();
   }
+
   showToast(`已预填：${sceneName} × ${angleName}`, 'ok');
 }
 

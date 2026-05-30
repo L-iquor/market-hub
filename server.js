@@ -1260,7 +1260,7 @@ ${notes}
 
 ${taskPrompt}`;
 
-    const rawText = await runClaudeAsync(prompt);
+    const rawText = await runClaudeAsync(prompt, 180000);
     res.json({ ok: true, analysis: rawText });
   } catch (e) {
     res.json({ ok: false, error: e.message });
@@ -1596,7 +1596,7 @@ ${notes}
 
 ${taskPrompt}`;
 
-    const rawText = await runClaudeAsync(prompt);
+    const rawText = await runClaudeAsync(prompt, 180000);
 
     let suggestions = [];
     const jsonMatch = rawText.match(/```json\n([\s\S]*?)\n```/);
