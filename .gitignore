@@ -24,3 +24,6 @@ _test.txt
 
 # 临时文件
 *.log
+
+# Chrome 浏览器数据（小红书自动化用，不上传）
+.chrome/
