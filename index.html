@@ -918,7 +918,25 @@ label { font-size:13px; color:var(--muted); }
       <!-- 补充方向（可选） -->
       <div>
         <div class="section-label">补充方向 <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">（可选）</span> <span class="tip tip-right" data-tip="临时注入创作方向：节日/季节/特殊场景/调性。例：夏天、姐妹局、反差感。每次生成前填，不影响固定配置，下次生成不保留">?</span></div>
-        <input type="text" class="dir-input" id="dirCustom" placeholder="例：夏天、姐妹局、反差感…"></div>
+        <input type="text" class="dir-input" id="dirCustom" placeholder="例：夏天、姐妹局、反差感…">
+      </div>
+
+      <!-- 体检注意事项（从体检报告一键提炼，生成时注入） -->
+      <div>
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none" onclick="toggleCautionPanel()">
+          <span>体检注意事项 <span id="cautionBadge" style="display:none;background:rgba(248,113,113,.2);border:1px solid rgba(248,113,113,.4);border-radius:10px;padding:1px 7px;font-size:10px;font-weight:400;color:#f87171;margin-left:4px">有</span></span>
+          <span id="cautionChevron" style="color:var(--dim);font-size:11px;transition:transform .2s">▶</span>
+        </div>
+        <div id="cautionPanel" style="display:none;margin-top:8px">
+          <textarea id="cautionNote" rows="4"
+            placeholder="从体检报告提炼的问题，下次生成时会作为「特别注意」注入 prompt。&#10;可手动编辑，清空则不注入。"
+            style="width:100%;box-sizing:border-box;font-size:12px;padding:8px 10px;background:var(--bg3);border:1px solid rgba(248,113,113,.3);border-radius:var(--radius-sm);color:var(--text);outline:none;resize:vertical;line-height:1.6;font-family:inherit"
+            oninput="onCautionEdit()"></textarea>
+          <div style="display:flex;justify-content:flex-end;margin-top:4px">
+            <button class="btn btn-sm" style="font-size:10px;color:var(--dim)" onclick="clearCaution()">清空</button>
+          </div>
+        </div>
+      </div>
 
       <div style="display:flex;gap:8px;margin-bottom:4px">
         <button class="btn-generate" id="generateBtn" onclick="generate(false)" style="flex:1">生成文案</button>
@@ -1005,6 +1023,10 @@ label { font-size:13px; color:var(--muted); }
             <button onclick="document.getElementById('diagnosePanel').style.display='none'" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:0 4px">✕</button>
           </div>
           <div class="diagnose-panel-body" id="diagnoseResult"></div>
+          <div id="diagExtractBar" style="display:none;padding:10px 16px;border-top:1px solid rgba(168,85,247,.2);display:none;align-items:center;justify-content:space-between;gap:8px">
+            <span style="font-size:11px;color:var(--dim)">把「致命问题」提炼到下次生成的注意事项</span>
+            <button class="btn btn-sm" onclick="extractDiagnosisNote()" style="border-color:rgba(168,85,247,.5);color:#c084fc;white-space:nowrap">→ 注入下次生成</button>
+          </div>
         </div>
 
       </div>
@@ -2143,6 +2165,7 @@ async function generate() {
         persona: st.persona || null,
         scene: st.scene || null,
         refArticle: st.refArticle || null,
+        cautionNote: (document.getElementById('cautionNote')?.value || '').trim() || null,
       }),
     }).then(x => x.json());
 
@@ -4259,6 +4282,7 @@ async function runDiagnose() {
       .replace(/\*\*(.+?)\*\*/g, '<b style="color:#f0f0f0">$1</b>')
       .replace(/\n/g, '<br>');
     panel.style.display = 'block';
+    document.getElementById('diagExtractBar').style.display = 'flex';
     panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     status.textContent = '';
   } catch(e) {
@@ -4268,6 +4292,41 @@ async function runDiagnose() {
     btn.disabled = false;
     btn.textContent = '🩺 体检';
   }
+}
+
+function toggleCautionPanel() {
+  const panel   = document.getElementById('cautionPanel');
+  const chevron = document.getElementById('cautionChevron');
+  const open    = panel.style.display !== 'none';
+  panel.style.display    = open ? 'none' : 'block';
+  chevron.style.transform = open ? '' : 'rotate(90deg)';
+}
+
+function onCautionEdit() {
+  const val = (document.getElementById('cautionNote')?.value || '').trim();
+  document.getElementById('cautionBadge').style.display = val ? 'inline' : 'none';
+}
+
+function clearCaution() {
+  document.getElementById('cautionNote').value = '';
+  document.getElementById('cautionBadge').style.display = 'none';
+}
+
+function extractDiagnosisNote() {
+  const raw   = document.getElementById('diagnoseResult').innerText || '';
+  // 提取「致命问题 Top3」段落
+  const match = raw.match(/致命问题[^\n]*\n([\s\S]*?)(?=\n###|\n[一二三四五六七八九十]|$)/i);
+  const note  = match ? match[1].trim() : raw.split('\n').slice(0, 6).join('\n').trim();
+
+  const ta = document.getElementById('cautionNote');
+  ta.value = note;
+  onCautionEdit();
+
+  // 展开注意事项面板
+  const panel = document.getElementById('cautionPanel');
+  if (panel.style.display === 'none' || !panel.style.display) toggleCautionPanel();
+  ta.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  showToast('✓ 已提炼到「体检注意事项」，下次生成自动带入', 'ok');
 }
 
 // 滚动到保存区
