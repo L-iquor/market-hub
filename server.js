@@ -487,7 +487,7 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
 
   // ③-1 框架参考示例（该框架的标杆正文，学习节奏/句式/收口）
   const frameworkExampleBlock = baseTemplate?.example
-    ? `## 框架${framework}参考示例（展示该框架下的一种切入方式，仅供节奏/句式/感官描写参考。内容必须完全原创，切入角度不必局限于此例）\n\n${baseTemplate.example}`
+    ? `## 框架${framework}参考示例（质量基准）\n\n以下是该框架的标杆正文。生成时必须对标此例的：正文字数（约400字）、段落密度、具体细节数量、感官描写深度、收口力度。切入角度可以不同，但质量和字数不得低于此例。\n\n${baseTemplate.example}`
     : '';
 
   // ③a 仿写参考范文（用户在参考文案库中选择后注入）
@@ -576,7 +576,7 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
 标题3：（含emoji，16字以内，好奇心/测评/新鲜感角度）
 
 ### 正文
-（150-250字。KOC口吻，有具体生活细节，不打广告腔，至少锚定1条品牌事实。）
+（350-500字。KOC口吻，有具体生活细节，不打广告腔，至少锚定2条品牌事实。字数不足350字视为不合格。）
 
 ### 评论区话术（3条）
 1. （触发讨论）
