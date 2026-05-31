@@ -485,10 +485,9 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
       : `## 框架${framework}写作逻辑\n\n${baseTemplate.body}`
     : '';
 
-  // ③-1 框架参考示例（该框架的标杆正文，学习节奏/句式/收口）
-  const frameworkExampleBlock = baseTemplate?.example
-    ? `## 框架${framework}参考示例（信息密度基准）\n\n以下是该框架的参考正文，展示了该框架下合适的展开深度、段落节奏和具体度。切入角度可以不同，但展开的充分程度和细节密度以此为参照。\n\n${baseTemplate.example}`
-    : '';
+  // ③-1 框架参考示例：不注入 prompt，避免 Claude 直接复现模板
+  // base-overrides.json 的 example 只用于人工参考，不参与生成
+  const frameworkExampleBlock = '';
 
   // ③a 仿写参考范文（用户在参考文案库中选择后注入）
   const imitBlock = refArticle
