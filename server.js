@@ -421,7 +421,7 @@ function loadTemplates() {
 }
 
 // ─── 构建 Claude Prompt ──────────────────────────────────────────────
-function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null, persona = null, scene = null, refArticle = null, spItems = [], cautionNote = null) {
+function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null, persona = null, scene = null, refArticle = null, spItems = []) {
   const { brand } = CFG;
   const fwLabel = FRAMEWORK_LABELS[framework] || '场景种草型';
 
@@ -589,10 +589,6 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
 ### 推断依据
 （框架选择理由、目标人群、主次卖点逻辑）`);
 
-  const cautionBlock = cautionNote
-    ? `## ⚠️ 本次特别注意（上次体检发现的问题，务必避免）\n\n${cautionNote}`
-    : null;
-
   const modules = [
     { name: '① 撰写规范', key: 'writing', content: systemBlock },
     { name: '② 品牌事实', key: 'brand',   content: brandBlock },
@@ -604,7 +600,6 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
     ...(!imitBlock && frameworkExampleBlock ? [{ name: '⑦ 框架参考示例（基础模板 example）', key: `fw-example-${framework}`, content: frameworkExampleBlock }] : []),
     ...(subTemplateBlock ? [{ name: '⑧ 风格子模板',      content: subTemplateBlock }] : []),
     { name: '⑨ 飞书学习材料', content: learningBlock },
-    ...(cautionBlock ? [{ name: '⚠️ 体检注意事项', key: 'caution', content: cautionBlock }] : []),
     { name: '⑩ 当前任务',    content: taskBlock },
     { name: '⑪ 输出格式', key: 'output-single', content: outputBlock },
   ];
@@ -838,7 +833,7 @@ function runClaudeAsync(prompt, timeoutMs = 90000) {
 // 生成文案
 app.post('/api/generate', async (req, res) => {
   try {
-    const { framework = 'B', direction, sellingPoint, spItems = [], subTemplate = null, persona = null, scene = null, refArticle = null, rawPrompt = null, cautionNote = null } = req.body;
+    const { framework = 'B', direction, sellingPoint, spItems = [], subTemplate = null, persona = null, scene = null, refArticle = null, rawPrompt = null } = req.body;
     if (!sellingPoint && !rawPrompt) return res.json({ ok: false, error: '请选择或填写主推卖点' });
 
     let prompt;
@@ -851,7 +846,7 @@ app.post('/api/generate', async (req, res) => {
       // 正常流程：从飞书拉取上下文并组装 prompt
       try { ctx = await fetchFeishuContext(); }
       catch (e) { console.error('[Context fetch]', e.message); }
-      ({ prompt } = buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems, cautionNote));
+      ({ prompt } = buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems));
     }
 
     // 调用本地 claude CLI（使用 Pro 账户额度，无需 API key）
