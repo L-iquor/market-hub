@@ -278,6 +278,27 @@ label { font-size:13px; color:var(--muted); }
 .mat-add-form textarea { min-height: 70px; line-height: 1.6; resize: none; }
 .mat-dim-group { margin-bottom: 4px; }
 .mat-dim-label { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: .6px; padding: 8px 0 4px; }
+.angle-panel { background: rgba(212,168,67,.06); border: 1px solid rgba(212,168,67,.25); border-radius: var(--radius-sm); padding: 8px 10px; }
+.angle-name { font-size: 13px; font-weight: 600; color: var(--gold2); }
+.angle-desc { font-size: 11px; color: var(--muted); line-height: 1.5; margin-top: 3px; }
+.angle-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.angle-chip { font-size: 10px; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--border2); background: var(--bg3); color: var(--muted); cursor: pointer; transition: all .15s; }
+.angle-chip:hover { border-color: var(--gold); color: var(--gold2); }
+.angle-chip.active { background: rgba(212,168,67,.2); border-color: var(--gold); color: var(--gold2); font-weight: 600; }
+.angle-chip.special { border-style: dashed; border-color: rgba(160,120,220,.5); color: rgba(180,140,240,.8); }
+.angle-chip.special:hover { border-color: rgba(160,120,220,.9); color: rgba(180,140,240,1); }
+.angle-chip.special.active { background: rgba(160,120,220,.18); border-color: rgba(160,120,220,.9); color: rgba(200,170,255,1); }
+.angle-divider { display: flex; align-items: center; gap: 4px; width: 100%; margin: 4px 0 2px; color: var(--muted); font-size: 9px; opacity: .5; }
+.angle-divider::before, .angle-divider::after { content:''; flex:1; height:1px; background: var(--border2); }
+.mat-dream-result {
+  margin-top: 8px; padding: 10px 12px;
+  background: rgba(212,168,67,.07); border: 1px solid rgba(212,168,67,.3);
+  border-radius: var(--radius-sm); font-size: 11px; line-height: 1.7;
+  color: var(--text); display: none;
+}
+.mat-dream-result .dream-label { font-size: 10px; color: var(--gold2); margin-bottom: 4px; font-weight: 600; letter-spacing: .5px; }
+.mat-dream-result .dream-text { color: var(--text); white-space: pre-wrap; }
+.mat-dream-result .dream-actions { display: flex; gap: 6px; margin-top: 8px; }
 .mat-edit-input {
   width: 100%; padding: 6px 9px;
   background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius-sm);
@@ -885,6 +906,24 @@ label { font-size:13px; color:var(--muted); }
         <select class="sp-select" id="sceneSelect" onchange="onSceneChange(this)">
           <option value="">不指定场景</option>
         </select>
+      </div>
+
+      <!-- 切入方式（系统预选，可手动干预） -->
+      <div>
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span>切入方式 <span class="tip tip-right" data-tip="系统从框架的多种切入角度中预选，每次生成后自动轮换，保证内容不走同一条路。可手动换或点选具体角度">?</span></span>
+          <button class="btn btn-sm" id="nextAngleBtn" onclick="nextAngle()" style="font-size:10px;padding:2px 8px;flex-shrink:0">换一个 ↺</button>
+        </div>
+        <div class="angle-panel" id="anglePanel">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px">
+            <div>
+              <div class="angle-name" id="angleName">加载中…</div>
+              <div class="angle-desc" id="angleDesc"></div>
+            </div>
+            <div style="font-size:10px;color:var(--dim);white-space:nowrap;margin-top:2px" id="anglePos"></div>
+          </div>
+          <div class="angle-chips" id="angleChips"></div>
+        </div>
       </div>
 
       <!-- 参考笔记（可选） -->
@@ -1699,6 +1738,8 @@ const st = {
   spItems: [],        // selected 卖点 items (max 3)
   scene: null,
   refArticle: null,
+  angle: null,        // 当前预选切入方式 { id, name, desc, idx, total }
+  allAngles: [],      // 当前框架的全量角度列表
 };
 
 // ─── 素材库数据 ────────────────────────────────────────────────────
@@ -1920,9 +1961,20 @@ function renderMatCards() {
           <div class="mat-card-name">${escHtml(p.name)}</div>
           ${moodTag(p.mood)}
         </div>
-        <button class="btn btn-sm" style="flex-shrink:0;font-size:10px;padding:3px 8px" onclick="toggleMatEdit('人',${i})">编辑</button>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button class="btn btn-sm" style="font-size:10px;padding:3px 8px" onclick="dreamOptimize('人',${i})">✨ 造梦</button>
+          <button class="btn btn-sm" style="font-size:10px;padding:3px 8px" onclick="toggleMatEdit('人',${i})">编辑</button>
+        </div>
       </div>
       <div class="mat-card-view-人-${i}">${p.desc ? `<div class="mat-card-desc">${escHtml(p.desc)}</div>` : ''}</div>
+      <div class="mat-dream-result" id="dream-人-${i}">
+        <div class="dream-label">✨ 造梦优化建议</div>
+        <div class="dream-text"></div>
+        <div class="dream-actions">
+          <button class="btn btn-primary btn-sm" onclick="applyDream('人',${i},'${escJs(p._id||'')}')">应用并保存</button>
+          <button class="btn btn-sm" onclick="closeDream('人',${i})">关闭</button>
+        </div>
+      </div>
       <div class="mat-card-edit-人-${i}" style="display:none;margin-top:8px;display:none;flex-direction:column;gap:6px">
         <input class="mat-edit-input" value="${escHtml(p.name)}" placeholder="人群名称">
         <select class="mat-edit-input">
@@ -1953,7 +2005,9 @@ function renderMatCards() {
               <div class="mat-card-name">${escHtml(sp.name)}${sp.main==='是'?'<span style="font-size:10px;color:var(--gold);margin-left:6px">主</span>':''}</div>
               ${moodTag(sp.angle)}
             </div>
-            <button class="btn btn-sm" style="flex-shrink:0;font-size:10px;padding:3px 8px" onclick="toggleMatEdit('货',${i})">编辑</button>
+            <div style="display:flex;gap:4px;flex-shrink:0">
+              <button class="btn btn-sm" style="font-size:10px;padding:3px 8px" onclick="toggleMatEdit('货',${i})">编辑</button>
+            </div>
           </div>
           <div class="mat-card-view-货-${i}">${sp.desc?`<div class="mat-card-desc">${escHtml(sp.desc)}</div>`:''}</div>
           <div class="mat-card-edit-货-${i}" style="display:none;flex-direction:column;gap:6px;margin-top:8px">
@@ -1980,11 +2034,22 @@ function renderMatCards() {
           <div class="mat-card-name">${escHtml(s.name)}</div>
           ${moodTag(s.mood)}
         </div>
-        <button class="btn btn-sm" style="flex-shrink:0;font-size:10px;padding:3px 8px" onclick="toggleMatEdit('场',${i})">编辑</button>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button class="btn btn-sm" style="font-size:10px;padding:3px 8px" onclick="dreamOptimize('场',${i})">✨ 造梦</button>
+          <button class="btn btn-sm" style="font-size:10px;padding:3px 8px" onclick="toggleMatEdit('场',${i})">编辑</button>
+        </div>
       </div>
       <div class="mat-card-view-场-${i}">
         ${s.visual?`<div class="mat-card-desc">${escHtml(s.visual)}</div>`:''}
         ${s.guide?`<div class="mat-card-desc" style="color:var(--dim);margin-top:4px">${escHtml(s.guide)}</div>`:''}
+      </div>
+      <div class="mat-dream-result" id="dream-场-${i}">
+        <div class="dream-label">✨ 造梦优化建议</div>
+        <div class="dream-text"></div>
+        <div class="dream-actions">
+          <button class="btn btn-primary btn-sm" onclick="applyDream('场',${i},'${escJs(s._id||'')}')">应用并保存</button>
+          <button class="btn btn-sm" onclick="closeDream('场',${i})">关闭</button>
+        </div>
       </div>
       <div class="mat-card-edit-场-${i}" style="display:none;flex-direction:column;gap:6px;margin-top:8px">
         <input class="mat-edit-input" value="${escHtml(s.name)}" placeholder="场景名称">
@@ -1998,6 +2063,57 @@ function renderMatCards() {
         </div>
       </div>
     </div>`).join('');
+}
+
+async function dreamOptimize(type, idx) {
+  const dreamEl = document.getElementById(`dream-${type}-${idx}`);
+  const btn = dreamEl.previousElementSibling.previousElementSibling?.querySelector('button') ||
+    document.querySelector(`#matcard-${type}-${idx} button`);
+  const triggerBtn = [...document.querySelectorAll(`#matcard-${type}-${idx} button`)].find(b => b.textContent.includes('造梦'));
+  if (triggerBtn) { triggerBtn.textContent = '优化中…'; triggerBtn.disabled = true; }
+
+  const item = type === '人' ? matData.人[idx] : type === '货' ? matData.货[idx] : matData.场[idx];
+  try {
+    const r = await fetch('/api/materials/dream-optimize', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type, name: item.name, mood: item.mood, desc: item.desc,
+        dim: item.dim, angle: item.angle, visual: item.visual, guide: item.guide }),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    dreamEl.querySelector('.dream-text').textContent = r.result;
+    dreamEl.style.display = 'block';
+  } catch(e) {
+    showToast('造梦优化失败：' + e.message, 'err');
+  } finally {
+    if (triggerBtn) { triggerBtn.textContent = '✨ 造梦'; triggerBtn.disabled = false; }
+  }
+}
+
+function closeDream(type, idx) {
+  document.getElementById(`dream-${type}-${idx}`).style.display = 'none';
+}
+
+async function applyDream(type, idx, recordId) {
+  const dreamEl = document.getElementById(`dream-${type}-${idx}`);
+  const optimized = dreamEl.querySelector('.dream-text').textContent.trim();
+  if (!optimized) return;
+
+  const fieldName = type === '人' ? '详细描述' : type === '货' ? '核心描述' : '团队指导';
+  const fields = { [fieldName]: optimized };
+
+  try {
+    const r = await fetch('/api/materials/update', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type, recordId, fields }),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    dreamEl.style.display = 'none';
+    matLoaded = false;
+    await loadMaterials(true);
+    showToast('✓ 造梦优化已写入飞书', 'ok');
+  } catch(e) {
+    showToast('保存失败：' + e.message, 'err');
+  }
 }
 
 function toggleMatEdit(type, idx) {
@@ -2089,6 +2205,66 @@ async function submitMatAdd(type) {
   }
 }
 
+// ─── 切入方式管理 ─────────────────────────────────────────────────
+async function loadAngle(fw) {
+  try {
+    const r = await fetch(`/api/angles/${fw || st.framework}`).then(x => x.json());
+    if (!r.ok) return;
+    st.angle = r.current;
+    st.allAngles = r.all || [];
+    renderAnglePanel();
+  } catch(e) { console.warn('angle load failed', e.message); }
+}
+
+async function nextAngle() {
+  try {
+    const r = await fetch(`/api/angles/${st.framework}/next`, { method: 'POST' }).then(x => x.json());
+    if (!r.ok) return;
+    st.angle = r.current;
+    st.allAngles = r.all || [];
+    renderAnglePanel();
+  } catch(e) { console.warn('next angle failed', e.message); }
+}
+
+async function pickAngle(idx) {
+  try {
+    const r = await fetch(`/api/angles/${st.framework}/set`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ idx }),
+    }).then(x => x.json());
+    if (!r.ok) return;
+    st.angle = r.current;
+    st.allAngles = r.all || [];
+    renderAnglePanel();
+  } catch(e) { console.warn('pick angle failed', e.message); }
+}
+
+function renderAnglePanel() {
+  const cur = st.angle;
+  if (!cur) return;
+  const nameEl = document.getElementById('angleName');
+  const descEl = document.getElementById('angleDesc');
+  const posEl  = document.getElementById('anglePos');
+  const chips  = document.getElementById('angleChips');
+  if (nameEl) nameEl.textContent = cur.name;
+  if (descEl) descEl.textContent = cur.isSpecial ? cur.desc.slice(0, 30) + '…' : cur.desc;
+  if (chips) {
+    chips.innerHTML = st.allAngles.map((a, i) => {
+      const isSpecial = !!a.isSpecial;
+      const prevIsNormal = i > 0 && !st.allAngles[i - 1].isSpecial;
+      const divider = isSpecial && prevIsNormal
+        ? `<span class="angle-divider">品牌内容</span>`
+        : '';
+      const cls = ['angle-chip', isSpecial ? 'special' : '', i === cur.idx ? 'active' : ''].filter(Boolean).join(' ');
+      return divider + `<button class="${cls}" onclick="pickAngle(${i})" title="${escHtml(a.desc)}">${escHtml(a.name)}</button>`;
+    }).join('');
+  }
+  // 哲学模式时隐藏位置计数（B7不参与轮转，显示模式标签）
+  if (posEl) {
+    posEl.textContent = cur.isSpecial ? '品牌内容模式' : `${cur.idx + 1} / ${cur.total}`;
+  }
+}
+
 // ─── 框架选择（撰写台）────────────────────────────────────────────
 function selectFw(el) {
   document.querySelectorAll('#fwChips .chip').forEach(c => c.classList.remove('active'));
@@ -2096,6 +2272,7 @@ function selectFw(el) {
   st.framework = el.dataset.val;
   st.subTemplate = null;
   loadSubTemplates(el.dataset.val);
+  loadAngle(el.dataset.val);
 }
 
 // ─── 启动检查 ──────────────────────────────────────────────────────
@@ -2159,6 +2336,7 @@ async function generate() {
         persona: st.persona || null,
         scene: st.scene || null,
         refArticle: st.refArticle || null,
+        angle: st.angle || null,
       }),
     }).then(x => x.json());
 
@@ -2167,11 +2345,17 @@ async function generate() {
     const { main } = res;
     st.mainEdited = false;
 
+    // 同步下一个切入方式（服务端生成成功后已推进轮转）
+    if (res.nextAngle) { st.angle = res.nextAngle; renderAnglePanel(); }
+
     renderMain(main);
     const fwLabels = { A:'问题解决', B:'场景种草', C:'对比评测', D:'教程干货' };
     const ctxParts = [`框架${st.framework}·${fwLabels[st.framework]||st.framework}`];
-    if (st.persona) ctxParts.push(`人：${st.persona.name}`);
-    if (st.scene) ctxParts.push(`场：${st.scene.name}`);
+    if (res.usedAngle) ctxParts.push(`↗${res.usedAngle.name}`);
+    const usedPersona = st.persona || res.autoPersona;
+    const usedScene   = st.scene   || res.autoScene;
+    if (usedPersona) ctxParts.push(`人：${usedPersona.name}${!st.persona ? ' (自动)' : ''}`);
+    if (usedScene)   ctxParts.push(`场：${usedScene.name}${!st.scene ? ' (自动)' : ''}`);
     const dirNote = document.getElementById('dirCustom').value.trim();
     if (dirNote) ctxParts.push(dirNote);
     document.getElementById('spBadge').textContent = sp;
@@ -3633,6 +3817,7 @@ loadSubTemplates('B');
 loadMaterials();
 loadReferences();
 loadContextStats();
+loadAngle('B');
 </script>
 
 <!-- ══ 提示词预览浮层 ══ -->
@@ -3690,6 +3875,7 @@ async function openPromptOverlay(mode = 'single', overrideBody = null) {
           persona: st.persona || null,
           scene: st.scene || null,
           refArticle: st.refArticle || null,
+          angle: st.angle || null,
         });
 
     const r = await fetch('/api/preview-prompt', {
@@ -3727,7 +3913,7 @@ async function openPromptOverlay(mode = 'single', overrideBody = null) {
       ${statParts.length ? `<div style="margin-top:6px;color:var(--muted);font-size:11px">学习材料：${statParts.join(' / ')}</div>` : ''}
     </div>`;
 
-    const SAVEABLE_KEYS = new Set(['writing','brand','product','output-single','output-batch']);
+    const SAVEABLE_KEYS = new Set(['writing','brand','product','output-single','output-batch','output-phil']);
     list.innerHTML = summaryHtml + r.modules.map((m, i) => {
       const key = m.key || '';
       const canSave = key && (SAVEABLE_KEYS.has(key) || key.startsWith('fw-body-') || key.startsWith('fw-example-'));
@@ -3782,6 +3968,7 @@ async function saveModule(i, key) {
     product:         { url: '/api/product-info',   body: { content } },
     'output-single': { url: '/api/output-format',  body: { mode: 'single', content } },
     'output-batch':  { url: '/api/output-format',  body: { mode: 'batch',  content } },
+    'output-phil':   { url: '/api/output-format',  body: { mode: 'phil',   content } },
   };
 
   let fetchOpts;

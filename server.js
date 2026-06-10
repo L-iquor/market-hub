@@ -84,6 +84,156 @@ const BASE_TEMPLATES = {
   },
 };
 
+// ─── 切入方式（按框架，服务器预选轮转）──────────────────────────────
+const ENTRY_ANGLES = {
+  A: [
+    { id:'A1', name:'痛点代入',    desc:'描述某个具体不适场景（辣嗓/涨肚/上头/甜腻），读者先认出自己，产品作为转折点出现' },
+    { id:'A2', name:'失望转机',    desc:'试过很多办法都没用，这个意外有效——重点在"终于"和有过尝试之后的对比感' },
+    { id:'A3', name:'before/after', desc:'某个具体场景下喝酒体验的前后对比，画面要具体，不要泛泛而论' },
+    { id:'A4', name:'受众画像',    desc:'精准描述"那种人"的困境（怕辣/不敢喝/聚会压力），让他们感到被看见，再引出产品' },
+    { id:'A5', name:'意外解题',    desc:'原本以为会辣/上头，喝了之后发现不是——可以是主动测试，也可以是朋友推荐后的惊喜' },
+  ],
+  B: [
+    { id:'B1', name:'生活切片',    desc:'某个具体的日常时刻（等外卖/下班/配火锅/独处夜晚），产品自然出现其中，不喧宾夺主' },
+    { id:'B2', name:'感官探索',    desc:'从某个具体感官瞬间入手，从感受本身写到产品背后，不要先介绍产品再写感受' },
+    { id:'B3', name:'情绪共鸣',    desc:'某种情绪状态（想微醺但不想断片/需要独处但不想沉默），产品是那个情绪的对应物' },
+    { id:'B4', name:'意外发现',    desc:'某个具体细节或事实引发好奇（配料表/度数/产区），信息本身成为切入点' },
+    { id:'B5', name:'人格认同',    desc:'描述"那种人"的生活切片，让读者看完觉得说的就是自己，进而被产品吸引' },
+    { id:'B6', name:'颠覆认知',    desc:'原本以为XX，结果发现YY——用一个具体的事件/对比表达，不要只说"没想到"' },
+    { id:'B7', name:'哲学种草',    desc:'读者内心状态是主角，产品嵌入情感叙事不单独介绍。写内心生活，无CTA，情绪是主要叙事介质，人称和具体规范见输出格式模块。', isSpecial: true },
+  ],
+  C: [
+    { id:'C1', name:'配料表解读',  desc:'主动扒成分/工艺，带读者一起"发现"——信息驱动，不是夸奖驱动，每个细节要有来源' },
+    { id:'C2', name:'自我怀疑验证', desc:'我也觉得是噱头，然后逐一用事实验证——转变要有具体依据，不能只说"没想到真不错"' },
+    { id:'C3', name:'购前顾虑打消', desc:'列出买之前的真实疑虑（会不会有白酒味/是不是兑的/糖分高），逐条用事实回答' },
+    { id:'C4', name:'品类横向视角', desc:'同价位/同类型喝了很多，这款哪里不一样——不编竞品数据，只说自己的具体发现' },
+    { id:'C5', name:'原料溯源',    desc:'从产地/工艺角度切入，让读者理解"为什么这样做出来的"，建立理性信任' },
+  ],
+  D: [
+    { id:'D1', name:'方法论清单',  desc:'X件事让你喝出最好状态——每件事要具体可操作，不是废话' },
+    { id:'D2', name:'常见误区',    desc:'很多人在XX这步做错了——纠错型，带一点优越感，收藏动机强' },
+    { id:'D3', name:'新手引路',    desc:'从零开始的选/喝/搭指南——降低门槛，适合完全不了解这个品类的读者' },
+    { id:'D4', name:'原理解密',    desc:'为什么加冰/换杯子/这样搭配有效——满足"知道为什么"的好奇心，每个原理要有依据' },
+    { id:'D5', name:'场合匹配',    desc:'不同场合用不同喝法（独酌/聚会/配餐）——实用性强，容易转化为真实购买决策' },
+  ],
+};
+
+// 各框架核心机制一句话（角度模式下代替全量 body）
+const FW_CORE = {
+  A: '问题解决型核心：读者有具体不适，产品是解法。先让读者认出自己的问题，再引出产品作为转折点。',
+  B: '场景种草型核心：让读者想要那个时刻，不是那瓶酒。产品是那个时刻的一部分，不是主角。',
+  C: '对比评测型核心：读者有疑虑，需要有依据的判断。用事实说话，结论克制，不是广告腔夸奖。',
+  D: '教程干货型核心：读者能学到东西、觉得值得收藏。每个干货点必须实用具体，方法连回产品事实。',
+};
+
+// 哲学种草模式——完全独立的写作指令（B7 专用，不遵循标准场景种草规范）
+const PHIL_FW_BLOCK = `## 哲学种草模式（B7）——独立写作规范，覆盖所有标准场景种草规则
+
+核心机制：读者的内心生活是主角，产品是情感叙事的一部分，不是被介绍的对象。产品信息可以出现，但只在服务那个情感时刻时出现——它是身份认同的载体，不是功能清单。
+
+写作规范：
+- 人称遵循输出格式模块的规定，框架层不强制；叙事方式写向读者的内心世界
+- 产品出现1-2次，嵌入叙事时刻，不单独成段介绍
+- 产品的某个特质（如10度、气泡、名字本身）可以出现，但作用是强化那个情感状态，不是介绍功能
+  ✓ "我们拿起10度的每天烈刻，不是因为怕醉，是因为只想要那个刚好的状态"——特质服务情感
+  ✗ "它只有10度，还是0糖0卡的，喝了不上头不发胖"——功能介绍
+- 有一个明确的情感领地，选一个深挖，不要并列多个：
+  独立自主 / 与自己和解 / 清醒中的孤独 / 悲观底色里的韧劲 / 不愿被磨损的理想主义 / 野性与逃离
+- 结尾留白，情绪停在半开的门口，不做总结，不收结论
+- 禁止：推荐句式（"建议试试" / "值得一买"）、评论区CTA、产品功能罗列`;
+
+const PHIL_EXAMPLE = `## 风格参考范文（圆周旅迹·旅行箱品牌，学习其结构和调性，内容完全原创）
+
+【结构分析】
+- 开场：直接一句话说出读者的某种状态（"你太迷恋出发了"）——不是介绍，是精准命名
+- 品牌出现：正文中段自然嵌入（"数次旅程都有圆周旅迹的陪伴"/"有故事的旅行箱"）——产品特质服务于情感叙事，不单独成段介绍
+- 节奏：多个"你太X了"段落，每段深挖一种内心特质，不并联，不堆砌
+- 收口：开放，情绪停在往前走的门口，无CTA，无结论
+
+【范文原文】
+我才真正意义上清楚地看见你，才真正感受到你所有流动的情绪，才真正感受到你身体里持续生长的韧劲。
+
+你太迷恋出发了。
+今年，你凭借自己去了很多个城市，数次旅程都有圆周旅迹的陪伴。当出发的念想抵达你的身体，那些畏惧未知的声音从未淹没你，你依旧是迷恋出发的旅人，迷恋用出发的体验重塑自己，迷恋那些充盈你、让你有力量挣脱束缚的事物。
+
+当你在圆周旅迹点进「有故事的旅行箱」时，你发现今年抵达的城市比过往的任何一年都多。你知道，出发后遇见的人和事都在塑造你的生命，你不会停止想要出发的念想，像表姐在给你庆生时写下的那句："她成为了一只自由的飞鸟。"
+
+你太独立了。
+无数次在网络上看到的那句"No one is coming"真实地发生在你的身上。站在二十出头的年纪，迷惘、混乱、痛哭占据你的生活，你一次次在那些际遇中看清身边人，直到他们无数次漠视你的痛苦和眼泪，说出那句"你一定会后悔你当下的选择"，你开始走向自己的选择。
+
+你太安静了。
+你总是静静地坐着，沉默地感受着这个世界，直到一次次在绚丽的景色前留下眼泪。在那样的时刻，你的世界好安静，连流泪都是无声的。
+
+老己，我爱你。
+爱你的眼泪，爱你身体里迸发的力量，爱你思想里不变的自我。我们继续往前走吧，不要回到那些痛苦的时光，不要再责怪自己。
+
+"你已经长大了，很安全。"不要害怕预想的下坠，不要害怕会失去想要的自己。这几年，你很好地成为了自己。
+
+等到某一天，我们一起扔掉过去的事物，轻盈地往前走吧。
+
+【迁移到每天烈刻的要点】
+- 情感领地换成：自我觉醒/清醒/反叛/与自己和解/不被磨损的野性——从brand-facts中选一个与本次场景最契合的
+- 品牌/产品植入同样只一句，出现在某个叙事时刻里（不是产品介绍段落）
+- 不写气泡/口感/度数/原料，只写那个时刻本身`;
+
+const PHIL_OUTPUT_BLOCK = `## 输出格式要求（哲学种草模式）
+
+严格按以下格式输出，不加额外说明或前置语：
+
+### 备选标题（2个）
+标题1：（不含emoji，16字以内，直接说出读者的某种状态，如"你太清醒了"）
+标题2：（含1个emoji，16字以内，情绪认同感角度）
+
+### 正文
+（纯散文，无分段标题，无bullet，无分割线。全程第二人称。产品只出现一次。500-700字。）
+
+### 适配话题标签（5个）
+（自我成长/文字/情绪/年轻人/INFJ 方向，不含品牌产品词）
+
+### 推断依据
+（情感领地选择、产品植入位置说明、目标读者画像）`;
+
+// ─── 切入方式轮转状态（持久化到磁盘，重启不丢失）────────────────────
+const ANGLE_STATE_PATH = path.join(__dirname, 'angle-state.json');
+
+function loadAngleState() {
+  try { return JSON.parse(fs.readFileSync(ANGLE_STATE_PATH, 'utf8')); }
+  catch { return { A: 0, B: 0, C: 0, D: 0 }; }
+}
+function saveAngleState(s) {
+  fs.writeFileSync(ANGLE_STATE_PATH, JSON.stringify(s, null, 2), 'utf8');
+}
+function getCurrentAngle(framework) {
+  const s = loadAngleState();
+  const angles = ENTRY_ANGLES[framework] || [];
+  if (!angles.length) return null;
+  const idx = (s[framework] || 0) % angles.length;
+  return { ...angles[idx], idx, total: angles.length };
+}
+function advanceAngle(framework) {
+  const s = loadAngleState();
+  const angles = ENTRY_ANGLES[framework] || [];
+  const rotatable = angles.filter(a => !a.isSpecial);
+  if (!rotatable.length) return null;
+  // 只在非 special 角度里轮转
+  const currentIdx = (s[framework] || 0);
+  const currentAngle = angles[currentIdx];
+  const rotatableWithIdx = rotatable.map((a, ri) => ({ ...a, realIdx: angles.indexOf(a), ri }));
+  const curRi = rotatableWithIdx.findIndex(a => a.realIdx === currentIdx);
+  const nextRi = curRi === -1 ? 0 : (curRi + 1) % rotatableWithIdx.length;
+  s[framework] = rotatableWithIdx[nextRi].realIdx;
+  saveAngleState(s);
+  return getCurrentAngle(framework);
+}
+function setAngleIdx(framework, idx) {
+  const s = loadAngleState();
+  const angles = ENTRY_ANGLES[framework] || [];
+  if (!angles.length) return null;
+  s[framework] = Math.max(0, Math.min(parseInt(idx) || 0, angles.length - 1));
+  saveAngleState(s);
+  return getCurrentAngle(framework);
+}
+
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 const staticDir = path.resolve(__dirname);
@@ -331,6 +481,9 @@ function loadWritingInstructions() {
 function loadOutputFormatSingle() {
   return readFileCached(path.join(__dirname, 'output-format-single.md'));
 }
+function loadOutputFormatPhil() {
+  return readFileCached(path.join(__dirname, 'output-format-phil.md'));
+}
 function loadOutputFormatBatch() {
   return readFileCached(path.join(__dirname, 'output-format-batch.md'));
 }
@@ -423,7 +576,7 @@ function loadTemplates() {
 }
 
 // ─── 构建 Claude Prompt ──────────────────────────────────────────────
-function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null, persona = null, scene = null, refArticle = null, spItems = []) {
+function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null, persona = null, scene = null, refArticle = null, spItems = [], angle = null) {
   const { brand } = CFG;
   const fwLabel = FRAMEWORK_LABELS[framework] || '场景种草型';
 
@@ -476,17 +629,27 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
     ? `## 动态产品信息（最新，优先参考）\n\n${productInfo}`
     : '';
 
-  // ③ 框架基础写法（从模板库自动取选中框架的 isBase 模板）
+  // ③ 框架写作逻辑：有预选角度时只注入核心机制+指定角度，避免给Claude"选单"
   const templates = loadTemplates();
   const baseTemplate = (templates[framework] || []).find(t => t.isBase);
-  const frameworkLogicBlock = baseTemplate
-    ? refArticle
-      ? `## 框架${framework}内容逻辑（内容方向参考，结构节奏以参考范文为准）\n\n${baseTemplate.body}`
-      : `## 框架${framework}写作逻辑\n\n${baseTemplate.body}`
-    : '';
+  let frameworkLogicBlock = '';
+  const isPhilMode = angle?.isSpecial === true;
+  if (isPhilMode) {
+    frameworkLogicBlock = PHIL_FW_BLOCK + '\n\n' + PHIL_EXAMPLE;
+  } else if (angle) {
+    frameworkLogicBlock = `## 框架${framework} · ${fwLabel}
 
-  // ③-1 框架参考示例：不注入 prompt，避免 Claude 直接复现模板
-  // base-overrides.json 的 example 只用于人工参考，不参与生成
+${FW_CORE[framework] || ''}
+
+**本次切入方式（已预选，严格按此角度展开，不使用其他切入方式）：${angle.name}**
+${angle.desc}`;
+  } else if (baseTemplate) {
+    frameworkLogicBlock = refArticle
+      ? `## 框架${framework}内容逻辑（内容方向参考，结构节奏以参考范文为准）\n\n${baseTemplate.body}`
+      : `## 框架${framework}写作逻辑\n\n${baseTemplate.body}`;
+  }
+
+  // 框架示例不注入 prompt——注入示例会导致 Claude 照抄模板结构（已验证，勿改）
   const frameworkExampleBlock = '';
 
   // ③a 仿写参考范文（用户在参考文案库中选择后注入）
@@ -535,14 +698,17 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
   const fwNote = refArticle
     ? `框架${framework} · ${fwLabel}（内容逻辑参考，结构节奏以上方参考范文为准）`
     : `框架${framework} · ${fwLabel}（严格遵守此框架的写作逻辑和写作顺序）`;
+  const dreamLine = (persona && scene)
+    ? `造梦构思：${persona.name}在「${scene.name}」里的一个生活时刻。${sellingPoint}是这个时刻里自然出现的道具，不是主角。内容从这个人和这个时刻出发，单点展开。`
+    : `本次主推卖点：${sellingPoint}`;
   const taskBlock = `## 当前任务
 内容框架：${fwNote}
 方向：${direction}
-本次主推卖点：${sellingPoint}`;
+${dreamLine}`;
 
-  // ⑥ 输出格式（优先读取用户编辑的自定义文件，否则用内置默认值）
-  const _customFmt = loadOutputFormatSingle();
-  const outputBlock = _customFmt || (refArticle
+  // ⑥ 输出格式（优先读取用户编辑的自定义文件，否则用内置默认值；哲学模式强制用专属格式）
+  const _customFmt = isPhilMode ? loadOutputFormatPhil() : loadOutputFormatSingle();
+  const outputBlock = _customFmt || (isPhilMode ? PHIL_OUTPUT_BLOCK : (refArticle
     ? `## 输出格式要求
 严格按以下格式输出，不要加额外说明或前置语：
 
@@ -588,7 +754,7 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
 3.
 
 ### 推断依据
-（框架选择理由、目标人群、主次卖点逻辑）`);
+（框架选择理由、目标人群、主次卖点逻辑）`));
 
   const modules = [
     { name: '① 撰写规范', key: 'writing', content: systemBlock },
@@ -597,12 +763,13 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
     ...(materialBlock   ? [{ name: '③ 定向素材（人/场）', content: materialBlock }]   : []),
     ...(productBlock    ? [{ name: '④ 动态产品信息', key: 'product', content: productBlock }]    : []),
     ...(imitBlock       ? [{ name: '⑤ 仿写参考范文★',    content: imitBlock }]        : []),
-    ...(frameworkLogicBlock ? [{ name: '⑥ 框架写作逻辑（基础模板 body）', key: `fw-body-${framework}`, content: frameworkLogicBlock }] : []),
+    // 角度/哲学模式下内容由硬编码生成，不可保存；只有无角度（base template 模式）时才挂 key 允许编辑
+    ...(frameworkLogicBlock ? [{ name: (angle || isPhilMode) ? '⑥ 框架写作逻辑（角度模式·动态）' : '⑥ 框架写作逻辑（可保存）', key: (angle || isPhilMode) ? undefined : `fw-body-${framework}`, content: frameworkLogicBlock }] : []),
     ...(!imitBlock && frameworkExampleBlock ? [{ name: '⑦ 框架参考示例（基础模板 example）', key: `fw-example-${framework}`, content: frameworkExampleBlock }] : []),
     ...(subTemplateBlock ? [{ name: '⑧ 风格子模板',      content: subTemplateBlock }] : []),
     { name: '⑨ 飞书学习材料', content: learningBlock },
     { name: '⑩ 当前任务',    content: taskBlock },
-    { name: '⑪ 输出格式', key: 'output-single', content: outputBlock },
+    { name: '⑪ 输出格式', key: isPhilMode ? 'output-phil' : 'output-single', content: outputBlock },
   ];
   const prompt = modules.map(m => m.content).join('\n\n---\n\n');
   return { prompt, modules };
@@ -682,7 +849,10 @@ function buildBatchPrompt(ctx, direction, sellingPoint, framework, persona = nul
     imitBatchBlock = `## ★ 本次首要任务：仿写以下参考范文\n节奏、情绪走向、句式结构以此范文为蓝本，品牌事实和框架逻辑服务于这个结构。内容完全原创。\n\n标题：${refArticle.title || '（无标题）'}\n标签：${refArticle.tag || '（无标签）'}\n\n${(refArticle.content || '').slice(0, 800)}`;
   }
 
-  const taskBlock = `## 当前任务\n框架：${framework} · ${fwLabel}\n方向：${direction || '不限'}\n主推卖点：${sellingPoint}`;
+  const batchDreamLine = (persona && scene)
+    ? `造梦构思：${persona.name}在「${scene.name}」里的一个生活时刻。${sellingPoint}是这个时刻里自然出现的道具，不是主角。内容从这个人和这个时刻出发，单点展开。`
+    : `主推卖点：${sellingPoint}`;
+  const taskBlock = `## 当前任务\n框架：${framework} · ${fwLabel}\n方向：${direction || '不限'}\n${batchDreamLine}`;
 
   const _customFmtBatch = loadOutputFormatBatch();
   const outputBlock = _customFmtBatch || `## 输出格式（严格按此格式，不加任何额外说明或前置语）
@@ -834,37 +1004,63 @@ function runClaudeAsync(prompt, timeoutMs = 90000) {
 // 生成文案
 app.post('/api/generate', async (req, res) => {
   try {
-    const { framework = 'B', direction, sellingPoint, spItems = [], subTemplate = null, persona = null, scene = null, refArticle = null, rawPrompt = null } = req.body;
+    const { framework = 'B', direction, sellingPoint, spItems = [], subTemplate = null, persona: reqPersona = null, scene: reqScene = null, refArticle = null, rawPrompt = null, angle: reqAngle = null } = req.body;
     if (!sellingPoint && !rawPrompt) return res.json({ ok: false, error: '请选择或填写主推卖点' });
 
     let prompt;
     let ctx = { iterComp: [], reference: [] };
+    let usedAngle = reqAngle;
+    let autoPersona = null, autoScene = null;
+    let persona = reqPersona, scene = reqScene;
 
     if (rawPrompt) {
-      // 直接使用用户在预览界面编辑过的完整提示词
       prompt = rawPrompt;
     } else {
-      // 正常流程：从飞书拉取上下文并组装 prompt
       try { ctx = await fetchFeishuContext(); }
       catch (e) { console.error('[Context fetch]', e.message); }
-      ({ prompt } = buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems));
+
+      // 切入方式：使用客户端传入的，否则从服务器取当前轮转值
+      if (!usedAngle) usedAngle = getCurrentAngle(framework);
+
+      // 自动补齐人群/场景（用户未选时随机注入，强制起点多样性）
+      if (!persona || !scene) {
+        try {
+          const mats = fetchMaterials();
+          if (!persona && mats.人.length > 0) {
+            autoPersona = mats.人[Math.floor(Math.random() * mats.人.length)];
+            persona = autoPersona;
+          }
+          if (!scene && mats.场.length > 0) {
+            autoScene = mats.场[Math.floor(Math.random() * mats.场.length)];
+            scene = autoScene;
+          }
+        } catch (e) { console.warn('[auto-select materials]', e.message); }
+      }
+
+      ({ prompt } = buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems, usedAngle));
     }
 
-    // 调用本地 claude CLI（使用 Pro 账户额度，无需 API key）
     const rawText = await runClaudeAsync(prompt, 420000);
     const plan = parsePlan(rawText);
 
-    // 发全文（去掉分析段落），截取到"优化方向"之前
+    // 生成成功后推进切入方式轮转
+    if (!rawPrompt) advanceAngle(framework);
+
     const fullText = plan.full;
     const cutAt = fullText.search(/###\s*(优化方向)/);
     const sendContent = cutAt > 0 ? fullText.slice(0, cutAt).trim() : fullText;
     const fwLabel = FRAMEWORK_LABELS[framework] || framework;
-    const msg = `【每天烈刻 · 小红书文案】框架${framework} · ${fwLabel}\n方向：${direction}　卖点：${sellingPoint}\n\n${sendContent}`;
+    const angleNote = usedAngle ? ` · ${usedAngle.name}` : '';
+    const msg = `【每天烈刻 · 小红书文案】框架${framework} · ${fwLabel}${angleNote}\n方向：${direction}　卖点：${sellingPoint}\n\n${sendContent}`;
     sendFeishuMessage(msg).catch(e => console.error('[Feishu Message]', e.message));
 
     res.json({
       ok: true,
       main: plan,
+      usedAngle,
+      autoPersona,
+      autoScene,
+      nextAngle: getCurrentAngle(framework),
       contextStats: { iterComp: ctx.iterComp.length, reference: ctx.reference.length },
     });
 
@@ -877,12 +1073,12 @@ app.post('/api/generate', async (req, res) => {
 // ─── 提示词预览（不真正生成，只返回完整 prompt 和模块列表）────────────
 app.post('/api/preview-prompt', async (req, res) => {
   try {
-    const { framework = 'B', direction = '', sellingPoint = '（预览）', spItems = [], subTemplate = null, persona = null, scene = null, refArticle = null, mode = 'single' } = req.body;
+    const { framework = 'B', direction = '', sellingPoint = '（预览）', spItems = [], subTemplate = null, persona = null, scene = null, refArticle = null, mode = 'single', angle = null } = req.body;
     let ctx;
     try { ctx = await fetchFeishuContext(); } catch { ctx = { iterComp: [], reference: [] }; }
     const result = mode === 'batch'
       ? buildBatchPrompt(ctx, direction, sellingPoint, framework, persona, scene, refArticle, spItems)
-      : buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems);
+      : buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems, angle);
     const titleCount = (() => { try { return loadTitleLibrary().length; } catch { return 0; } })();
     res.json({
       ok: true,
@@ -1296,9 +1492,9 @@ app.post('/api/product-info', (req, res) => {
 app.post('/api/output-format', (req, res) => {
   try {
     const { mode, content } = req.body;
-    if (!['single', 'batch'].includes(mode)) return res.json({ ok: false, error: '无效的 mode' });
+    if (!['single', 'batch', 'phil'].includes(mode)) return res.json({ ok: false, error: '无效的 mode' });
     if (typeof content !== 'string') return res.json({ ok: false, error: '内容格式错误' });
-    const fname = mode === 'batch' ? 'output-format-batch.md' : 'output-format-single.md';
+    const fname = mode === 'batch' ? 'output-format-batch.md' : mode === 'phil' ? 'output-format-phil.md' : 'output-format-single.md';
     const p = path.join(__dirname, fname);
     fs.writeFileSync(p, content, 'utf8');
     invalidateFile(p);
@@ -1426,6 +1622,49 @@ app.post('/api/materials/update', (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error('[materials/update]', e.message);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// ─── 素材造梦优化 ────────────────────────────────────────────────────
+app.post('/api/materials/dream-optimize', async (req, res) => {
+  try {
+    const { type, name, mood, desc, dim, angle, visual, guide } = req.body;
+    if (!type || !name) return res.json({ ok: false, error: '参数缺失' });
+
+    const typeLabel = { 人: '人群', 货: '卖点', 场: '场景' }[type] || type;
+    let context = `类型：${typeLabel}\n名称：${name}`;
+    if (type === '人') {
+      if (mood) context += `\n情绪状态：${mood}`;
+      if (desc) context += `\n当前描述：${desc}`;
+    } else if (type === '货') {
+      if (dim)   context += `\n维度：${dim}`;
+      if (angle) context += `\n角度类型：${angle}`;
+      if (desc)  context += `\n当前描述：${desc}`;
+    } else if (type === '场') {
+      if (mood)   context += `\n情绪分类：${mood}`;
+      if (visual) context += `\n画面描述：${visual}`;
+      if (guide)  context += `\n当前指导语：${guide}`;
+    }
+
+    const prompt = `你是每天烈刻气泡白酒的内容策划。我要你把以下素材的描述升级为「造梦表达」。
+
+造梦的含义：展现读者向往但可及的生活切片。读者看完内容后，想成为那种人，或想拥有那个时刻。动作和状态都可以保留，但核心要让读者感到「这说的就是我想要的那种生活」，而不是在描述产品或动作序列。
+
+要求：
+- 状态和动作都写，少一些过于细节的行为，多一些情绪温度
+- 不要广告腔，不要直接提产品
+- 不贴调性标签（不写「野性」「不将就」等词），让语言本身渗透出来
+- 不超过80字
+- 只返回优化后的描述文字，不加任何标题、说明、引号
+
+素材：
+${context}`;
+
+    const result = await runClaudeAsync(prompt, 60000);
+    res.json({ ok: true, result: result.trim() });
+  } catch (e) {
+    console.error('[dream-optimize]', e.message);
     res.json({ ok: false, error: e.message });
   }
 });
@@ -1739,10 +1978,32 @@ Action: [结尾引导是什么？有/无]
 app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
-    engineReady: true,      // 使用 claude CLI，无需 API Key
+    engineReady: true,
     contextCached: !!state.contextCache,
     contextAge: state.contextCache ? Math.round((Date.now() - state.contextCacheTime) / 1000) + 's' : 'none',
   });
+});
+
+// ─── 切入方式 API ─────────────────────────────────────────────────
+app.get('/api/angles/:fw', (req, res) => {
+  const { fw } = req.params;
+  if (!ENTRY_ANGLES[fw]) return res.json({ ok: false, error: '无效框架' });
+  res.json({ ok: true, current: getCurrentAngle(fw), all: ENTRY_ANGLES[fw].map((a, i) => ({ ...a, idx: i })) });
+});
+
+app.post('/api/angles/:fw/next', (req, res) => {
+  const { fw } = req.params;
+  if (!ENTRY_ANGLES[fw]) return res.json({ ok: false, error: '无效框架' });
+  const current = advanceAngle(fw);
+  res.json({ ok: true, current, all: ENTRY_ANGLES[fw].map((a, i) => ({ ...a, idx: i })) });
+});
+
+app.post('/api/angles/:fw/set', (req, res) => {
+  const { fw } = req.params;
+  const { idx } = req.body;
+  if (!ENTRY_ANGLES[fw]) return res.json({ ok: false, error: '无效框架' });
+  const current = setAngleIdx(fw, idx);
+  res.json({ ok: true, current, all: ENTRY_ANGLES[fw].map((a, i) => ({ ...a, idx: i })) });
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1875,4 +2136,4 @@ const httpServer = app.listen(PORT, () => {
   console.log(`  飞书 base: ${CFG.feishu.baseToken}`);
   console.log(`  飞书群:    ${CFG.feishu.groupId}`);
 });
-httpServer.setTimeout(300000); // 5 分钟，覆盖 Node 默认 120s
+httpServer.setTimeout(0); // 禁用 socket 超时，由 runClaudeAsync 的应用层超时控制
