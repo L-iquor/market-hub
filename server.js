@@ -651,8 +651,10 @@ ${angle.desc}`;
       : `## 框架${framework}写作逻辑\n\n${baseTemplate.body}`;
   }
 
-  // 框架示例不注入 prompt——注入示例会导致 Claude 照抄模板结构（已验证，勿改）
-  const frameworkExampleBlock = '';
+  // 框架示例：叙事模式不注入（防止照抄结构）；KOC模式注入作为语气参考
+  const frameworkExampleBlock = (!isPhilMode && toneStyle === 'koc' && !imitBlock && baseTemplate?.example)
+    ? `## 语气参考范例（学习口吻、节奏、热情度，不照搬结构，内容完全原创）\n\n${baseTemplate.example}`
+    : '';
 
   // ③a 仿写参考范文（用户在参考文案库中选择后注入）
   const imitBlock = refArticle
