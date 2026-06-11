@@ -129,6 +129,8 @@ const FW_CORE = {
 // 哲学种草模式——完全独立的写作指令（B7 专用，不遵循标准场景种草规范）
 const PHIL_FW_BLOCK = `## 哲学种草模式（B7）——独立写作规范，覆盖所有标准场景种草规则
 
+底层逻辑：小红书是造梦平台，用户找的不是产品，是向往的生活切片。种草的本质是身份认同触发——读者看完想成为内容里那种人，或想拥有那个时刻。产品是那个生活里自然存在的道具，不是主角。调性靠写法渗透，不靠说出来（不在文里贴「野性」「不将就」等标签，让语言本身带出来）。
+
 核心机制：读者的内心生活是主角，产品是情感叙事的一部分，不是被介绍的对象。产品信息可以出现，但只在服务那个情感时刻时出现——它是身份认同的载体，不是功能清单。
 
 写作规范：
@@ -2125,6 +2127,200 @@ app.post('/api/ares/save-insight', (req, res) => {
 app.delete('/api/ares/chat/:sessionId', (req, res) => {
   delete aresHistories[req.params.sessionId];
   res.json({ ok: true });
+});
+
+// ══ XHS 评论抓取 ═════════════════════════════════════════════════════
+
+const XHS_BASE      = 'REDACTED';
+const XHS_TABLE     = 'tblGpK7czdgjFZbi';
+const XHS_TRIED_F   = path.join(os.homedir(), 'xhs_tried.json');
+const UV_BIN        = path.join(os.homedir(), '.local', 'bin', 'uv.exe');
+const XHS_CLI_DIR   = path.join(os.homedir(), 'xiaohongshu-cli');
+const xhsJobStore   = new Map();
+
+function xhsLoadTried() {
+  try { return new Set(JSON.parse(fs.readFileSync(XHS_TRIED_F, 'utf8'))); }
+  catch { return new Set(); }
+}
+function xhsSaveTried(t) { fs.writeFileSync(XHS_TRIED_F, JSON.stringify([...t]), 'utf8'); }
+
+function xhsExtractUrl(cell) {
+  if (!cell) return '';
+  const s = Array.isArray(cell) ? String(cell[0] ?? '') : String(cell);
+  const m = s.match(/\((https?:\/\/[^)]+)\)/) || s.match(/(https?:\/\/\S+)/);
+  return m ? m[1] : '';
+}
+
+function xhsResolveShort(url) {
+  return new Promise(resolve => {
+    if (!url.includes('xhslink.com')) return resolve(url);
+    const mod = require(url.startsWith('https') ? 'https' : 'http');
+    const req = mod.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } }, res => {
+      resolve(res.headers.location || url); res.resume();
+    });
+    req.on('error', () => resolve(url));
+    req.setTimeout(8000, () => { req.destroy(); resolve(url); });
+  });
+}
+
+function xhsParseNote(url) {
+  const m = url.match(/\/(?:discovery\/item|explore)\/([0-9a-f]{24})/);
+  if (!m) return null;
+  const t = url.match(/xsec_token=([^&\s]+)/);
+  return { noteId: m[1], xsecToken: t ? decodeURIComponent(t[1]) : '' };
+}
+
+function xhsFetchComments(noteId, xsecToken) {
+  const cmd = [UV_BIN, 'run', 'xhs', 'comments', noteId, '--all', '--json'];
+  if (xsecToken) cmd.push('--xsec-token', xsecToken);
+  const r = spawnSync(cmd[0], cmd.slice(1), {
+    encoding: 'utf8', timeout: 60000,
+    cwd: XHS_CLI_DIR, env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+  });
+  let data;
+  try { data = JSON.parse(r.stdout || '{}'); } catch { return { ok: false, code: 'parse_error' }; }
+  if (!data.ok) return { ok: false, code: data.error?.code || 'unknown', msg: data.error?.message || '' };
+  const texts = [], imgs = [];
+  for (const c of (data.data?.comments || [])) {
+    for (const item of [c, ...(c.sub_comments || [])]) {
+      if (item.content?.trim()) texts.push(item.content.trim());
+      for (const p of (item.pictures || [])) { const u = p.url_default || p.url_pre; if (u) imgs.push(u); }
+    }
+  }
+  return { ok: true, texts, imgs };
+}
+
+function xhsFetchAllRecords() {
+  const tried = xhsLoadTried();
+  const records = [];
+  let offset = 0;
+  while (true) {
+    const r = larkCli(['--as', 'user', 'base', '+record-list',
+      '--base-token', XHS_BASE, '--table-id', XHS_TABLE,
+      '--field-id', 'fldPISrmKu', '--field-id', 'fldL90EX2O',
+      '--format', 'json', '--limit', '100', '--offset', String(offset)]);
+    if (!r.ok) break;
+    const d = r.data;
+    const rows = d.data || [], ids = d.record_id_list || [], flds = d.fields || [];
+    const ui = flds.indexOf('地址贴这里'), ti = flds.indexOf('评论文字');
+    for (let i = 0; i < ids.length; i++) {
+      const row = rows[i] || [];
+      const url = xhsExtractUrl(ui >= 0 ? row[ui] : '');
+      const hasData = ti >= 0 && !!row[ti];
+      if (url) records.push({ id: ids[i], url, hasData, tried: tried.has(ids[i]) });
+    }
+    if (!d.has_more) break;
+    offset += 100;
+  }
+  return records;
+}
+
+app.get('/api/xhs/records', (req, res) => {
+  try { res.json({ ok: true, records: xhsFetchAllRecords() }); }
+  catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/xhs/reset-tried', (req, res) => {
+  try { xhsSaveTried(new Set()); res.json({ ok: true }); }
+  catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/xhs/scrape', (req, res) => {
+  const { ids } = req.body;
+  if (!ids || !ids.length) return res.json({ ok: false, error: '无记录 ID' });
+  const jobId = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  xhsJobStore.set(jobId, { done: false, logs: [], results: [] });
+  res.json({ ok: true, jobId });
+
+  (async () => {
+    const job = xhsJobStore.get(jobId);
+    const log = m => { job.logs.push(m); console.log('[xhs]', m); };
+    const tried = xhsLoadTried();
+
+    // 获取这批记录的 URL
+    let recs = [];
+    try {
+      let offset = 0;
+      const remaining = new Set(ids);
+      while (remaining.size > 0) {
+        const r = larkCli(['--as', 'user', 'base', '+record-list',
+          '--base-token', XHS_BASE, '--table-id', XHS_TABLE,
+          '--field-id', 'fldPISrmKu', '--format', 'json',
+          '--limit', '100', '--offset', String(offset)]);
+        if (!r.ok) break;
+        const d = r.data;
+        const rows = d.data || [], recIds = d.record_id_list || [], flds = d.fields || [];
+        const ui = flds.indexOf('地址贴这里');
+        for (let i = 0; i < recIds.length; i++) {
+          if (remaining.has(recIds[i])) {
+            recs.push({ id: recIds[i], url: xhsExtractUrl(ui >= 0 ? (rows[i]||[])[ui] : '') });
+            remaining.delete(recIds[i]);
+          }
+        }
+        if (!d.has_more || remaining.size === 0) break;
+        offset += 100;
+      }
+    } catch (e) { log('❌ 读取记录失败: ' + e.message); job.done = true; return; }
+
+    for (const rec of recs) {
+      log(`📌 ${rec.id.slice(-8)}  ${rec.url.slice(0, 50)}`);
+      let url = rec.url;
+      if (!url) { log('  ⚠ 无链接，跳过'); tried.add(rec.id); xhsSaveTried(tried); job.results.push({ id: rec.id, status: 'skip', reason: 'no_url' }); continue; }
+
+      if (url.includes('xhslink.com')) {
+        log('  🔗 解析短链…');
+        url = await xhsResolveShort(url);
+        log('  → ' + url.slice(0, 70));
+      }
+
+      const info = xhsParseNote(url);
+      if (!info) {
+        log('  ⚠ 无法提取 note_id，跳过');
+        tried.add(rec.id); xhsSaveTried(tried);
+        job.results.push({ id: rec.id, status: 'skip', reason: 'no_note_id' });
+        continue;
+      }
+
+      log(`  🕷 ${info.noteId} 抓取中…`);
+      const result = xhsFetchComments(info.noteId, info.xsecToken);
+
+      tried.add(rec.id); xhsSaveTried(tried);
+
+      if (!result.ok) {
+        const hint = result.code === 'verification_required' ? '验证码触发' : `${result.code} ${result.msg}`;
+        log(`  ⚠ ${hint}`);
+        job.results.push({ id: rec.id, status: 'skip', reason: result.code });
+        continue;
+      }
+
+      log(`  ✅ ${result.texts.length} 条文字  ${result.imgs.length} 张图`);
+
+      if (result.texts.length === 0) {
+        job.results.push({ id: rec.id, status: 'empty' });
+        continue;
+      }
+
+      try {
+        larkCli(['--as', 'user', 'base', '+record-upsert',
+          '--base-token', XHS_BASE, '--table-id', XHS_TABLE,
+          '--record-id', rec.id, '--json', JSON.stringify({ '评论文字': result.texts.join('\n') })]);
+        log('  ✍ 写回飞书完成');
+        job.results.push({ id: rec.id, status: 'done', texts: result.texts.length });
+      } catch (e) {
+        log('  ✗ 写回失败: ' + e.message);
+        job.results.push({ id: rec.id, status: 'error', reason: e.message });
+      }
+      await new Promise(r => setTimeout(r, 3000));
+    }
+    job.done = true;
+    log('🏁 批次完成');
+  })();
+});
+
+app.get('/api/xhs/scrape-poll/:id', (req, res) => {
+  const job = xhsJobStore.get(req.params.id);
+  if (!job) return res.json({ ok: false });
+  res.json({ ok: true, done: job.done, logs: job.logs, results: job.results });
 });
 
 const PORT = CFG.server.port;
