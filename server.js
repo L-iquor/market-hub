@@ -983,13 +983,12 @@ function runClaudeAsync(prompt, timeoutMs = 90000) {
   const { spawn } = require('child_process');
   return new Promise((resolve, reject) => {
     const { ANTHROPIC_API_KEY: _drop, ...envWithoutKey } = process.env;
-    const claudeCmd = path.join(process.env.APPDATA || '', 'npm', 'claude.cmd');
-    // 强制 64 位上下文：显式用 System32\cmd.exe，覆盖 VBS 可能传入的 32 位环境变量
-    const child = spawn('C:\\Windows\\System32\\cmd.exe', ['/c', claudeCmd, '-p', '--dangerously-skip-permissions'], {
-      shell: false,
+    const npmBin = path.join(process.env.APPDATA || '', 'npm');
+    const child = spawn('claude', ['-p', '--dangerously-skip-permissions'], {
+      shell: true,
       env: {
         ...envWithoutKey,
-        PROCESSOR_ARCHITECTURE: 'AMD64',
+        PATH: `${npmBin};${process.env.PATH || ''}`,
         CLAUDE_CODE_GIT_BASH_PATH: 'D:\\nodes\\Git\\usr\\bin\\bash.exe',
       },
     });
