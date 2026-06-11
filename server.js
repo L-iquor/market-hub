@@ -983,7 +983,8 @@ function runClaudeAsync(prompt, timeoutMs = 90000) {
   const { spawn } = require('child_process');
   return new Promise((resolve, reject) => {
     const { ANTHROPIC_API_KEY: _drop, ...envWithoutKey } = process.env;
-    const child = spawn('claude', ['-p', '--dangerously-skip-permissions'], {
+    const claudeCmd = path.join(process.env.APPDATA || '', 'npm', 'claude.cmd');
+    const child = spawn(claudeCmd, ['-p', '--dangerously-skip-permissions'], {
       shell: true,
       env: { ...envWithoutKey, CLAUDE_CODE_GIT_BASH_PATH: 'D:\\nodes\\Git\\usr\\bin\\bash.exe' },
     });
