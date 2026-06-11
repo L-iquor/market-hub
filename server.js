@@ -984,12 +984,14 @@ function runClaudeAsync(prompt, timeoutMs = 90000) {
   return new Promise((resolve, reject) => {
     const { ANTHROPIC_API_KEY: _drop, ...envWithoutKey } = process.env;
     const claudeCmd = path.join(process.env.APPDATA || '', 'npm', 'claude.cmd');
-    // SysNative 是 32 位进程访问真正 64 位 System32 的别名，确保 claude.exe 在 64 位 cmd 下运行
-    const cmd64 = 'C:\\Windows\\SysNative\\cmd.exe';
-    const shell64 = require('fs').existsSync(cmd64) ? cmd64 : true;
-    const child = spawn(claudeCmd, ['-p', '--dangerously-skip-permissions'], {
-      shell: shell64,
-      env: { ...envWithoutKey, CLAUDE_CODE_GIT_BASH_PATH: 'D:\\nodes\\Git\\usr\\bin\\bash.exe' },
+    // 强制 64 位上下文：显式用 System32\cmd.exe，覆盖 VBS 可能传入的 32 位环境变量
+    const child = spawn('C:\\Windows\\System32\\cmd.exe', ['/c', claudeCmd, '-p', '--dangerously-skip-permissions'], {
+      shell: false,
+      env: {
+        ...envWithoutKey,
+        PROCESSOR_ARCHITECTURE: 'AMD64',
+        CLAUDE_CODE_GIT_BASH_PATH: 'D:\\nodes\\Git\\usr\\bin\\bash.exe',
+      },
     });
     let stdout = '', stderr = '';
     child.stdin.write(prompt, 'utf8');
