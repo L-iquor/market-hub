@@ -758,18 +758,19 @@ ${dreamLine}`;
 ### 推断依据
 （框架选择理由、目标人群、主次卖点逻辑）`));
 
-  const kocToneBlock = (!isPhilMode && toneStyle === 'koc') ? `## 语气风格：热情KOC（本次生成优先遵守此项）
+  const kocToneBlock = (!isPhilMode && toneStyle === 'koc') ? `## ⚡ 语气覆写指令——热情KOC（最高优先级，覆盖上方所有写作风格规范）
 
-写作口吻像真实用户在向朋友安利，有热情，有具体感受，语气直接。
-- 情绪直接说出来——惊喜就写惊喜，落在具体感官瞬间就不空洞
-- 感叹号可以用，语气有起伏，不刻意压平
-- 推荐句式可以出现：「真的建议试试」「这个不踩雷」「可以入」
-- 像发朋友圈或给好友发消息，不是写散文，不是叙事文学
-- 不要用意识流、对话碎片、第三者视角等文学手法` : '';
+本次输出必须是热情直接的KOC口吻。上方所有叙事化、散文化、文学化的写法指引本次全部忽略。
+
+强制规则：
+- 开场有能量，第一句就把最惊喜或最有意思的感受抛出来，不要铺垫
+- 可以用感叹号，语气要有起伏，像真人在说话
+- 产品好就直接说好，喜欢就直接说喜欢，不要绕
+- 结尾必须有明确推荐：「真的可以试试」「这个不踩雷」「建议入」之类
+- 禁止：散文叙事、意识流、电影感镜头描写、开放式结尾留白` : '';
 
   const modules = [
     { name: '① 撰写规范', key: 'writing', content: systemBlock },
-    ...(kocToneBlock ? [{ name: '① 语气风格（KOC）', content: kocToneBlock }] : []),
     { name: '② 品牌事实', key: 'brand',   content: brandBlock },
     ...(sellingPointBlock ? [{ name: '② 本次主推卖点详情', content: sellingPointBlock }] : []),
     ...(materialBlock   ? [{ name: '③ 定向素材（人/场）', content: materialBlock }]   : []),
@@ -781,6 +782,7 @@ ${dreamLine}`;
     ...(subTemplateBlock ? [{ name: '⑧ 风格子模板',      content: subTemplateBlock }] : []),
     { name: '⑨ 飞书学习材料', content: learningBlock },
     { name: '⑩ 当前任务',    content: taskBlock },
+    ...(kocToneBlock ? [{ name: '⑩ 语气覆写（KOC）', content: kocToneBlock }] : []),
     { name: '⑪ 输出格式', key: isPhilMode ? 'output-phil' : 'output-single', content: outputBlock },
   ];
   const prompt = modules.map(m => m.content).join('\n\n---\n\n');
