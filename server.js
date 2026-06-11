@@ -578,7 +578,7 @@ function loadTemplates() {
 }
 
 // ─── 构建 Claude Prompt ──────────────────────────────────────────────
-function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null, persona = null, scene = null, refArticle = null, spItems = [], angle = null) {
+function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null, persona = null, scene = null, refArticle = null, spItems = [], angle = null, toneStyle = 'narrative') {
   const { brand } = CFG;
   const fwLabel = FRAMEWORK_LABELS[framework] || '场景种草型';
 
@@ -758,8 +758,18 @@ ${dreamLine}`;
 ### 推断依据
 （框架选择理由、目标人群、主次卖点逻辑）`));
 
+  const kocToneBlock = (!isPhilMode && toneStyle === 'koc') ? `## 语气风格：热情KOC（本次生成优先遵守此项）
+
+写作口吻像真实用户在向朋友安利，有热情，有具体感受，语气直接。
+- 情绪直接说出来——惊喜就写惊喜，落在具体感官瞬间就不空洞
+- 感叹号可以用，语气有起伏，不刻意压平
+- 推荐句式可以出现：「真的建议试试」「这个不踩雷」「可以入」
+- 像发朋友圈或给好友发消息，不是写散文，不是叙事文学
+- 不要用意识流、对话碎片、第三者视角等文学手法` : '';
+
   const modules = [
     { name: '① 撰写规范', key: 'writing', content: systemBlock },
+    ...(kocToneBlock ? [{ name: '① 语气风格（KOC）', content: kocToneBlock }] : []),
     { name: '② 品牌事实', key: 'brand',   content: brandBlock },
     ...(sellingPointBlock ? [{ name: '② 本次主推卖点详情', content: sellingPointBlock }] : []),
     ...(materialBlock   ? [{ name: '③ 定向素材（人/场）', content: materialBlock }]   : []),
@@ -1006,7 +1016,7 @@ function runClaudeAsync(prompt, timeoutMs = 90000) {
 // 生成文案
 app.post('/api/generate', async (req, res) => {
   try {
-    const { framework = 'B', direction, sellingPoint, spItems = [], subTemplate = null, persona: reqPersona = null, scene: reqScene = null, refArticle = null, rawPrompt = null, angle: reqAngle = null } = req.body;
+    const { framework = 'B', direction, sellingPoint, spItems = [], subTemplate = null, persona: reqPersona = null, scene: reqScene = null, refArticle = null, rawPrompt = null, angle: reqAngle = null, toneStyle = 'narrative' } = req.body;
     if (!sellingPoint && !rawPrompt) return res.json({ ok: false, error: '请选择或填写主推卖点' });
 
     let prompt;
@@ -1039,7 +1049,7 @@ app.post('/api/generate', async (req, res) => {
         } catch (e) { console.warn('[auto-select materials]', e.message); }
       }
 
-      ({ prompt } = buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems, usedAngle));
+      ({ prompt } = buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems, usedAngle, toneStyle));
     }
 
     const rawText = await runClaudeAsync(prompt, 420000);
@@ -1075,12 +1085,12 @@ app.post('/api/generate', async (req, res) => {
 // ─── 提示词预览（不真正生成，只返回完整 prompt 和模块列表）────────────
 app.post('/api/preview-prompt', async (req, res) => {
   try {
-    const { framework = 'B', direction = '', sellingPoint = '（预览）', spItems = [], subTemplate = null, persona = null, scene = null, refArticle = null, mode = 'single', angle = null } = req.body;
+    const { framework = 'B', direction = '', sellingPoint = '（预览）', spItems = [], subTemplate = null, persona = null, scene = null, refArticle = null, mode = 'single', angle = null, toneStyle = 'narrative' } = req.body;
     let ctx;
     try { ctx = await fetchFeishuContext(); } catch { ctx = { iterComp: [], reference: [] }; }
     const result = mode === 'batch'
       ? buildBatchPrompt(ctx, direction, sellingPoint, framework, persona, scene, refArticle, spItems)
-      : buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems, angle);
+      : buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems, angle, toneStyle);
     const titleCount = (() => { try { return loadTitleLibrary().length; } catch { return 0; } })();
     res.json({
       ok: true,

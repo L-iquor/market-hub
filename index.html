@@ -908,6 +908,15 @@ label { font-size:13px; color:var(--muted); }
         </select>
       </div>
 
+      <!-- 语气风格 -->
+      <div>
+        <div class="section-label">语气风格</div>
+        <div style="display:flex;gap:6px">
+          <button id="toneNarrative" class="chip active" onclick="setTone('narrative')" style="font-size:11px">叙事</button>
+          <button id="toneKoc"       class="chip"        onclick="setTone('koc')"       style="font-size:11px">热情KOC</button>
+        </div>
+      </div>
+
       <!-- 切入方式（系统预选，可手动干预） -->
       <div>
         <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
@@ -1495,6 +1504,46 @@ label { font-size:13px; color:var(--muted); }
     </div>
   </div>
 
+  <!-- ── 竞品评论抓取 ── -->
+  <div style="padding:0 28px 20px">
+    <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;background:var(--bg2)" onclick="xhsTogglePanel()">
+        <span style="font-size:13px;font-weight:600;color:var(--gold)">💬 竞品评论抓取</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:11px;color:var(--muted)">✅<b id="xhsCntDone">-</b> &nbsp;⏳<b id="xhsCntPend">-</b> &nbsp;⏭<b id="xhsCntTried">-</b> &nbsp;共<b id="xhsCntAll">-</b></span>
+          <span id="xhsPanelChevron" style="font-size:11px;color:var(--muted)">▶ 展开</span>
+        </div>
+      </div>
+      <div id="xhsPanel" style="display:none;padding:14px 16px;background:var(--bg3)">
+        <!-- 按钮栏 -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+          <button class="btn btn-sm" onclick="xhsLoad()">↺ 刷新列表</button>
+          <button class="btn btn-sm" id="xhsBtnSel" onclick="xhsScrapeSelected()" style="display:none">▶ 抓已选(<span id="xhsSelCount">0</span>)</button>
+          <button class="btn btn-sm" onclick="xhsScrapeAll()">▶ 批量抓取</button>
+          <button class="btn btn-sm" style="color:var(--dim)" onclick="xhsResetTried()">重置跳过</button>
+        </div>
+        <!-- 日志 -->
+        <div id="xhsLogWrap" style="display:none;margin-bottom:10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px">
+          <div id="xhsLog" style="font-family:monospace;font-size:11px;color:#aaa;max-height:150px;overflow-y:auto;white-space:pre-wrap;line-height:1.7"></div>
+        </div>
+        <!-- 表格 -->
+        <div id="xhsLoading" style="font-size:12px;color:var(--dim);padding:4px 0">点「刷新列表」加载</div>
+        <table id="xhsTable" style="display:none;width:100%;border-collapse:collapse;font-size:11px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border2)">
+              <th style="padding:5px 4px;color:var(--muted);font-weight:500;width:20px"><input type="checkbox" id="xhsCheckAll" onchange="xhsToggleAll(this.checked)"></th>
+              <th style="padding:5px 4px;text-align:left;color:var(--muted);font-weight:500">#</th>
+              <th style="padding:5px 4px;text-align:left;color:var(--muted);font-weight:500">链接</th>
+              <th style="padding:5px 4px;color:var(--muted);font-weight:500;width:70px">状态</th>
+              <th style="padding:5px 4px;color:var(--muted);font-weight:500;width:50px">操作</th>
+            </tr>
+          </thead>
+          <tbody id="xhsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- 研究台提示词编辑器 -->
   <div style="padding:0 28px 28px">
     <div class="prompt-bar" id="researchPromptBar">
@@ -1706,6 +1755,7 @@ label { font-size:13px; color:var(--muted); }
   </div>
 </div><!-- /tab-matrix -->
 
+
 <style>
 /* ── 测试矩阵 ── */
 .mx-table { border-collapse: collapse; min-width: 100%; font-size: 12px; }
@@ -1740,6 +1790,7 @@ const st = {
   refArticle: null,
   angle: null,        // 当前预选切入方式 { id, name, desc, idx, total }
   allAngles: [],      // 当前框架的全量角度列表
+  toneStyle: 'narrative', // 'narrative' | 'koc'
 };
 
 // ─── 素材库数据 ────────────────────────────────────────────────────
@@ -2265,6 +2316,13 @@ function renderAnglePanel() {
   }
 }
 
+// ─── 语气风格切换 ─────────────────────────────────────────────────
+function setTone(tone) {
+  st.toneStyle = tone;
+  document.getElementById('toneNarrative').classList.toggle('active', tone === 'narrative');
+  document.getElementById('toneKoc').classList.toggle('active', tone === 'koc');
+}
+
 // ─── 框架选择（撰写台）────────────────────────────────────────────
 function selectFw(el) {
   document.querySelectorAll('#fwChips .chip').forEach(c => c.classList.remove('active'));
@@ -2337,6 +2395,7 @@ async function generate() {
         scene: st.scene || null,
         refArticle: st.refArticle || null,
         angle: st.angle || null,
+        toneStyle: st.toneStyle || 'narrative',
       }),
     }).then(x => x.json());
 
@@ -3668,11 +3727,131 @@ function switchTab(tab) {
   if (tab === 'title-lib') refreshTitleLib();
   if (tab === 'prompt-base') pbInit();
   if (tab === 'matrix') loadMatrix();
+  if (tab === 'research' && xhsRecords.length === 0) xhsLoad();
 }
 
 // ═══════════════════════════════════════════════════════════════════
 // 提示词基础 Tab
 // ═══════════════════════════════════════════════════════════════════
+// ══ XHS 评论抓取 ═══════════════════════════════════════════════════
+let xhsRecords = [], xhsJobId = null, xhsPolling = null;
+
+function xhsTogglePanel() {
+  const p = document.getElementById('xhsPanel');
+  const c = document.getElementById('xhsPanelChevron');
+  const open = p.style.display === 'none';
+  p.style.display = open ? 'block' : 'none';
+  c.textContent = open ? '▼ 收起' : '▶ 展开';
+}
+
+async function xhsLoad() {
+  document.getElementById('xhsLoading').style.display = 'block';
+  document.getElementById('xhsLoading').textContent = '加载中…';
+  document.getElementById('xhsTable').style.display = 'none';
+  try {
+    const r = await fetch('/api/xhs/records').then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    xhsRecords = r.records.slice().reverse(); // 最新的在前
+    xhsRenderTable();
+    xhsUpdateStats();
+  } catch (e) {
+    document.getElementById('xhsLoading').textContent = '加载失败: ' + e.message;
+  }
+}
+
+function xhsStatusBadge(rec) {
+  if (rec.hasData) return '<span style="color:var(--green);font-size:10px">✅ 已完成</span>';
+  if (rec.tried)   return '<span style="color:var(--muted);font-size:10px">⏭ 已跳过</span>';
+  return '<span style="color:var(--gold);font-size:10px">⏳ 待抓取</span>';
+}
+
+function xhsRenderTable() {
+  const tbody = document.getElementById('xhsTableBody');
+  tbody.innerHTML = xhsRecords.map((rec, i) => `
+    <tr id="xhsRow_${rec.id}" style="border-bottom:1px solid var(--border);${rec.hasData ? 'opacity:.55' : ''}">
+      <td style="padding:5px 4px"><input type="checkbox" class="xhsCb" data-id="${rec.id}" onchange="xhsOnCheck()"></td>
+      <td style="padding:5px 4px;color:var(--dim)">${xhsRecords.length - i}</td>
+      <td style="padding:5px 4px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        <a href="${rec.url}" target="_blank" style="color:var(--muted);text-decoration:none;font-size:10px">${rec.url.replace(/https?:\/\//,'')}</a>
+      </td>
+      <td style="padding:5px 4px">${xhsStatusBadge(rec)}</td>
+      <td style="padding:5px 4px">
+        ${!rec.hasData ? `<button class="btn btn-sm" style="font-size:10px;padding:2px 6px" onclick="xhsScrapeOne('${rec.id}')">抓取</button>` : ''}
+      </td>
+    </tr>`).join('');
+  document.getElementById('xhsLoading').style.display = 'none';
+  document.getElementById('xhsTable').style.display = 'table';
+}
+
+function xhsUpdateStats() {
+  const done  = xhsRecords.filter(r => r.hasData).length;
+  const tried = xhsRecords.filter(r => !r.hasData && r.tried).length;
+  const pend  = xhsRecords.filter(r => !r.hasData && !r.tried).length;
+  document.getElementById('xhsCntDone').textContent  = done;
+  document.getElementById('xhsCntPend').textContent  = pend;
+  document.getElementById('xhsCntTried').textContent = tried;
+  document.getElementById('xhsCntAll').textContent   = xhsRecords.length;
+}
+
+function xhsOnCheck() {
+  const checked = document.querySelectorAll('.xhsCb:checked').length;
+  document.getElementById('xhsSelCount').textContent = checked;
+  document.getElementById('xhsBtnSel').style.display = checked > 0 ? 'inline-flex' : 'none';
+}
+
+function xhsToggleAll(v) {
+  document.querySelectorAll('.xhsCb').forEach(cb => cb.checked = v);
+  xhsOnCheck();
+}
+
+function xhsScrapeOne(id) { xhsStartScrape([id]); }
+function xhsScrapeSelected() {
+  const ids = [...document.querySelectorAll('.xhsCb:checked')].map(cb => cb.dataset.id);
+  if (ids.length) xhsStartScrape(ids);
+}
+function xhsScrapeAll() {
+  const ids = xhsRecords.filter(r => !r.hasData && !r.tried).map(r => r.id);
+  if (!ids.length) { alert('没有待抓取的记录'); return; }
+  xhsStartScrape(ids);
+}
+
+async function xhsStartScrape(ids) {
+  if (xhsPolling) { clearInterval(xhsPolling); xhsPolling = null; }
+  document.getElementById('xhsLogWrap').style.display = 'block';
+  document.getElementById('xhsLog').textContent = `开始抓取 ${ids.length} 条…\n`;
+
+  const r = await fetch('/api/xhs/scrape', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  }).then(x => x.json());
+
+  if (!r.ok) { document.getElementById('xhsLog').textContent += '启动失败: ' + r.error; return; }
+  xhsJobId = r.jobId;
+
+  let lastLen = 0;
+  xhsPolling = setInterval(async () => {
+    const p = await fetch('/api/xhs/scrape-poll/' + xhsJobId).then(x => x.json());
+    if (!p.ok) return;
+    const newLogs = p.logs.slice(lastLen).join('\n');
+    if (newLogs) {
+      const el = document.getElementById('xhsLog');
+      el.textContent += newLogs + '\n';
+      el.scrollTop = el.scrollHeight;
+      lastLen = p.logs.length;
+    }
+    if (p.done) {
+      clearInterval(xhsPolling); xhsPolling = null;
+      xhsLoad(); // 刷新状态
+    }
+  }, 1500);
+}
+
+async function xhsResetTried() {
+  if (!confirm('清除所有「已跳过」记录，让它们重新进入待抓取队列？')) return;
+  await fetch('/api/xhs/reset-tried', { method: 'POST' });
+  xhsLoad();
+}
+
 let pbCurrentModule = 'writing';
 let pbDirty = false;
 let pbFwData = {};   // { A: {body, example}, B: ... }
@@ -3876,6 +4055,7 @@ async function openPromptOverlay(mode = 'single', overrideBody = null) {
           scene: st.scene || null,
           refArticle: st.refArticle || null,
           angle: st.angle || null,
+          toneStyle: st.toneStyle || 'narrative',
         });
 
     const r = await fetch('/api/preview-prompt', {
