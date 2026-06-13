@@ -582,11 +582,12 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
   const { brand } = CFG;
   const fwLabel = FRAMEWORK_LABELS[framework] || '场景种草型';
 
-  // ① 撰写系统指令（用户可编辑）
+  // ① 撰写系统指令（用户可编辑）；KOC 模式只保留品牌底线，不注入写作规范
   const writingInstructions = loadWritingInstructions();
-  const systemBlock = writingInstructions
-    ? `${writingInstructions}`
-    : `## 撰写规范\n（writing-instructions.md 未找到，使用默认规范）`;
+  const kocBrandGuardrails = `## 品牌底线（所有模式通用）\n- 禁止广告腔：不写"满足您的……""为您带来……""品质保证……"\n- 禁止无依据事实：不编销量、获奖、实验室数据、真实竞品名\n- 禁止把0糖0卡说成减肥/医疗功效\n- 正文必须像真人写的，不像品牌公告`;
+  const systemBlock = toneStyle === 'koc'
+    ? kocBrandGuardrails
+    : (writingInstructions || `## 撰写规范\n（writing-instructions.md 未找到，使用默认规范）`);
 
   // ② 品牌固定事实（从 brand-facts.md 读取，支持 UI 编辑）
   const brandBlock = loadBrandFacts();
@@ -651,14 +652,14 @@ ${angle.desc}`;
       : `## 框架${framework}写作逻辑\n\n${baseTemplate.body}`;
   }
 
-  // 框架示例：叙事模式不注入（防止照抄结构）；KOC模式注入作为语气参考
-  const frameworkExampleBlock = (!isPhilMode && toneStyle === 'koc' && !imitBlock && baseTemplate?.example)
-    ? `## 语气参考范例（学习口吻、节奏、热情度，不照搬结构，内容完全原创）\n\n${baseTemplate.example}`
-    : '';
-
   // ③a 仿写参考范文（用户在参考文案库中选择后注入）
   const imitBlock = refArticle
     ? `## ★ 本次首要任务：仿写以下参考范文\n本次生成的节奏、情绪走向、句式结构必须以此范文为蓝本。品牌事实和框架内容逻辑服务于这个结构，不得覆盖它。内容完全原创，不得复制原文字句。\n\n标题：${refArticle.title || '（无标题）'}\n标签：${refArticle.tag || '（无标签）'}\n\n${(refArticle.content || '').slice(0, 1000)}`
+    : '';
+
+  // 框架示例：KOC模式且无仿写范文时注入作为语气参考
+  const frameworkExampleBlock = (!isPhilMode && toneStyle === 'koc' && !imitBlock && baseTemplate?.example)
+    ? `## 语气参考范例（最高语气参照，本次写法以此为准）\n本次输出的结构节奏、热情程度、开场方式、句式密度全部对齐此范例。开场禁用规则本次不适用。内容完全原创，不复制原文字句。\n\n${baseTemplate.example}`
     : '';
 
   // ③b 风格子模板（用户主动选择时叠加注入）
@@ -701,8 +702,10 @@ ${angle.desc}`;
   // ⑤ 当前任务
   const fwNote = refArticle
     ? `框架${framework} · ${fwLabel}（内容逻辑参考，结构节奏以上方参考范文为准）`
+    : frameworkExampleBlock
+    ? `框架${framework} · ${fwLabel}（风格以上方参考范例为准）`
     : `框架${framework} · ${fwLabel}（严格遵守此框架的写作逻辑和写作顺序）`;
-  const dreamLine = (persona && scene)
+  const dreamLine = (!frameworkExampleBlock && persona && scene)
     ? `造梦构思：${persona.name}在「${scene.name}」里的一个生活时刻。${sellingPoint}是这个时刻里自然出现的道具，不是主角。内容从这个人和这个时刻出发，单点展开。`
     : `本次主推卖点：${sellingPoint}`;
   const taskBlock = `## 当前任务
@@ -760,29 +763,21 @@ ${dreamLine}`;
 ### 推断依据
 （框架选择理由、目标人群、主次卖点逻辑）`));
 
-  const kocToneBlock = (!isPhilMode && toneStyle === 'koc') ? `## ⚡ 语气覆写指令——热情KOC（最高优先级，覆盖上方所有写作风格规范）
-
-本次输出必须是热情直接的KOC口吻。上方所有叙事化、散文化、文学化的写法指引本次全部忽略。
-
-强制规则：
-- 开场有能量，第一句就把最惊喜或最有意思的感受抛出来，不要铺垫
-- 可以用感叹号，语气要有起伏，像真人在说话
-- 产品好就直接说好，喜欢就直接说喜欢，不要绕
-- 结尾必须有明确推荐：「真的可以试试」「这个不踩雷」「建议入」之类
-- 禁止：散文叙事、意识流、电影感镜头描写、开放式结尾留白` : '';
+  const kocToneBlock = (!isPhilMode && toneStyle === 'koc') ? `## ⚡ 本次语气目标\n\n语气、能量、开场方式、句式节奏全部对齐上方注入的参考范例。直接给感受和产品事实，产品好就直接说好，结尾给出明确推荐。` : '';
 
   const modules = [
-    { name: '① 撰写规范', key: 'writing', content: systemBlock },
+    // KOC 模式：example 放最前，先定调；跳过飞书学习材料（防止其中文学性内容拉偏风格）
+    ...(!imitBlock && frameworkExampleBlock ? [{ name: '① 风格参考范例（本次写法基准）', content: frameworkExampleBlock }] : []),
+    { name: frameworkExampleBlock ? '② 撰写规范' : '① 撰写规范', key: 'writing', content: systemBlock },
     { name: '② 品牌事实', key: 'brand',   content: brandBlock },
     ...(sellingPointBlock ? [{ name: '② 本次主推卖点详情', content: sellingPointBlock }] : []),
-    ...(materialBlock   ? [{ name: '③ 定向素材（人/场）', content: materialBlock }]   : []),
+    ...(!frameworkExampleBlock && materialBlock ? [{ name: '③ 定向素材（人/场）', content: materialBlock }] : []),
     ...(productBlock    ? [{ name: '④ 动态产品信息', key: 'product', content: productBlock }]    : []),
     ...(imitBlock       ? [{ name: '⑤ 仿写参考范文★',    content: imitBlock }]        : []),
     // 角度/哲学模式下内容由硬编码生成，不可保存；只有无角度（base template 模式）时才挂 key 允许编辑
-    ...(frameworkLogicBlock ? [{ name: (angle || isPhilMode) ? '⑥ 框架写作逻辑（角度模式·动态）' : '⑥ 框架写作逻辑（可保存）', key: (angle || isPhilMode) ? undefined : `fw-body-${framework}`, content: frameworkLogicBlock }] : []),
-    ...(!imitBlock && frameworkExampleBlock ? [{ name: '⑦ 框架参考示例（基础模板 example）', key: `fw-example-${framework}`, content: frameworkExampleBlock }] : []),
+    ...(!frameworkExampleBlock && frameworkLogicBlock ? [{ name: (angle || isPhilMode) ? '⑥ 框架写作逻辑（角度模式·动态）' : '⑥ 框架写作逻辑（可保存）', key: (angle || isPhilMode) ? undefined : `fw-body-${framework}`, content: frameworkLogicBlock }] : []),
     ...(subTemplateBlock ? [{ name: '⑧ 风格子模板',      content: subTemplateBlock }] : []),
-    { name: '⑨ 飞书学习材料', content: learningBlock },
+    ...(!frameworkExampleBlock ? [{ name: '⑨ 飞书学习材料', content: learningBlock }] : []),
     { name: '⑩ 当前任务',    content: taskBlock },
     ...(kocToneBlock ? [{ name: '⑩ 语气覆写（KOC）', content: kocToneBlock }] : []),
     { name: '⑪ 输出格式', key: isPhilMode ? 'output-phil' : 'output-single', content: outputBlock },
@@ -981,6 +976,96 @@ function writeToBase(tableId, fields, baseToken = CFG.feishu.baseToken) {
 function writeOutputRecord(fields) { return writeToBase(OUTPUT_TABLE, fields, OUTPUT_BASE); }
 function writeMatRecord(tableId, fields) { return writeToBase(tableId, fields, MAT_BASE); }
 function writeRecord(tableId, fields) { return writeToBase(tableId, fields); }
+
+const WORK_BASE = 'REDACTED';
+const WORK_TABLES = {
+  tasks: { id: 'tblYrOGqZbPv18eF', name: '统一任务池' },
+  reports: { id: 'tblpB7KAgqRl9XJ1', name: '每日工作汇报-剪辑运营助理' },
+  notices: { id: 'tblrX2U0VPi4OZrp', name: '临时通知栏' },
+};
+
+function workWrite(tableId, fields, recordId = null) {
+  const tmpName = `_tmp_work_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.json`;
+  const tmpFile = path.join(__dirname, tmpName);
+  fs.writeFileSync(tmpFile, JSON.stringify(fields), 'utf8');
+  try {
+    const args = ['base', '+record-upsert', '--base-token', WORK_BASE, '--table-id', tableId];
+    if (recordId) args.push('--record-id', recordId);
+    args.push('--json', `@${tmpName}`);
+    return larkCli(args);
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch (_) {}
+  }
+}
+
+function workList(tableId, limit = 200) {
+  const items = [];
+  let offset = 0;
+  while (true) {
+    const res = larkCli([
+      'base', '+record-list',
+      '--base-token', WORK_BASE,
+      '--table-id', tableId,
+      '--limit', String(limit),
+      '--offset', String(offset),
+      '--format', 'json',
+      '--as', 'user',
+    ]);
+    if (!res.ok) break;
+    const data = res.data || {};
+    const rows = data.items || data.data || [];
+    if (Array.isArray(data.items)) {
+      for (const row of data.items) {
+        items.push({ id: row.record_id || row.id || '', fields: row.fields || {} });
+      }
+    } else {
+      const fields = data.fields || [];
+      const ids = data.record_id_list || [];
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i] || [];
+        const obj = {};
+        fields.forEach((name, idx) => { obj[name] = row[idx]; });
+        items.push({ id: ids[i] || '', fields: obj });
+      }
+    }
+    if (!data.has_more) break;
+    offset += limit;
+  }
+  return items;
+}
+
+function cleanText(v) {
+  if (Array.isArray(v)) return v.map(cleanText).filter(Boolean).join(', ');
+  if (v == null) return '';
+  if (typeof v === 'object') {
+    if (v.record_id) return String(v.record_id);
+    if (v.id) return String(v.id);
+    if (v.full_address) return String(v.full_address);
+    if (v.name) return String(v.name);
+    return JSON.stringify(v);
+  }
+  return String(v);
+}
+
+function toOptionName(v) {
+  if (!v) return '';
+  if (Array.isArray(v)) return v.map(toOptionName).filter(Boolean).join(', ');
+  if (typeof v === 'object') return v.name || v.text || v.value || v.id || '';
+  return String(v);
+}
+
+function linkIds(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.map(v => {
+      if (typeof v === 'string') return { id: v };
+      if (v && typeof v === 'object' && v.id) return { id: v.id };
+      return null;
+    }).filter(Boolean);
+  }
+  if (typeof value === 'object' && value.id) return [{ id: value.id }];
+  return [];
+}
 
 // ─── Claude 异步调用（用于批量/竞品分析，不阻塞事件循环）─────────────
 function runClaudeAsync(prompt, timeoutMs = 90000) {
@@ -2030,6 +2115,142 @@ app.post('/api/angles/:fw/set', (req, res) => {
 // ═══════════════════════════════════════════════════════════════════
 // Ares Chat API
 // ═══════════════════════════════════════════════════════════════════
+function workflowPayload() {
+  const tasks = workList(WORK_TABLES.tasks.id).map(rec => ({
+    id: rec.id,
+    title: cleanText(rec.fields['任务标题']),
+    role: toOptionName(rec.fields['岗位']),
+    owner: cleanText(rec.fields['责任人']),
+    source: toOptionName(rec.fields['任务来源']),
+    priority: toOptionName(rec.fields['优先级']),
+    status: toOptionName(rec.fields['状态']),
+    progress: rec.fields['进度'] ?? null,
+    dueTime: cleanText(rec.fields['截止时间']),
+    planDate: cleanText(rec.fields['计划日期']),
+    waiting: cleanText(rec.fields['对接人/等待谁']),
+    currentProgress: cleanText(rec.fields['当前进展']),
+    nextStep: cleanText(rec.fields['下一步']),
+    blocker: cleanText(rec.fields['阻塞原因']),
+    bossNote: cleanText(rec.fields['老板备注']),
+    reportLinks: linkIds(rec.fields['关联日报']).map(x => x.id),
+  }));
+
+  const reports = workList(WORK_TABLES.reports.id).map(rec => ({
+    id: rec.id,
+    title: cleanText(rec.fields['汇报标题']),
+    date: cleanText(rec.fields['汇报日期']),
+    person: cleanText(rec.fields['汇报人']),
+    role: toOptionName(rec.fields['岗位']),
+    completed: cleanText(rec.fields['已完成']),
+    ongoing: cleanText(rec.fields['进行中/有进度']),
+    carryover: cleanText(rec.fields['顺延任务']),
+    coordination: cleanText(rec.fields['需对接/等待反馈']),
+    tomorrow: cleanText(rec.fields['明日重点']),
+    issue: cleanText(rec.fields['问题/需老板确认']),
+    summary: cleanText(rec.fields['一键汇总文本']),
+    submitStatus: toOptionName(rec.fields['提交状态']),
+    linkedTaskIds: linkIds(rec.fields['今日关联任务']).map(x => x.id),
+  }));
+
+  const notices = workList(WORK_TABLES.notices.id).map(rec => {
+    const status = toOptionName(rec.fields['展示状态']) || '取消';
+    const roles = Array.isArray(rec.fields['适用岗位']) ? rec.fields['适用岗位'] : (rec.fields['适用岗位'] ? [rec.fields['适用岗位']] : []);
+    return {
+      id: rec.id,
+      title: cleanText(rec.fields['通知标题']),
+      body: cleanText(rec.fields['通知内容']),
+      status,
+      roles: roles.map(toOptionName).filter(Boolean),
+      order: rec.fields['排序'] ?? 0,
+      start: cleanText(rec.fields['开始时间']),
+      end: cleanText(rec.fields['结束时间']),
+      note: cleanText(rec.fields['备注']),
+      visible: status === '展示',
+    };
+  }).sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  return { tasks, reports, notices };
+}
+
+app.get('/api/workflow/state', (req, res) => {
+  try {
+    res.json({ ok: true, ...workflowPayload() });
+  } catch (e) {
+    res.json({ ok: false, error: e.message, tasks: [], reports: [], notices: [] });
+  }
+});
+
+app.post('/api/workflow/tasks/upsert', (req, res) => {
+  try {
+    const { recordId = null, task = {} } = req.body || {};
+    const fields = {
+      '任务标题': task.title || '',
+      '岗位': task.role || null,
+      '责任人': task.owner || '',
+      '任务来源': task.source || null,
+      '优先级': task.priority || null,
+      '状态': task.status || null,
+      '进度': task.progress === '' || task.progress == null ? null : Number(task.progress),
+      '截止时间': task.dueTime || null,
+      '计划日期': task.planDate || null,
+      '对接人/等待谁': task.waiting || '',
+      '当前进展': task.currentProgress || '',
+      '下一步': task.nextStep || '',
+      '阻塞原因': task.blocker || '',
+      '老板备注': task.bossNote || '',
+    };
+    const result = workWrite(WORK_TABLES.tasks.id, fields, recordId || null);
+    res.json({ ok: true, result });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/workflow/reports/upsert', (req, res) => {
+  try {
+    const { recordId = null, report = {} } = req.body || {};
+    const fields = {
+      '汇报标题': report.title || '',
+      '汇报日期': report.date || null,
+      '汇报人': report.person || '',
+      '岗位': report.role || null,
+      '今日关联任务': linkIds(report.linkedTaskIds || []),
+      '已完成': report.completed || '',
+      '进行中/有进度': report.ongoing || '',
+      '顺延任务': report.carryover || '',
+      '需对接/等待反馈': report.coordination || '',
+      '明日重点': report.tomorrow || '',
+      '问题/需老板确认': report.issue || '',
+      '一键汇总文本': report.summary || '',
+      '提交状态': report.submitStatus || '已提交',
+    };
+    const result = workWrite(WORK_TABLES.reports.id, fields, recordId || null);
+    res.json({ ok: true, result });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/workflow/notices/upsert', (req, res) => {
+  try {
+    const { recordId = null, notice = {} } = req.body || {};
+    const fields = {
+      '通知标题': notice.title || '',
+      '通知内容': notice.body || '',
+      '展示状态': notice.status || '展示',
+      '适用岗位': notice.roles || [],
+      '排序': notice.order === '' || notice.order == null ? 0 : Number(notice.order),
+      '开始时间': notice.start || null,
+      '结束时间': notice.end || null,
+      '备注': notice.note || '',
+    };
+    const result = workWrite(WORK_TABLES.notices.id, fields, recordId || null);
+    res.json({ ok: true, result });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 const Anthropic = require('@anthropic-ai/sdk');
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const aresHistories = {};
