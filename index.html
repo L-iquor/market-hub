@@ -37,6 +37,27 @@ body {
   display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted);
   background: var(--bg3); padding:6px 14px; border-radius:20px; border:1px solid var(--border);
 }
+.publish-image-bar { border:1px solid var(--border2); border-radius:var(--radius-sm); background:linear-gradient(180deg,var(--bg3),var(--bg2)); padding:10px; }
+.publish-image-head { display:flex; flex-direction:column; gap:8px; margin-bottom:8px; }
+.publish-image-title { font-size:12px; color:var(--gold2); font-weight:700; }
+.publish-image-dir { font-size:10px; color:var(--dim); line-height:1.5; }
+.publish-image-tools { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.publish-source-tabs { display:inline-flex; gap:4px; padding:3px; border:1px solid var(--border2); border-radius:999px; background:var(--bg2); }
+.publish-source-tabs .btn { border-radius:999px; border:0; }
+.publish-image-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.publish-image-path { display:flex; gap:6px; align-items:center; margin-bottom:8px; }
+.publish-image-path input { flex:1; min-width:0; font-size:11px; padding:5px 8px; background:var(--bg2); border:1px solid var(--border2); border-radius:var(--radius-sm); color:var(--text); outline:none; }
+.publish-image-path input:focus { border-color:var(--gold); }
+.publish-image-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(74px,1fr)); gap:7px; max-height:178px; overflow:auto; }
+.publish-image-card { position:relative; border:1px solid var(--border2); border-radius:8px; overflow:hidden; background:var(--bg2); cursor:pointer; transition:all .15s; }
+.publish-image-card:hover { border-color:var(--gold); transform:translateY(-1px); }
+.publish-image-card.selected { border-color:var(--gold); box-shadow:0 0 0 2px rgba(212,168,67,.22); }
+.publish-image-card img { width:100%; aspect-ratio:1; object-fit:cover; display:block; }
+.publish-image-card span { display:block; font-size:9px; color:var(--muted); padding:3px 5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.publish-image-card.selected::after { content:'✓'; position:absolute; top:4px; right:4px; background:var(--gold); color:#000; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; }
+.publish-image-count { font-size:10px; color:var(--gold2); margin-top:6px; }
+.publish-image-empty { font-size:11px; color:var(--muted); padding:12px; border:1px dashed var(--border2); border-radius:8px; background:rgba(255,255,255,.02); line-height:1.7; }
+.publish-image-empty b { color:var(--gold2); }
 .dot { width:7px; height:7px; border-radius:50%; background:var(--dim); }
 .dot.ok { background:var(--green); }
 .dot.busy { background:var(--gold); animation:pulse 1.2s infinite; }
@@ -52,7 +73,7 @@ body {
   padding: 12px 20px; border: none; background: none;
   color: var(--muted); font-size: 13px; font-weight: 500;
   cursor: pointer; border-bottom: 2px solid transparent;
-  transition: all .15s; margin-bottom: -1px;
+  transition: all .15s; margin-bottom: -1px; text-decoration:none;
 }
 .tab-btn:hover { color: var(--text); }
 .tab-btn.active { color: var(--gold2); border-bottom-color: var(--gold); }
@@ -684,8 +705,29 @@ label { font-size:13px; color:var(--muted); }
           <li>② <b>体检 + 改稿</b>：点「🩺 体检」看 AI 诊断报告；不满意的地方直接编辑正文</li>
           <li>③ <b>归档修改</b>：改完后点侧栏「＋」归档一条修改对比——这是让 AI 学你语感的关键</li>
           <li>④ <b>收录好标题</b>：点 ⭐ 把高点击欲望的标题存入灵感库</li>
-          <li>⑤ <b>保存发布</b>：填好标题/正文/话题，点「保存到发布表」写入飞书</li>
+          <li>⑤ <b>保存发布</b>：填好标题/正文，按需选择配图，点「保存到发布表」写入飞书</li>
         </ul>
+      </div>
+
+      <!-- 配图保存 -->
+      <div class="guide-section">
+        <h2>🖼️ 配图选择</h2>
+        <div class="guide-cards">
+          <div class="guide-card">
+            <div class="guide-card-title">在哪里选图</div>
+            <div class="guide-card-body">
+              配图只在<b>撰写台生成文案后的保存区</b>选择。<br>
+              保存到发布表时，只写入<b>标题、正文、最多 9 张图片</b>；不额外改场景、货角度、框架字段。
+            </div>
+          </div>
+          <div class="guide-card">
+            <div class="guide-card-title">两种图片来源</div>
+            <div class="guide-card-body">
+              <b>本地结果池</b>：换图结果下载到指定文件夹后，点「刷新图片」勾选。<br>
+              <b>飞书成品图</b>：直接读取换图工具的场景图子表格，优先取「满意的图片」，没有则取「替换结果图」。
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- 撰写台参数 -->
@@ -1026,7 +1068,32 @@ label { font-size:13px; color:var(--muted); }
           <div style="display:flex;flex-direction:column;gap:8px">
             <input id="publishTitle" placeholder="标题（从备选标题中选一条，可编辑）" style="font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;width:100%;box-sizing:border-box">
             <textarea id="publishBody" rows="3" placeholder="正文（自动提取，可编辑）" style="font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;resize:vertical;line-height:1.6;width:100%;box-sizing:border-box"></textarea>
-            <input id="publishTags" placeholder="话题标签，如：#微醺气泡酒 #周末放松" style="font-size:12px;padding:5px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;width:100%;box-sizing:border-box">
+            <div class="publish-image-bar">
+              <div class="publish-image-head">
+                <div>
+                  <div class="publish-image-title">配图选择 · 与当前文案一起保存</div>
+                  <div class="publish-image-dir" id="publishImageDir">未加载</div>
+                </div>
+                <div class="publish-image-tools">
+                  <div class="publish-source-tabs">
+                    <button class="btn btn-sm" id="publishFeishuSourceBtn" onclick="setPublishImageSource('feishu')" style="padding:3px 10px">飞书成品图</button>
+                    <button class="btn btn-sm" id="publishLocalSourceBtn" onclick="setPublishImageSource('local')" style="padding:3px 10px">本地结果池</button>
+                  </div>
+                  <div class="publish-image-actions">
+                    <a class="btn btn-sm" href="http://localhost:5000" target="_blank" style="padding:3px 10px;text-decoration:none">打开换图工具</a>
+                    <button class="btn btn-sm" onclick="loadPublishImagePool()" style="padding:3px 10px">同步/刷新</button>
+                  </div>
+                </div>
+              </div>
+              <div class="publish-image-path" id="publishImagePathRow">
+                <input id="publishImageDirInput" placeholder="填写这台电脑的换图结果文件夹路径">
+                <button class="btn btn-sm" onclick="savePublishImageDir()" style="padding:3px 10px">保存路径</button>
+              </div>
+              <div id="publishImageGrid" class="publish-image-grid">
+                <div style="font-size:11px;color:var(--dim);padding:8px">生成换图结果后下载到这个文件夹，点“刷新图片”，再勾选要随文案保存的图片。</div>
+              </div>
+              <div class="publish-image-count" id="publishImageCount">已选 0 张</div>
+            </div>
             <div style="display:flex;gap:8px;align-items:center">
               <button class="btn btn-primary btn-sm" onclick="saveToPublish()" style="padding:5px 16px">保存到发布表</button>
               <button class="btn-diagnose" id="diagnoseBtn" onclick="runDiagnose()">🩺 体检</button>
@@ -1591,6 +1658,7 @@ label { font-size:13px; color:var(--muted); }
         <input type="text" id="tmplName" placeholder="模板名称（例如：独处微醺夜晚）">
         <input type="text" id="tmplDesc" placeholder="一句话说明适用场景（可选）">
         <textarea id="tmplBody" placeholder="风格描述 + 结构要点 + 示例句式&#10;&#10;例如：&#10;开头：描写一个具体场景（地点+时间+动作），不超过20字&#10;转折：用一个反差感的问句引出产品&#10;卖点：只强调一个感官体验，锚定品牌事实&#10;结尾：一句开放式互动，问读者的感受"></textarea>
+        <textarea id="tmplExample" placeholder="参考示例（可选）：贴一篇完整范文，生成时学习节奏、开场方式、句式密度，不复制原文"></textarea>
         <div style="display:flex;gap:8px">
           <button class="btn btn-primary btn-sm" onclick="saveNewTemplate()">保存</button>
           <button class="btn btn-sm" onclick="hideAddTemplate()">取消</button>
@@ -2422,6 +2490,7 @@ async function generate() {
     document.getElementById('mainSpLabel').textContent = sp;
     document.getElementById('emptyState').style.display = 'none';
     document.getElementById('resultArea').style.display = 'block';
+    loadPublishImagePool().catch(() => {});
 
     if (res.contextStats) {
       const s = res.contextStats;
@@ -2748,6 +2817,20 @@ function renderBatchResults(jobs) {
 
 function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escJs(s)   { return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+async function fetchJsonStrict(url, options) {
+  const response = await fetch(url, options);
+  const text = await response.text();
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const preview = text.slice(0, 100).replace(/\s+/g, ' ');
+    throw new Error(`接口没有返回 JSON：${url}。请确认 market-hub 服务已重启且打开的是 http://localhost:3377。返回预览：${preview}`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    throw new Error(`接口 JSON 解析失败：${url}。${e.message}`);
+  }
+}
 
 async function archiveBatchItem(jobId) {
   const title = document.getElementById(`brc-title-${jobId}`)?.value?.trim() || '';
@@ -3150,7 +3233,7 @@ function selectSubTmpl(el) {
   } else {
     el.classList.add('active');
     st.subTemplate = template;
-    preview.textContent = (template.desc ? template.desc + '\n\n' : '') + template.body;
+    preview.textContent = (template.desc ? template.desc + '\n\n' : '') + template.body + (template.example ? '\n\n参考示例：\n' + template.example : '');
     preview.style.display = 'block';
   }
 }
@@ -3271,11 +3354,12 @@ function renderTmplCards() {
           <input id="tmplEditName" value="${escHtml(t.name)}" style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:6px 10px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
           <input id="tmplEditDesc" value="${escHtml(t.desc||'')}" placeholder="简短说明（可选）" style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:6px 10px;color:var(--text);font-size:12px;font-family:inherit;outline:none">
           <textarea id="tmplEditBody" style="min-height:160px;resize:vertical;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text);font-size:12px;font-family:inherit;line-height:1.7;outline:none">${escHtml(t.body)}</textarea>
+          <textarea id="tmplEditExample" placeholder="参考示例（可选）" style="min-height:140px;resize:vertical;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text);font-size:12px;font-family:inherit;line-height:1.7;outline:none">${escHtml(t.example||'')}</textarea>
           <div style="display:flex;gap:8px">
             <button class="btn btn-primary btn-sm" onclick="saveEditTemplate('${escHtml(t.id)}')">保存修改</button>
             <button class="btn btn-sm" onclick="cancelEditTemplate()">取消</button>
           </div>
-        </div>` : `<div class="template-card-body">${escHtml(t.body)}</div>`}
+        </div>` : `<div class="template-card-body">${escHtml(t.body)}</div>${t.example ? `<details style="padding:0 16px 12px"><summary style="font-size:11px;color:var(--dim);cursor:pointer;user-select:none">参考示例 ▸</summary><div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.7;white-space:pre-wrap">${escHtml(t.example)}</div></details>` : ''}`}
       </div>`;
     }).join('');
   }
@@ -3292,17 +3376,19 @@ function hideAddTemplate() {
   document.getElementById('tmplName').value = '';
   document.getElementById('tmplDesc').value = '';
   document.getElementById('tmplBody').value = '';
+  document.getElementById('tmplExample').value = '';
 }
 
 async function saveNewTemplate() {
   const name = document.getElementById('tmplName').value.trim();
   const desc = document.getElementById('tmplDesc').value.trim();
   const body = document.getElementById('tmplBody').value.trim();
+  const example = document.getElementById('tmplExample').value.trim();
   if (!name || !body) { showToast('名称和模板内容不能为空', 'err'); return; }
 
   if (!allTemplates[currentTmplFw]) allTemplates[currentTmplFw] = [];
   allTemplates[currentTmplFw].push({
-    id: Date.now().toString(36), name, desc, body,
+    id: Date.now().toString(36), name, desc, body, example,
   });
   await persistTemplates();
   hideAddTemplate();
@@ -3370,11 +3456,12 @@ async function saveEditTemplate(id) {
   const name = document.getElementById('tmplEditName')?.value.trim();
   const desc = document.getElementById('tmplEditDesc')?.value.trim();
   const body = document.getElementById('tmplEditBody')?.value.trim();
+  const example = document.getElementById('tmplEditExample')?.value.trim();
   if (!name || !body) { showToast('名称和模板内容不能为空', 'err'); return; }
   const list = allTemplates[currentTmplFw] || [];
   const t = list.find(x => x.id === id);
   if (!t) return;
-  t.name = name; t.desc = desc; t.body = body;
+  t.name = name; t.desc = desc; t.body = body; t.example = example || '';
   await persistTemplates();
   if (st.subTemplate && st.subTemplate.id === id) st.subTemplate = { ...t };
   tmplEditingId = null;
@@ -4757,25 +4844,153 @@ function scrollToPublish() {
   });
 })();
 
+const selectedPublishImages = new Set();
+let publishImageSource = 'feishu';
+
+function updatePublishImageCount() {
+  const el = document.getElementById('publishImageCount');
+  if (el) el.textContent = `已选 ${selectedPublishImages.size} 张`;
+}
+
+function updatePublishImageSourceUi() {
+  document.getElementById('publishLocalSourceBtn')?.classList.toggle('btn-primary', publishImageSource === 'local');
+  document.getElementById('publishFeishuSourceBtn')?.classList.toggle('btn-primary', publishImageSource === 'feishu');
+  const pathRow = document.getElementById('publishImagePathRow');
+  if (pathRow) pathRow.style.display = publishImageSource === 'local' ? 'flex' : 'none';
+}
+
+async function setPublishImageSource(source) {
+  publishImageSource = source === 'feishu' ? 'feishu' : 'local';
+  updatePublishImageSourceUi();
+  await loadPublishImagePool();
+}
+
+async function loadPublishImageConfig() {
+  const input = document.getElementById('publishImageDirInput');
+  const label = document.getElementById('publishImageDir');
+  const r = await fetch('/api/image-pool/config').then(x => x.json());
+  if (!r.ok) throw new Error(r.error || '图片池路径读取失败');
+  if (input) input.value = r.dir || '';
+  if (label) label.textContent = r.dir || '';
+  return r.dir || '';
+}
+
+async function savePublishImageDir() {
+  const input = document.getElementById('publishImageDirInput');
+  const dir = (input?.value || '').trim();
+  if (!dir) { showToast('请先填写图片池路径', 'err'); return; }
+  try {
+    const r = await fetch('/api/image-pool/config', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ dir }),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error || '保存路径失败');
+    selectedPublishImages.clear();
+    updatePublishImageCount();
+    showToast('图片池路径已保存', 'ok');
+    await loadPublishImagePool();
+  } catch (e) {
+    showToast('保存路径失败：' + e.message, 'err');
+  }
+}
+
+async function openPublishImageDir() {
+  try {
+    const r = await fetch('/api/image-pool/open', { method: 'POST' }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error || '打开文件夹失败');
+  } catch (e) {
+    showToast('打开文件夹失败：' + e.message, 'err');
+  }
+}
+
+async function loadPublishImagePool() {
+  const grid = document.getElementById('publishImageGrid');
+  const dir = document.getElementById('publishImageDir');
+  if (!grid) return;
+  updatePublishImageCount();
+  updatePublishImageSourceUi();
+  grid.innerHTML = '<div style="font-size:11px;color:var(--dim);padding:8px">加载中…</div>';
+  try {
+    if (publishImageSource === 'feishu') {
+      const r = await fetchJsonStrict('/api/feishu-result-images/list');
+      if (!r.ok) throw new Error(r.error || '飞书成品图加载失败');
+      if (dir) dir.textContent = `来源：飞书【场景】表成品字段 · 记录 ${r.totalRecords || 0} 条 · 满意图 ${r.satisfiedRows || 0} 条 · 替换图 ${r.replacedRows || 0} 条`;
+      const files = r.files || [];
+      if (!files.length) {
+        grid.innerHTML = `
+          <div class="publish-image-empty">
+            <b>飞书已接通，但当前没有可选成品图。</b><br>
+            已读取换图工具飞书【场景】表 ${r.totalRecords || 0} 条记录；其中「满意的图片」${r.satisfiedRows || 0} 条，「替换结果图」${r.replacedRows || 0} 条。<br>
+            下一步：去换图工具生成图片后，在结果处点保存到「满意的图片」或「替换结果图」，再回这里点「同步/刷新」。也可以切到「本地结果池」选本机文件。
+          </div>`;
+        updatePublishImageCount();
+        return;
+      }
+      grid.innerHTML = files.map(f => `
+        <div class="publish-image-card ${selectedPublishImages.has(f.key) ? 'selected' : ''}"
+             onclick="togglePublishImage('${escJs(f.key)}', this)" title="${escHtml(f.sceneName || f.name)}">
+          <img src="${f.url}" loading="lazy">
+          <span>${escHtml(f.name)}</span>
+          <span style="color:var(--dim);font-size:10px">${escHtml(f.source || '')}${f.status ? ' · ' + escHtml(f.status) : ''}</span>
+        </div>
+      `).join('');
+      return;
+    }
+    await loadPublishImageConfig();
+    const r = await fetch('/api/image-pool/list').then(x => x.json());
+    if (!r.ok) throw new Error(r.error || '图片池加载失败');
+    if (dir) dir.textContent = r.dir || '';
+    const files = r.files || [];
+    if (!files.length) {
+      grid.innerHTML = '<div class="publish-image-empty"><b>本地结果池暂无图片。</b><br>把换图结果下载到上方文件夹后，点「同步/刷新」。如果已经保存回飞书，切到「飞书成品图」。</div>';
+      updatePublishImageCount();
+      return;
+    }
+    grid.innerHTML = files.map(f => `
+      <div class="publish-image-card ${selectedPublishImages.has(f.path) ? 'selected' : ''}"
+           onclick="togglePublishImage('${escJs(f.path)}', this)" title="${escHtml(f.name)}">
+        <img src="${f.url}" loading="lazy">
+        <span>${escHtml(f.name)}</span>
+      </div>
+    `).join('');
+  } catch (e) {
+    grid.innerHTML = `<div style="font-size:11px;color:var(--red);padding:8px">${escHtml(e.message)}</div>`;
+  }
+}
+
+function togglePublishImage(path, el) {
+  if (selectedPublishImages.has(path)) {
+    selectedPublishImages.delete(path);
+    el?.classList.remove('selected');
+  } else {
+    if (selectedPublishImages.size >= 9) {
+      showToast('最多选择 9 张图片', 'err');
+      return;
+    }
+    selectedPublishImages.add(path);
+    el?.classList.add('selected');
+  }
+  updatePublishImageCount();
+}
+
+updatePublishImageSourceUi();
+updatePublishImageCount();
+
 async function saveToPublish() {
   const title  = (document.getElementById('publishTitle')?.value || '').trim();
   const body   = (document.getElementById('publishBody')?.value  || '').trim();
-  const tags   = (document.getElementById('publishTags')?.value  || '').trim();
   const status = document.getElementById('publishStatus');
   if (!body) { showToast('正文不能为空', 'err'); return; }
   status.textContent = '保存中…';
-  // 读取当前选中的场景和卖点，写入矩阵标签
-  const sceneName = st.scene?.name || '';
-  const angleName = st.spItems.length > 0 ? st.spItems.map(x => x.name).join('+') : (st.sellingPoint || '');
-  const fwLabel   = { A:'A·问题解决', B:'B·场景种草', C:'C·对比评测', D:'D·教程干货' }[st.framework] || '';
   try {
     const r = await fetch('/api/save-to-publish', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ title, body, tags, scene: sceneName, angle: angleName, framework: fwLabel }),
+      body: JSON.stringify({ title, body, imagePaths: [...selectedPublishImages] }),
     }).then(x => x.json());
     if (!r.ok) throw new Error(r.error);
-    status.textContent = '✓ 已保存到发布表';
-    showToast('✓ 已保存到小红书发布表', 'ok');
+    status.textContent = `✓ 已保存到发布表${r.imageCount ? `（含${r.imageCount}张图）` : ''}`;
+    showToast(`✓ 已保存到小红书发布表${r.imageCount ? `，图片${r.imageCount}张` : ''}`, 'ok');
   } catch(e) {
     status.textContent = '失败：' + e.message;
     showToast('保存失败：' + e.message, 'err');

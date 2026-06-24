@@ -5,13 +5,25 @@
 
 require('dotenv').config();
 const express = require('express');
-const { spawnSync } = require('child_process');
+const { spawnSync, spawn } = require('child_process');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
 const CFG = require('./config/market-config');
+
+const IMAGE_POOL_CONFIG_PATH = path.join(__dirname, 'image-pool-config.json');
+const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp']);
+const IMAGE_CACHE_DIR = path.join(__dirname, 'feishu-image-cache');
+const FEISHU_RESULT_BASE = 'REDACTED';
+const FEISHU_RESULT_SCENE_TABLE = 'tblpU9jAjb26Nelp';
+const FEISHU_RESULT_FIELDS = {
+  name: 'fldgghMP0S',
+  satisfied: 'fldiSo13LG',
+  replaced: 'fld1KIV11Q',
+  status: 'fldNGl8w9z',
+};
 
 // ─── 框架基础模板覆盖（用户可编辑，存磁盘）──────────────────────────
 const BASE_OVERRIDES_PATH = path.join(__dirname, 'base-overrides.json');
@@ -276,6 +288,161 @@ function larkCli(args) {
   catch (e) { throw new Error(`lark-cli non-JSON: ${result.stdout.slice(0, 300)}`); }
   if (!parsed.ok) throw new Error(parsed.error?.message || JSON.stringify(parsed.error));
   return parsed;
+}
+
+function defaultImagePoolDir() {
+  return process.env.IMAGE_POOL_DIR || path.join(os.homedir(), 'Desktop', 'AI工具', '换图结果池');
+}
+
+function loadImagePoolDir() {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(IMAGE_POOL_CONFIG_PATH, 'utf8'));
+    if (cfg && cfg.dir) return String(cfg.dir);
+  } catch {}
+  return defaultImagePoolDir();
+}
+
+function saveImagePoolDir(dir) {
+  const raw = String(dir || '').trim();
+  if (!raw) throw new Error('图片池路径不能为空');
+  const resolved = path.resolve(raw);
+  fs.mkdirSync(resolved, { recursive: true });
+  const real = fs.realpathSync(resolved);
+  fs.writeFileSync(IMAGE_POOL_CONFIG_PATH, JSON.stringify({ dir: real }, null, 2), 'utf8');
+  return real;
+}
+
+function ensureImagePool() {
+  const dir = path.resolve(loadImagePoolDir());
+  fs.mkdirSync(dir, { recursive: true });
+  return fs.realpathSync(dir);
+}
+
+function resolvePoolImage(filePath) {
+  const root = ensureImagePool();
+  const resolved = path.resolve(String(filePath || ''));
+  if (!resolved.startsWith(root + path.sep) && resolved !== root) {
+    throw new Error('图片不在共享图片池内');
+  }
+  if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
+    throw new Error('图片文件不存在');
+  }
+  if (!IMAGE_EXTS.has(path.extname(resolved).toLowerCase())) {
+    throw new Error('不支持的图片格式');
+  }
+  return resolved;
+}
+
+function listImagePoolFiles() {
+  const root = ensureImagePool();
+  return fs.readdirSync(root)
+    .map(name => path.join(root, name))
+    .filter(p => {
+      try { return fs.statSync(p).isFile() && IMAGE_EXTS.has(path.extname(p).toLowerCase()); }
+      catch { return false; }
+    })
+    .map(p => {
+      const st = fs.statSync(p);
+      return {
+        name: path.basename(p),
+        path: p,
+        sizeKb: Math.round(st.size / 1024),
+        mtime: st.mtimeMs,
+      };
+    })
+    .sort((a, b) => b.mtime - a.mtime);
+}
+
+function uploadPoolImageToLark(filePath) {
+  const resolved = resolvePoolImage(filePath);
+  const name = path.basename(resolved);
+  const res = larkCli(['drive', '+upload', '--file', resolved, '--name', name, '--format', 'json']);
+  const token = res.data?.file_token || res.data?.token || res.data?.file?.file_token || res.file_token || res.token;
+  if (!token) throw new Error(`上传图片成功但未返回 file_token: ${JSON.stringify(res).slice(0, 300)}`);
+  return { file_token: token, name };
+}
+
+function readFeishuResultImageState() {
+  const res = larkCli([
+    'base', '+record-list',
+    '--base-token', FEISHU_RESULT_BASE,
+    '--table-id', FEISHU_RESULT_SCENE_TABLE,
+    '--limit', '200',
+    '--format', 'json',
+  ]);
+  const records = res.data.data || [];
+  const fieldIds = res.data.field_id_list || [];
+  const recordIds = res.data.record_id_list || [];
+  const idx = {};
+  fieldIds.forEach((fid, i) => { idx[fid] = i; });
+  const read = (row, fid) => (idx[fid] === undefined ? null : row[idx[fid]]);
+  let satisfiedRows = 0;
+  let replacedRows = 0;
+  const files = records.flatMap((row, i) => {
+    const recordId = recordIds[i];
+    const name = read(row, FEISHU_RESULT_FIELDS.name) || recordId;
+    const statusVal = read(row, FEISHU_RESULT_FIELDS.status);
+    const status = Array.isArray(statusVal) ? statusVal.join('、') : (statusVal || '');
+    const satisfied = read(row, FEISHU_RESULT_FIELDS.satisfied);
+    const replaced = read(row, FEISHU_RESULT_FIELDS.replaced);
+    if (Array.isArray(satisfied) && satisfied.length) satisfiedRows += 1;
+    if (Array.isArray(replaced) && replaced.length) replacedRows += 1;
+    const chosen = (Array.isArray(satisfied) && satisfied.length ? satisfied : null)
+      || (Array.isArray(replaced) && replaced.length ? replaced : null)
+      || [];
+    return chosen.map((att, n) => ({
+      recordId,
+      fileToken: att.file_token,
+      name: att.name || `${name}-${n + 1}`,
+      sceneName: name,
+      status,
+      source: Array.isArray(satisfied) && satisfied.includes(att) ? '满意的图片' : '替换结果图',
+      key: `feishu:${recordId}:${att.file_token}`,
+    })).filter(x => x.fileToken);
+  });
+  return { files, totalRecords: records.length, satisfiedRows, replacedRows, hasMore: Boolean(res.data.has_more) };
+}
+
+function readFeishuResultImages() {
+  return readFeishuResultImageState().files;
+}
+
+function resolveFeishuResultImage(ref) {
+  const m = String(ref || '').match(/^feishu:([^:]+):([^:]+)$/);
+  if (!m) return null;
+  const [, recordId, fileToken] = m;
+  const found = readFeishuResultImages().find(x => x.recordId === recordId && x.fileToken === fileToken);
+  if (!found) throw new Error('飞书成品图不存在或已被删除');
+  return { file_token: found.fileToken, name: found.name };
+}
+
+function downloadFeishuResultImage(recordId, fileToken) {
+  const item = readFeishuResultImages().find(x => x.recordId === recordId && x.fileToken === fileToken);
+  if (!item) throw new Error('飞书成品图不存在或已被删除');
+  fs.mkdirSync(IMAGE_CACHE_DIR, { recursive: true });
+  const ext = path.extname(item.name || '') || '.jpg';
+  const out = path.join(IMAGE_CACHE_DIR, `${recordId}_${fileToken}${ext}`);
+  if (fs.existsSync(out)) return out;
+  const result = spawnSync('lark-cli', [
+    'base', '+record-download-attachment',
+    '--base-token', FEISHU_RESULT_BASE,
+    '--table-id', FEISHU_RESULT_SCENE_TABLE,
+    '--record-id', recordId,
+    '--file-token', fileToken,
+    '--output', out,
+    '--overwrite',
+    '--format', 'json',
+  ], {
+    encoding: 'utf8',
+    timeout: 30000,
+    shell: true,
+    cwd: __dirname,
+    env: { ...process.env, PATH: process.env.PATH },
+  });
+  if (result.error) throw new Error(`下载飞书图片失败：${result.error.message}`);
+  if (result.status !== 0) throw new Error(result.stderr || '下载飞书图片失败');
+  if (!fs.existsSync(out)) throw new Error('下载飞书图片后未找到本地缓存');
+  return out;
 }
 
 // ─── 从记录中提取指定字段值 ────────────────────────────────────────
@@ -607,6 +774,16 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
     sellingPointBlock = lines.join('\n');
   }
 
+  const sellingPointGuardBlock = `## 本次生成的硬约束
+- 先服从用户显式选择的卖点；未选择人群/场景时，不要自行假设一个人群或场景。
+- 如果本次选择了风格子模板，以子模板的参考示例和写作规则为最高优先级；框架基础示例只作为底层框架，不覆盖子模板。
+- 如果没有选择风格子模板，场景种草型的基础示例就是目标风格参考：学习它的高能量小红书语气、段落节奏、痛点转折、产品事实嵌入方式和评论区话术。
+- 正文围绕“${sellingPoint}”展开，产品事实只选最能支撑这个卖点的 2-3 个，并翻译成读者能感受到的口感、情绪或场景价值。
+- 如果没有目标人群和场景，就沿用参考示例里的泛人群逻辑：平时不碰白酒、怕辣嗓、想微醺但不想断片的人。
+- 输出时先像一篇小红书笔记，再像一篇产品介绍。
+- 正文可以有 1 个轻互动，但必须像真实分享里顺手带出的反应或一句朋友间闲聊，不要为了拉评论硬提问。优先写成“我以前真的会躲白酒，这个有人懂吗”这类共鸣确认；只有特别自然时才用二选一。结尾以明确推荐或真实购买动作收住，不要运营式号召评论。
+- 少用“不是……而是……”“不是那种”“不是XX，是XX”这类解释型句式，正文最多出现 1 次。优先用正面感官直写，例如把“不是香精甜”改成“青提味贴着舌面走，收得很干净”。评论区话术也要像真人回复，不要写成客服 FAQ 或销售催单。`;
+
   // ③ 本次定向素材（选择的人群/场景）
   let materialBlock = '';
   if (persona || scene) {
@@ -642,12 +819,14 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
   } else if (angle) {
     frameworkLogicBlock = `## 框架${framework} · ${fwLabel}
 
-${FW_CORE[framework] || ''}
+${baseTemplate?.body || FW_CORE[framework] || ''}
 
 **本次切入方式（已预选，严格按此角度展开，不使用其他切入方式）：${angle.name}**
 ${angle.desc}`;
   } else if (baseTemplate) {
-    frameworkLogicBlock = refArticle
+    frameworkLogicBlock = subTemplate
+      ? `## 框架${framework} · ${fwLabel}（底层说明）\n\n用户已选择风格子模板，本次以子模板的参考示例、写作规则和内容主线为准。基础框架只提供大类方向，不注入基础模板正文，避免和子模板打架。`
+      : refArticle
       ? `## 框架${framework}内容逻辑（内容方向参考，结构节奏以参考范文为准）\n\n${baseTemplate.body}`
       : `## 框架${framework}写作逻辑\n\n${baseTemplate.body}`;
   }
@@ -657,36 +836,47 @@ ${angle.desc}`;
     ? `## ★ 本次首要任务：仿写以下参考范文\n本次生成的节奏、情绪走向、句式结构必须以此范文为蓝本。品牌事实和框架内容逻辑服务于这个结构，不得覆盖它。内容完全原创，不得复制原文字句。\n\n标题：${refArticle.title || '（无标题）'}\n标签：${refArticle.tag || '（无标签）'}\n\n${(refArticle.content || '').slice(0, 1000)}`
     : '';
 
-  // 框架示例：KOC模式且无仿写范文时注入作为语气参考
-  const frameworkExampleBlock = (!isPhilMode && toneStyle === 'koc' && !imitBlock && baseTemplate?.example)
-    ? `## 语气参考范例（最高语气参照，本次写法以此为准）\n本次输出的结构节奏、热情程度、开场方式、句式密度全部对齐此范例。开场禁用规则本次不适用。内容完全原创，不复制原文字句。\n\n${baseTemplate.example}`
+  // 参考示例优先级：选中的子模板 example > 框架基础模板 example。
+  // 框架基础 example 是目标风格锚点，不是问题样例；普通生成也应注入。
+  const activeExample = subTemplate?.example || baseTemplate?.example || '';
+  const activeExampleName = subTemplate?.example ? `子模板「${subTemplate.name}」` : `框架${framework}基础模板`;
+  const frameworkExampleBlock = (!isPhilMode && !imitBlock && activeExample)
+    ? `## 参考示例（来自${activeExampleName}，本次写法参考）\n这是本次文风和行文逻辑的主要参照。学习它的情绪强度、痛点转折、产品事实嵌入方式、明确推荐和评论区话术，但不要按段落填空，不要把每个连接词都机械复刻。\n写出来要像真人刚发现一个东西后顺手分享：有惊喜、有具体感受、有一点自己的判断，也要有活人反应。不要写成“冷静凝视生活”的散文腔；少用克制、抽离、慢镜头式句子，多一点“我当时真的愣住/这下我懂了/有点离谱但确实好喝”这种即时反馈。\n示例里的具体口味、原料、年份和价格只学习它们所在的位置和句式，事实以本次品牌事实、动态产品信息和用户选择的卖点为准；例如本次写青提口味时，甜感和果香优先围绕青提表达，只有产品信息明确给到苹果时才写苹果。\n可以借鉴同类表达，例如“真的有点惊到”“这下我懂了”“这个点挺打我的”；内容、标题、卖点细节必须根据本次任务重写，不整段照抄原文。\n\n${activeExample}`
     : '';
+  const styleLocked = Boolean(frameworkExampleBlock || subTemplate);
+  const effectiveSystemBlock = styleLocked
+    ? `${kocBrandGuardrails}\n- 本次有明确参考示例或风格子模板时，必须强模仿该示例/模板。全局写作规范只负责品牌底线，不负责改写语气和结构。`
+    : systemBlock;
 
   // ③b 风格子模板（用户主动选择时叠加注入）
   const subTemplateBlock = subTemplate
-    ? `## 本次仿写风格模板：${subTemplate.name}\n${subTemplate.desc ? `说明：${subTemplate.desc}\n` : ''}\n${subTemplate.body}\n\n（在参考范文结构基础上，同时参考以上风格句式节奏）`
+    ? `## 本次仿写风格模板：${subTemplate.name}\n${subTemplate.desc ? `说明：${subTemplate.desc}\n` : ''}\n${subTemplate.body}\n\n（用户选择了这个模板时，必须强模仿此模板；框架基础示例只作为底层框架，不覆盖它。）`
     : '';
 
 
-  // ⑤ 飞书实时学习材料
-  let learningBlock = '## 飞书学习材料（按优先级排列）\n\n';
+  // ⑤ 语言偏好库与飞书实时学习材料
+  // 语言偏好库永远参考，但只校准句子层面的真人感，不决定文风、结构或内容主线。
+  let languagePreferenceBlock = '## 语言偏好库（一直参考，只校准表达）\n\n这些是 AI 句、人手修改和修改理由。只学习“怎么把一句话改得更像真人”，不学习里面的选题、结构、段落顺序和内容主线。\n\n';
+  let learningBlock = '## 小红书参考笔记（平台表达辅助）\n\n这些材料用于学习平台原生表达、标题钩子、种草语感、情绪浓度和可用内容角度。\n\n';
 
   const titleBlock = titleLibraryBlock();
   if (titleBlock) learningBlock += titleBlock;
 
   if (ctx.iterComp.length > 0) {
-    learningBlock += `### 优先级1·人工修改偏好（从改动中学习用户偏好方向）\n`;
+    languagePreferenceBlock += `### AI句 + 人手修改 + 修改逻辑\n`;
     ctx.iterComp.slice(-10).forEach((r, i) => {
       if (r.修改前 && r.修改后) {
-        learningBlock += `[${i+1}] 修改前：${r.修改前.slice(0, 120)}\n    修改后：${r.修改后.slice(0, 120)}\n`;
-        if (r.修改理由) learningBlock += `    原因：${r.修改理由.slice(0, 80)}\n`;
+        languagePreferenceBlock += `[${i+1}] AI句：${r.修改前.slice(0, 120)}\n    人手修改：${r.修改后.slice(0, 120)}\n`;
+        if (r.修改理由) languagePreferenceBlock += `    修改逻辑：${r.修改理由.slice(0, 80)}\n`;
       }
     });
-    learningBlock += '\n';
+    languagePreferenceBlock += '\n';
+  } else {
+    languagePreferenceBlock += '（暂无人工修改偏好记录）\n';
   }
 
   if (!refArticle && ctx.reference.length > 0) {
-    learningBlock += `### 优先级2·参考图文文案（学习平台原生爆款句式和感官描写）\n`;
+    learningBlock += `### 参考图文文案\n`;
     ctx.reference.slice(-10).forEach((r, i) => {
       const title = r.标题 ? `【${r.标题}】` : '';
       const tag = r.标签 ? `（${r.标签}）` : '';
@@ -695,8 +885,8 @@ ${angle.desc}`;
     });
   }
 
-  if (ctx.iterComp.length === 0 && (refArticle || ctx.reference.length === 0)) {
-    learningBlock += '（暂无飞书学习材料，依据品牌事实撰写）\n';
+  if (!titleBlock && (refArticle || ctx.reference.length === 0)) {
+    learningBlock += '（本次无额外小红书参考笔记，依据参考模板、卖点和品牌事实撰写）\n';
   }
 
   // ⑤ 当前任务
@@ -705,13 +895,43 @@ ${angle.desc}`;
     : frameworkExampleBlock
     ? `框架${framework} · ${fwLabel}（风格以上方参考范例为准）`
     : `框架${framework} · ${fwLabel}（严格遵守此框架的写作逻辑和写作顺序）`;
-  const dreamLine = (!frameworkExampleBlock && persona && scene)
-    ? `造梦构思：${persona.name}在「${scene.name}」里的一个生活时刻。${sellingPoint}是这个时刻里自然出现的道具，不是主角。内容从这个人和这个时刻出发，单点展开。`
-    : `本次主推卖点：${sellingPoint}`;
+  const taskFocus = (() => {
+    const who = persona?.name ? `目标人群：${persona.name}` : '';
+    const where = scene?.name ? `使用场景：${scene.name}` : '';
+    const context = [who, where].filter(Boolean).join('；');
+    if (framework === 'A') {
+      return `本次主推卖点：${sellingPoint}
+写法焦点：先建立一个具体痛点、顾虑或不适，再让产品作为解决方案出现。${context ? `素材只作为痛点背景：${context}。` : ''}不要写成普通生活方式故事。`;
+    }
+    if (framework === 'B') {
+      return context
+        ? `造梦构思：${context}。${sellingPoint}是这个时刻里自然出现的道具，不是硬广主角。`
+        : frameworkExampleBlock
+        ? `本次主推卖点：${sellingPoint}。写法焦点：沿用上方参考示例的热情种草感，但不要写成模板填空。可以从一个具体动作、朋友一句话、第一口反应或生活场景切入，再自然带出白酒痛点反差、青提口感、10度微醺和具体喝法。`
+        : `本次主推卖点：${sellingPoint}。写法焦点：围绕一个具体生活时刻展开，让产品自然出现。`;
+    }
+    if (framework === 'C') {
+      return `本次主推卖点：${sellingPoint}
+写法焦点：用“怀疑/对比/验证/配料或工艺解释”的路径建立可信判断。${context ? `人群和场景只用于设定测试条件：${context}。` : ''}不要写成单纯体验种草故事。`;
+    }
+    if (framework === 'D') {
+      return `本次主推卖点：${sellingPoint}
+写法焦点：输出可收藏的具体方法、步骤、喝法、搭配或避坑清单。${context ? `人群和场景只用于限定教程适用对象：${context}。` : ''}不要写成情绪化体验故事。`;
+    }
+    return `本次主推卖点：${sellingPoint}`;
+  })();
   const taskBlock = `## 当前任务
 内容框架：${fwNote}
 方向：${direction}
-${dreamLine}`;
+${taskFocus}
+
+本次写作优先级：
+1. 先强模仿本次选择的参考示例/风格子模板的结构、语气、段落节奏和评论区话术。
+2. 再围绕本次主推卖点组织产品事实和感官细节。
+3. 如果要加互动，把它写成正文里的即时反应或朋友间闲聊，例如“我以前真的会躲白酒，这个有人懂吗”；不要为了完成任务突然抛运营问题，评论区话术不能替代正文里的真实交流感。
+4. 语言偏好库只用于润色局部表达、吸收人工修改偏好，不改变本次参考模板的写法。
+5. 开头优先用具体误判、动作反应或朋友原话，例如“喝第一口，我以为装错了”，不要只用“第一次喝就被惊艳到了”这种抽象情绪句。
+6. 最终正文读感应当接近参考示例那种热情卖点种草，而不是测评报告、配料表分析或品牌说明书。`;
 
   // ⑥ 输出格式（优先读取用户编辑的自定义文件，否则用内置默认值；哲学模式强制用专属格式）
   const _customFmt = isPhilMode ? loadOutputFormatPhil() : loadOutputFormatSingle();
@@ -765,20 +985,34 @@ ${dreamLine}`;
 
   const kocToneBlock = (!isPhilMode && toneStyle === 'koc') ? `## ⚡ 本次语气目标\n\n语气、能量、开场方式、句式节奏全部对齐上方注入的参考范例。直接给感受和产品事实，产品好就直接说好，结尾给出明确推荐。` : '';
 
+  const naturalnessBlock = `## 输出前自然度自检
+提交前先默读一遍，删掉以下痕迹：
+- 像客服回答的句子：如“很多人问”“有人问”“能接受”“放心”“想尝鲜的抓紧”“直接冲”。
+- 过度网感或 AI 常用热词：如“破防了”“真的绝”“上头了”“狠狠”“封神”，除非参考范例明确使用。
+- 像运营硬拉互动的句子：如突兀的二选一、为了评论而评论的问题。
+- 解释型套话：连续使用“不是那种”“而是”“反而”“关键是”。
+- 故作冷静的散文腔：如“整个人懵了两秒”“不慌不乱”“完全清醒地爽着”“那个时刻很对劲”“敬而远之”。
+- 空泛情绪词：只说“惊艳/好喝/绝了”，但后面没有具体口感或动作。
+
+保留真人分享感：短句、具体动作、朋友原话、即时反应、明确判断。不要为了显得高级而压低情绪。`;
+
   const modules = [
     // KOC 模式：example 放最前，先定调；跳过飞书学习材料（防止其中文学性内容拉偏风格）
     ...(!imitBlock && frameworkExampleBlock ? [{ name: '① 风格参考范例（本次写法基准）', content: frameworkExampleBlock }] : []),
-    { name: frameworkExampleBlock ? '② 撰写规范' : '① 撰写规范', key: 'writing', content: systemBlock },
+    ...(subTemplateBlock ? [{ name: '①-2 风格子模板（用户选择，优先于框架基础）', content: subTemplateBlock }] : []),
+    { name: frameworkExampleBlock ? '② 撰写规范' : '① 撰写规范', key: styleLocked ? undefined : 'writing', content: effectiveSystemBlock },
     { name: '② 品牌事实', key: 'brand',   content: brandBlock },
     ...(sellingPointBlock ? [{ name: '② 本次主推卖点详情', content: sellingPointBlock }] : []),
-    ...(!frameworkExampleBlock && materialBlock ? [{ name: '③ 定向素材（人/场）', content: materialBlock }] : []),
+    { name: '②-2 本次生成硬约束', content: sellingPointGuardBlock },
+    ...(materialBlock ? [{ name: '③ 定向素材（人/场）', content: materialBlock }] : []),
     ...(productBlock    ? [{ name: '④ 动态产品信息', key: 'product', content: productBlock }]    : []),
     ...(imitBlock       ? [{ name: '⑤ 仿写参考范文★',    content: imitBlock }]        : []),
     // 角度/哲学模式下内容由硬编码生成，不可保存；只有无角度（base template 模式）时才挂 key 允许编辑
-    ...(!frameworkExampleBlock && frameworkLogicBlock ? [{ name: (angle || isPhilMode) ? '⑥ 框架写作逻辑（角度模式·动态）' : '⑥ 框架写作逻辑（可保存）', key: (angle || isPhilMode) ? undefined : `fw-body-${framework}`, content: frameworkLogicBlock }] : []),
-    ...(subTemplateBlock ? [{ name: '⑧ 风格子模板',      content: subTemplateBlock }] : []),
-    ...(!frameworkExampleBlock ? [{ name: '⑨ 飞书学习材料', content: learningBlock }] : []),
+    ...(frameworkLogicBlock ? [{ name: (angle || isPhilMode) ? '⑥ 框架写作逻辑（角度模式·动态）' : '⑥ 框架写作逻辑（可保存）', key: (angle || isPhilMode) ? undefined : `fw-body-${framework}`, content: frameworkLogicBlock }] : []),
+    { name: '⑦ 小红书参考笔记（平台表达辅助）', content: learningBlock },
+    { name: '⑨ 语言偏好库（AI句→人手修改，永远参考）', content: languagePreferenceBlock },
     { name: '⑩ 当前任务',    content: taskBlock },
+    { name: '⑩-2 自然度自检', content: naturalnessBlock },
     ...(kocToneBlock ? [{ name: '⑩ 语气覆写（KOC）', content: kocToneBlock }] : []),
     { name: '⑪ 输出格式', key: isPhilMode ? 'output-phil' : 'output-single', content: outputBlock },
   ];
@@ -860,10 +1094,30 @@ function buildBatchPrompt(ctx, direction, sellingPoint, framework, persona = nul
     imitBatchBlock = `## ★ 本次首要任务：仿写以下参考范文\n节奏、情绪走向、句式结构以此范文为蓝本，品牌事实和框架逻辑服务于这个结构。内容完全原创。\n\n标题：${refArticle.title || '（无标题）'}\n标签：${refArticle.tag || '（无标签）'}\n\n${(refArticle.content || '').slice(0, 800)}`;
   }
 
-  const batchDreamLine = (persona && scene)
-    ? `造梦构思：${persona.name}在「${scene.name}」里的一个生活时刻。${sellingPoint}是这个时刻里自然出现的道具，不是主角。内容从这个人和这个时刻出发，单点展开。`
-    : `主推卖点：${sellingPoint}`;
-  const taskBlock = `## 当前任务\n框架：${framework} · ${fwLabel}\n方向：${direction || '不限'}\n${batchDreamLine}`;
+  const batchTaskFocus = (() => {
+    const who = persona?.name ? `目标人群：${persona.name}` : '';
+    const where = scene?.name ? `使用场景：${scene.name}` : '';
+    const context = [who, where].filter(Boolean).join('；');
+    if (framework === 'A') {
+      return `主推卖点：${sellingPoint}
+批量写法焦点：每条都从具体痛点、顾虑或不适切入，再让产品作为解决方案出现。${context ? `素材只作为痛点背景：${context}。` : ''}不要写成普通生活方式故事。`;
+    }
+    if (framework === 'B') {
+      return context
+        ? `批量造梦构思：${context}。${sellingPoint}是这个时刻里自然出现的道具，不是硬广主角。每条换一个生活切面。`
+        : `主推卖点：${sellingPoint}。批量写法焦点：围绕不同具体生活时刻展开，让产品自然出现。`;
+    }
+    if (framework === 'C') {
+      return `主推卖点：${sellingPoint}
+批量写法焦点：每条用“怀疑/对比/验证/配料或工艺解释”的路径建立可信判断。${context ? `人群和场景只用于设定测试条件：${context}。` : ''}不要写成单纯体验种草故事。`;
+    }
+    if (framework === 'D') {
+      return `主推卖点：${sellingPoint}
+批量写法焦点：每条输出可收藏的具体方法、步骤、喝法、搭配或避坑清单。${context ? `人群和场景只用于限定教程适用对象：${context}。` : ''}不要写成情绪化体验故事。`;
+    }
+    return `主推卖点：${sellingPoint}`;
+  })();
+  const taskBlock = `## 当前任务\n框架：${framework} · ${fwLabel}\n方向：${direction || '不限'}\n${batchTaskFocus}`;
 
   const _customFmtBatch = loadOutputFormatBatch();
   const outputBlock = _customFmtBatch || `## 输出格式（严格按此格式，不加任何额外说明或前置语）
@@ -1125,23 +1379,13 @@ app.post('/api/generate', async (req, res) => {
       try { ctx = await fetchFeishuContext(); }
       catch (e) { console.error('[Context fetch]', e.message); }
 
-      // 切入方式：使用客户端传入的，否则从服务器取当前轮转值
-      if (!usedAngle) usedAngle = getCurrentAngle(framework);
+      // 切入方式：只使用客户端显式传入的角度。
+      // 服务器自动轮转会覆盖框架/子模板的参考示例，导致模板模仿不稳定。
+      if (!usedAngle) usedAngle = null;
 
-      // 自动补齐人群/场景（用户未选时随机注入，强制起点多样性）
-      if (!persona || !scene) {
-        try {
-          const mats = fetchMaterials();
-          if (!persona && mats.人.length > 0) {
-            autoPersona = mats.人[Math.floor(Math.random() * mats.人.length)];
-            persona = autoPersona;
-          }
-          if (!scene && mats.场.length > 0) {
-            autoScene = mats.场[Math.floor(Math.random() * mats.场.length)];
-            scene = autoScene;
-          }
-        } catch (e) { console.warn('[auto-select materials]', e.message); }
-      }
+      // 用户没选人群/场景时不要自动补齐。
+      // 之前这里会随机注入人群和场景，导致“只选卖点”的生成结果被其他维度污染。
+      // 当前策略：只使用用户显式选择的素材维度；需要扩展时由用户主动选择。
 
       ({ prompt } = buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems, usedAngle, toneStyle));
     }
@@ -1216,22 +1460,95 @@ app.post('/api/archive-comparison', (req, res) => {
 });
 
 // 撰写台一键保存到小红书发布表
+app.get('/api/image-pool/config', (req, res) => {
+  try {
+    res.json({ ok: true, dir: ensureImagePool() });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/image-pool/config', (req, res) => {
+  try {
+    const dir = saveImagePoolDir(req.body?.dir);
+    res.json({ ok: true, dir });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/image-pool/open', (req, res) => {
+  try {
+    const dir = ensureImagePool();
+    spawn('explorer.exe', [dir], { detached: true, stdio: 'ignore' }).unref();
+    res.json({ ok: true, dir });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/image-pool/list', (req, res) => {
+  try {
+    const files = listImagePoolFiles().slice(0, 120).map(f => ({
+      ...f,
+      url: `/api/image-pool/file?path=${encodeURIComponent(f.path)}`,
+    }));
+    res.json({ ok: true, dir: ensureImagePool(), files });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/image-pool/file', (req, res) => {
+  try {
+    const file = resolvePoolImage(req.query.path);
+    res.sendFile(file);
+  } catch (e) {
+    res.status(404).send(e.message);
+  }
+});
+
+app.get('/api/feishu-result-images/list', (req, res) => {
+  try {
+    const state = readFeishuResultImageState();
+    const files = state.files.slice(0, 120).map(f => ({
+      ...f,
+      url: `/api/feishu-result-images/file?recordId=${encodeURIComponent(f.recordId)}&fileToken=${encodeURIComponent(f.fileToken)}`,
+    }));
+    res.json({ ok: true, files, totalRecords: state.totalRecords, satisfiedRows: state.satisfiedRows, replacedRows: state.replacedRows, hasMore: state.hasMore });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/feishu-result-images/file', (req, res) => {
+  try {
+    const file = downloadFeishuResultImage(String(req.query.recordId || ''), String(req.query.fileToken || ''));
+    res.sendFile(file);
+  } catch (e) {
+    res.status(404).send(e.message);
+  }
+});
+
 app.post('/api/save-to-publish', (req, res) => {
   try {
-    const { title, body, tags, scene, angle, framework } = req.body;
+    const { title, body, imagePaths = [] } = req.body;
     if (!body || !body.trim()) return res.json({ ok: false, error: '正文不能为空' });
     const fields = {
       '标题':    title  || '',
       '正文':    body.trim(),
-      '话题':    tags   || '',
       '发布计划': '立即发布',
       '是否发布': '否',
     };
-    if (scene)     fields['场景名称'] = scene;
-    if (angle)     fields['货角度']   = angle;
-    if (framework) fields['框架类型'] = framework;
+    const selectedImages = Array.isArray(imagePaths) ? imagePaths.slice(0, 9) : [];
+    if (selectedImages.length) {
+      fields['图片'] = selectedImages.map(x => {
+        const feishuImage = resolveFeishuResultImage(x);
+        return feishuImage || uploadPoolImageToLark(x);
+      });
+    }
     writeOutputRecord(fields);
-    res.json({ ok: true });
+    res.json({ ok: true, imageCount: selectedImages.length });
   } catch (e) {
     res.json({ ok: false, error: e.message });
   }
@@ -2069,7 +2386,7 @@ Action: [结尾引导是什么？有/无]
 ### 一句话总结
 [有记忆点的一句话，不要废话]`;
 
-    const rawText = await runClaudeAsync(prompt, 240000);
+    const rawText = await runClaudeAsync(prompt, 360000);
     // 只保留从"### 总评"开始的诊断内容，截掉 Claude 可能输出的前置废话
     const cutIdx = rawText.search(/###\s*总评/);
     const diagnosis = cutIdx >= 0 ? rawText.slice(cutIdx) : rawText;
