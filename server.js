@@ -27,6 +27,42 @@ const FEISHU_RESULT_FIELDS = {
 
 // ─── 框架基础模板覆盖（用户可编辑，存磁盘）──────────────────────────
 const BASE_OVERRIDES_PATH = path.join(__dirname, 'base-overrides.json');
+const TOPIC_SIGNALS_PATH = path.join(__dirname, 'topic-signals.json');
+const TOPIC_RECOMMENDATIONS_PATH = path.join(__dirname, 'topic-recommendations.json');
+const TOPIC_PIPELINE_PATH = path.join(__dirname, 'topic_pipeline.py');
+const TOPIC_CONFIG_PATH = path.join(__dirname, 'topic-config.json');
+let topicRefreshRunning = false;
+
+const DEFAULT_TOPIC_CONFIG = {
+  cacheHours: 4,
+  seeds: ['低度酒', '果酒推荐', '女生喝什么酒', '烧烤喝什么', '微醺'],
+  sources: {
+    homeFeed: true,
+    keywordSearch: true,
+    topicSearch: true,
+    crossPlatform: true,
+    savedResearchFallback: true,
+  },
+};
+
+function loadTopicConfig() {
+  let incoming = {};
+  try { incoming = JSON.parse(fs.readFileSync(TOPIC_CONFIG_PATH, 'utf8')); }
+  catch (e) { incoming = {}; }
+  const seeds = Array.isArray(incoming.seeds)
+    ? incoming.seeds.map(v => String(v || '').trim()).filter(Boolean).slice(0, 20)
+    : [];
+  const sourceInput = incoming.sources && typeof incoming.sources === 'object' ? incoming.sources : {};
+  return {
+    cacheHours: Math.max(0.25, Math.min(Number(incoming.cacheHours) || DEFAULT_TOPIC_CONFIG.cacheHours, 24)),
+    seeds: seeds.length ? seeds : DEFAULT_TOPIC_CONFIG.seeds,
+    sources: Object.fromEntries(Object.entries(DEFAULT_TOPIC_CONFIG.sources).map(([key, val]) => [key, key in sourceInput ? !!sourceInput[key] : val])),
+  };
+}
+
+function saveTopicConfig(config) {
+  fs.writeFileSync(TOPIC_CONFIG_PATH, JSON.stringify(config, null, 2), 'utf8');
+}
 
 function loadBaseOverrides() {
   try { return JSON.parse(fs.readFileSync(BASE_OVERRIDES_PATH, 'utf8')); }
@@ -249,6 +285,17 @@ function setAngleIdx(framework, idx) {
 }
 
 const app = express();
+app.use((req, res, next) => {
+  const origin = req.headers.origin || '';
+  if (/^https:\/\/www\.xiaohongshu\.com$/.test(origin) || /^chrome-extension:\/\//.test(origin) || /^http:\/\/127\.0\.0\.1:3377$/.test(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 app.use(express.json({ limit: '2mb' }));
 const staticDir = path.resolve(__dirname);
 app.use(express.static(staticDir, {
@@ -268,6 +315,7 @@ const state = {
   contextCache: null,
   contextCacheTime: 0,
 };
+let lastPromptSnapshot = null;
 
 // ─── lark-cli 封装 ──────────────────────────────────────────────────
 function larkCli(args) {
@@ -745,7 +793,7 @@ function loadTemplates() {
 }
 
 // ─── 构建 Claude Prompt ──────────────────────────────────────────────
-function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null, persona = null, scene = null, refArticle = null, spItems = [], angle = null, toneStyle = 'narrative') {
+function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null, persona = null, scene = null, refArticle = null, spItems = [], angle = null, toneStyle = 'narrative', bRoute = 'product', topicSignal = null) {
   const { brand } = CFG;
   const fwLabel = FRAMEWORK_LABELS[framework] || '场景种草型';
 
@@ -758,6 +806,95 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
 
   // ② 品牌固定事实（从 brand-facts.md 读取，支持 UI 编辑）
   const brandBlock = loadBrandFacts();
+
+  const topicSignalBlock = topicSignal ? `## 本次选题信号（只改变流量入口，不推翻内容结构）
+- 流量词：${topicSignal.trafficKeyword || '无'}。这是平台已有入口，在标题、正文或标签中自然出现，不要反复堆砌。
+- 核心概念：${topicSignal.coreConcept || topicSignal.title || '无'}。这是本篇真正要建立的记忆钩子，优先放在标题或开头。
+- 关联桥梁：${topicSignal.bridge || '围绕本次卖点建立真实关联'}
+- 介入范围：${topicSignal.intervention || '标题、开头与标签'}
+- 热点证据：${(topicSignal.evidence || []).slice(0, 3).map(x => typeof x === 'string' ? x : x.title).filter(Boolean).join('；') || '无'}
+
+硬约束：
+1. 继续严格执行所选 A/B/C/D 框架，热点不得替代正文的销售与说服任务。
+2. 核心概念负责被记住，流量词只负责被找到；不要把大词写成全文主角。
+3. 不得虚构热度、趋势增幅、用户评价或产品事实。
+4. 如果热点和产品关联很弱，只在标签或一句过渡中轻量出现，不要硬蹭。` : '';
+
+  const bRouteBlock = framework === 'B' ? (() => {
+    if (bRoute === 'resonance') return `## B框架本次种草重心：共鸣种草
+- 人物状态、关系或想进入的生活是主角，产品只在关键时刻短暂出现。
+- 可以写“我清楚地看见你”式的持续命名、情绪共鸣和品牌态度。
+- 产品露出约占正文10%-30%，只保留1-2个最贴场景的事实，不展开销售说明。`;
+    if (bRoute === 'reference') return `## B框架本次种草重心：跟参考走
+- 参考笔记决定结构、篇幅、产品露出比例和销售强度。
+- 如果参考笔记长篇讲产品，就长篇讲产品；如果它只短暂露出品牌，就保持克制。
+- B框架只保证内容落在可感知的场景中，不得把参考笔记改造成品牌散文。`;
+    return `## B框架本次种草重心：产品种草
+- 产品负责解决一个明确的感受问题或购买问题，但不得抢走本次切入角度的叙事发动机。
+- 只允许一个主卖点被充分展开，最多再带一个支撑事实；不要把口感、工艺、产区、0糖、度数、价格全铺满。
+- 产品相关内容建议占正文35%-55%；如果本次角度偏情绪、人格或生活切片，降到25%-40%。
+- 可以明确推荐，但推荐必须从本次发动机自然长出来，不要写成完整产品说明书。`;
+  })() : '';
+
+  const bAngleEngineBlock = framework === 'B' && angle && !angle.isSpecial ? (() => {
+    const engines = {
+      B1: {
+        name: '生活切片',
+        lead: '主角是一个具体时刻，不是产品参数。',
+        path: '从时间/动作/物件进入 → 产品作为当下动作的一部分出现 → 只解释它为什么适合这个时刻。',
+        facts: '最多1个感官事实 + 1个场景价值。',
+        forbid: '禁止用配料表、白酒刻板印象或参数清单开头。'
+      },
+      B2: {
+        name: '感官探索',
+        lead: '主角是第一口、气味、口腔触感或冰块/杯壁这种感官事件。',
+        path: '先写感官事件 → 再给一个类比/动作 → 最后用一个事实解释为什么会这样。',
+        facts: '最多1个口感事实 + 1个原因事实。',
+        forbid: '禁止先介绍产品、先翻配料表、先讲品牌背景。'
+      },
+      B3: {
+        name: '情绪共鸣',
+        lead: '主角是读者想进入的状态，产品只是把这个状态落地的物件。',
+        path: '先命名一种情绪/关系/疲惫 → 写它需要被怎样安放 → 产品短暂出现并承担这个功能。',
+        facts: '最多1个产品事实，且必须服务情绪，不展开销售说明。',
+        forbid: '禁止写成长篇产品测评。'
+      },
+      B4: {
+        name: '意外发现',
+        lead: '主角是一个意外点，但只能有一个意外点。',
+        path: '先写发现的动作或场景 → 抛出唯一反差事实 → 立刻转到它带来的真实体验变化。',
+        facts: '只选1个主事实；第二个事实只能一句带过。',
+        forbid: '禁止把20%果汁、10度、0糖、产区、价格连续堆在同一段。'
+      },
+      B5: {
+        name: '人格认同',
+        lead: '主角是“我是哪种人/我不想再怎样喝”的选择感。',
+        path: '先写一种生活选择或审美边界 → 产品作为这个选择的证据出现 → 收束到“这个东西适合哪种人”。',
+        facts: '最多1个身份相关事实 + 1个体验事实。',
+        forbid: '禁止再写“平时不碰白酒、怕辣嗓、想微醺但不想断片”的泛人群套话。'
+      },
+      B6: {
+        name: '颠覆认知',
+        lead: '主角是一个旧判断被具体事件推翻。',
+        path: '先写旧判断 → 用一个具体瞬间推翻 → 写感官证据 → 给出新的判断。',
+        facts: '最多1个推翻旧判断的关键事实。',
+        forbid: '禁止空喊“打破刻板印象/颠覆认知”，必须有事件和证据。'
+      },
+    };
+    const engine = engines[angle.id] || {
+      name: angle.name || '本次角度',
+      lead: '主角是本次切入方式，不是产品资料堆叠。',
+      path: '按本次角度建立入口，再让产品事实服务这个入口。',
+      facts: '最多2个事实。',
+      forbid: '禁止套用基础范文的固定叙事顺序。'
+    };
+    return `## B框架本次叙事发动机：${engine.name}
+- 本篇只能使用这一种发动机：${engine.lead}
+- 推荐行文顺序：${engine.path}
+- 产品事实预算：${engine.facts}
+- 禁止动作：${engine.forbid}
+- 总禁令：不得把“配料表发现、旧经验反转、第一口测评、场景安放、价格转化”全部写完；选一个入口写透，比把所有卖点讲完更重要。`;
+  })() : '';
 
   // ②-1 本次主推卖点详情（从货表选择的完整信息）
   let sellingPointBlock = '';
@@ -777,10 +914,10 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
   const sellingPointGuardBlock = `## 本次生成的硬约束
 - 先服从用户显式选择的卖点；未选择人群/场景时，不要自行假设一个人群或场景。
 - 如果本次选择了风格子模板，以子模板的参考示例和写作规则为最高优先级；框架基础示例只作为底层框架，不覆盖子模板。
-- 如果没有选择风格子模板，场景种草型的基础示例就是目标风格参考：学习它的高能量小红书语气、段落节奏、痛点转折、产品事实嵌入方式和评论区话术。
-- 正文围绕“${sellingPoint}”展开，产品事实只选最能支撑这个卖点的 2-3 个，并翻译成读者能感受到的口感、情绪或场景价值。
-- 如果没有目标人群和场景，就沿用参考示例里的泛人群逻辑：平时不碰白酒、怕辣嗓、想微醺但不想断片的人。
-- 输出时先像一篇小红书笔记，再像一篇产品介绍。
+- 如果没有选择风格子模板，也不要默认仿写基础示例；先服从本次切入角度和叙事发动机。
+- 正文围绕“${sellingPoint}”展开，但产品事实只选最能支撑这个卖点的 1 个主事实 + 最多 1 个辅助事实，并翻译成读者能感受到的口感、情绪或场景价值。
+- 如果没有目标人群和场景，不要沿用“平时不碰白酒、怕辣嗓、想微醺但不想断片”的泛人群套话；改从本次角度自然长出一个具体身份、动作或场景。
+- 输出时先像一篇有入口、有现场感的小红书笔记，再像产品推荐；不要先像一篇产品介绍。
 - 正文可以有 1 个轻互动，但必须像真实分享里顺手带出的反应或一句朋友间闲聊，不要为了拉评论硬提问。优先写成“我以前真的会躲白酒，这个有人懂吗”这类共鸣确认；只有特别自然时才用二选一。结尾以明确推荐或真实购买动作收住，不要运营式号召评论。
 - 少用“不是……而是……”“不是那种”“不是XX，是XX”这类解释型句式，正文最多出现 1 次。优先用正面感官直写，例如把“不是香精甜”改成“青提味贴着舌面走，收得很干净”。评论区话术也要像真人回复，不要写成客服 FAQ 或销售催单。`;
 
@@ -812,23 +949,35 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
   // ③ 框架写作逻辑：有预选角度时只注入核心机制+指定角度，避免给Claude"选单"
   const templates = loadTemplates();
   const baseTemplate = (templates[framework] || []).find(t => t.isBase);
+  const baseTemplateBody = framework === 'B' && bRoute === 'product'
+    ? `产品场景种草核心：读者看完知道“为什么这个东西和我有关”，而不是看完一篇完整产品说明。产品事实是证据，叙事发动机才是入口。
+
+写作机制：
+1. 先确定本篇唯一叙事发动机：生活切片、感官探索、情绪共鸣、意外发现、人格认同或颠覆认知，只能选一种写透。
+2. 围绕1个主卖点充分展开，最多补1个辅助事实；不要把所有产品资料平均塞进正文。
+3. 允许直接表达惊喜、好喝和推荐，但每个判断后面都要有感官、动作、比较或事实支撑。
+4. 场景负责让销售理由可信，但不能把固定范文里的“翻配料表—第一口—解释甜味—价格收束”机械复刻一遍。
+5. 结尾给出明确适用人群、喝法或购买建议，但必须接住本篇开头的入口。
+
+关键约束：产品事实默认最多2个；品牌理念最多一句；宁可少讲一个卖点，也不要把正文写成资料汇总。`
+    : (baseTemplate?.body || FW_CORE[framework] || '');
   let frameworkLogicBlock = '';
-  const isPhilMode = angle?.isSpecial === true;
+  const isPhilMode = angle?.isSpecial === true && !subTemplate && !refArticle;
   if (isPhilMode) {
     frameworkLogicBlock = PHIL_FW_BLOCK + '\n\n' + PHIL_EXAMPLE;
-  } else if (angle) {
+  } else if (angle && !subTemplate && !refArticle) {
     frameworkLogicBlock = `## 框架${framework} · ${fwLabel}
 
-${baseTemplate?.body || FW_CORE[framework] || ''}
+${baseTemplateBody}
 
 **本次切入方式（已预选，严格按此角度展开，不使用其他切入方式）：${angle.name}**
 ${angle.desc}`;
   } else if (baseTemplate) {
     frameworkLogicBlock = subTemplate
       ? `## 框架${framework} · ${fwLabel}（底层说明）\n\n用户已选择风格子模板，本次以子模板的参考示例、写作规则和内容主线为准。基础框架只提供大类方向，不注入基础模板正文，避免和子模板打架。`
-      : refArticle
-      ? `## 框架${framework}内容逻辑（内容方向参考，结构节奏以参考范文为准）\n\n${baseTemplate.body}`
-      : `## 框架${framework}写作逻辑\n\n${baseTemplate.body}`;
+    : refArticle
+      ? `## 框架${framework}内容逻辑（参考范文优先）\n\n只保留“内容必须落在具体场景中”这一层框架约束。结构、篇幅、产品露出比例和销售强度全部以参考范文为准。`
+      : `## 框架${framework}写作逻辑\n\n${baseTemplateBody}`;
   }
 
   // ③a 仿写参考范文（用户在参考文案库中选择后注入）
@@ -840,8 +989,12 @@ ${angle.desc}`;
   // 框架基础 example 是目标风格锚点，不是问题样例；普通生成也应注入。
   const activeExample = subTemplate?.example || baseTemplate?.example || '';
   const activeExampleName = subTemplate?.example ? `子模板「${subTemplate.name}」` : `框架${framework}基础模板`;
-  const frameworkExampleBlock = (!isPhilMode && !imitBlock && activeExample)
-    ? `## 参考示例（来自${activeExampleName}，本次写法参考）\n这是本次文风和行文逻辑的主要参照。学习它的情绪强度、痛点转折、产品事实嵌入方式、明确推荐和评论区话术，但不要按段落填空，不要把每个连接词都机械复刻。\n写出来要像真人刚发现一个东西后顺手分享：有惊喜、有具体感受、有一点自己的判断，也要有活人反应。不要写成“冷静凝视生活”的散文腔；少用克制、抽离、慢镜头式句子，多一点“我当时真的愣住/这下我懂了/有点离谱但确实好喝”这种即时反馈。\n示例里的具体口味、原料、年份和价格只学习它们所在的位置和句式，事实以本次品牌事实、动态产品信息和用户选择的卖点为准；例如本次写青提口味时，甜感和果香优先围绕青提表达，只有产品信息明确给到苹果时才写苹果。\n可以借鉴同类表达，例如“真的有点惊到”“这下我懂了”“这个点挺打我的”；内容、标题、卖点细节必须根据本次任务重写，不整段照抄原文。\n\n${activeExample}`
+  const exampleRouteGuidance = framework === 'B' && bRoute === 'resonance'
+    ? '学习示例如何持续命名人物状态、使用物件承接情绪，以及让产品短暂而准确地出现。允许克制、留白和文学质地，不要强行补成长篇产品介绍。'
+    : '学习示例的产品信息密度、情绪强度、痛点转折、明确推荐和评论区话术。写得像真人认真讲一个好东西，允许直接说好喝和推荐，不要改成品牌散文。';
+  const shouldInjectFrameworkExample = Boolean(subTemplate?.example || !angle);
+  const frameworkExampleBlock = (!isPhilMode && !imitBlock && activeExample && shouldInjectFrameworkExample)
+    ? `## 参考示例（来自${activeExampleName}，本次写法参考）\n这是本次文风和行文逻辑的主要参照。${exampleRouteGuidance}\n示例里的具体口味、原料、年份和价格只学习所在位置与表达方法，事实以本次产品信息和卖点为准；内容必须原创。\n\n${activeExample}`
     : '';
   const styleLocked = Boolean(frameworkExampleBlock || subTemplate);
   const effectiveSystemBlock = styleLocked
@@ -904,11 +1057,19 @@ ${angle.desc}`;
 写法焦点：先建立一个具体痛点、顾虑或不适，再让产品作为解决方案出现。${context ? `素材只作为痛点背景：${context}。` : ''}不要写成普通生活方式故事。`;
     }
     if (framework === 'B') {
+      if (bRoute === 'resonance') {
+        return context
+          ? `共鸣构思：${context}。先准确写出这个人的状态或关系压力，再让“${sellingPoint}”作为场景里的一个物件出现。`
+          : `本次主推卖点：${sellingPoint}。写法焦点：持续命名一个具体的人和她想进入的状态，产品只短暂承担情绪或关系功能。`;
+      }
+      if (bRoute === 'reference' && refArticle) {
+        return `本次主推卖点：${sellingPoint}。写法焦点：严格跟随参考范文的结构、长短、产品信息密度和推荐力度；不要用品牌理念重写参考。`;
+      }
       return context
-        ? `造梦构思：${context}。${sellingPoint}是这个时刻里自然出现的道具，不是硬广主角。`
+        ? `产品种草场景：${context}。围绕“${sellingPoint}”选一个最有力的产品事实写透；场景负责让体验可信，不要把所有卖点都讲完。`
         : frameworkExampleBlock
-        ? `本次主推卖点：${sellingPoint}。写法焦点：沿用上方参考示例的热情种草感，但不要写成模板填空。可以从一个具体动作、朋友一句话、第一口反应或生活场景切入，再自然带出白酒痛点反差、青提口感、10度微醺和具体喝法。`
-        : `本次主推卖点：${sellingPoint}。写法焦点：围绕一个具体生活时刻展开，让产品自然出现。`;
+        ? `本次主推卖点：${sellingPoint}。写法焦点：沿用上方参考示例的热情销售种草感，但只选一个核心购买理由写透，不要扩写成全量产品说明。`
+        : `本次主推卖点：${sellingPoint}。写法焦点：先按本次切入角度建立入口，再用1个主产品事实证明它；不要回到“配料表震惊—白酒刻板印象—第一口不辣—解释甜味—微醺—价格”的固定链路。`;
     }
     if (framework === 'C') {
       return `本次主推卖点：${sellingPoint}
@@ -920,13 +1081,17 @@ ${angle.desc}`;
     }
     return `本次主推卖点：${sellingPoint}`;
   })();
+  const stylePriorityLine = frameworkExampleBlock || subTemplateBlock || imitBlock
+    ? '1. 先强模仿本次选择的参考示例/风格子模板的结构、语气、段落节奏和评论区话术。'
+    : '1. 先服从本次切入方式和框架逻辑，不要回到基础模板的固定叙事；本次没有强制仿写范文。';
+
   const taskBlock = `## 当前任务
 内容框架：${fwNote}
 方向：${direction}
 ${taskFocus}
 
 本次写作优先级：
-1. 先强模仿本次选择的参考示例/风格子模板的结构、语气、段落节奏和评论区话术。
+${stylePriorityLine}
 2. 再围绕本次主推卖点组织产品事实和感官细节。
 3. 如果要加互动，把它写成正文里的即时反应或朋友间闲聊，例如“我以前真的会躲白酒，这个有人懂吗”；不要为了完成任务突然抛运营问题，评论区话术不能替代正文里的真实交流感。
 4. 语言偏好库只用于润色局部表达、吸收人工修改偏好，不改变本次参考模板的写法。
@@ -993,6 +1158,8 @@ ${taskFocus}
 - 解释型套话：连续使用“不是那种”“而是”“反而”“关键是”。
 - 故作冷静的散文腔：如“整个人懵了两秒”“不慌不乱”“完全清醒地爽着”“那个时刻很对劲”“敬而远之”。
 - 空泛情绪词：只说“惊艳/好喝/绝了”，但后面没有具体口感或动作。
+- 固定链路：配料表震惊 → 白酒刻板印象 → 第一口不辣 → 解释甜味来源 → 10度微醺 → 49.9购买建议。除非本次叙事发动机明确要求其中某一环，否则不要连着写。
+- 假装事后考证的口头禅：如“后来又翻了一下”“甜的来源后来搞明白了”“才注意到是0糖”。如果不是本篇核心发现，不要用这种补说明结构。
 
 保留真人分享感：短句、具体动作、朋友原话、即时反应、明确判断。不要为了显得高级而压低情绪。`;
 
@@ -1002,8 +1169,11 @@ ${taskFocus}
     ...(subTemplateBlock ? [{ name: '①-2 风格子模板（用户选择，优先于框架基础）', content: subTemplateBlock }] : []),
     { name: frameworkExampleBlock ? '② 撰写规范' : '① 撰写规范', key: styleLocked ? undefined : 'writing', content: effectiveSystemBlock },
     { name: '② 品牌事实', key: 'brand',   content: brandBlock },
+    ...(topicSignalBlock ? [{ name: '②-0 本次选题信号', content: topicSignalBlock }] : []),
+    ...(bRouteBlock ? [{ name: '②-1 B框架种草重心', content: bRouteBlock }] : []),
+    ...(bAngleEngineBlock ? [{ name: '②-2 B框架叙事发动机（本次唯一结构）', content: bAngleEngineBlock }] : []),
     ...(sellingPointBlock ? [{ name: '② 本次主推卖点详情', content: sellingPointBlock }] : []),
-    { name: '②-2 本次生成硬约束', content: sellingPointGuardBlock },
+    { name: '②-3 本次生成硬约束', content: sellingPointGuardBlock },
     ...(materialBlock ? [{ name: '③ 定向素材（人/场）', content: materialBlock }] : []),
     ...(productBlock    ? [{ name: '④ 动态产品信息', key: 'product', content: productBlock }]    : []),
     ...(imitBlock       ? [{ name: '⑤ 仿写参考范文★',    content: imitBlock }]        : []),
@@ -1361,10 +1531,171 @@ function runClaudeAsync(prompt, timeoutMs = 90000) {
 // API 路由
 // ═══════════════════════════════════════════════════════════════════
 
+function runTopicCollector() {
+  return new Promise((resolve, reject) => {
+    const child = spawn('python', [TOPIC_PIPELINE_PATH], {
+      cwd: __dirname,
+      windowsHide: true,
+      env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+    });
+    let stdout = '';
+    let stderr = '';
+    const timer = setTimeout(() => {
+      child.kill();
+      reject(new Error('选题信号采集超过 5 分钟'));
+    }, 300000);
+    child.stdout.on('data', chunk => { stdout += chunk; });
+    child.stderr.on('data', chunk => { stderr += chunk; });
+    child.on('error', error => { clearTimeout(timer); reject(error); });
+    child.on('close', code => {
+      clearTimeout(timer);
+      if (code !== 0) return reject(new Error(stderr.trim() || stdout.trim() || `collector exit ${code}`));
+      try { resolve(JSON.parse(stdout.trim())); }
+      catch { resolve({ ok: true }); }
+    });
+  });
+}
+
+function loadTopicJson(file, fallback = null) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch { return fallback; }
+}
+
+function compactTopicSignals(signals) {
+  const note = row => ({
+    title: row.title,
+    keyword: row.keyword || '',
+    source: row.source || '',
+    likes: row.likes || 0,
+    collects: row.collects || 0,
+    comments: row.comments || 0,
+    cover: row.cover || '',
+  });
+  return {
+    generatedAt: signals.generatedAt,
+    skills: signals.skills,
+    seeds: signals.seeds || signals.config?.seeds || [],
+    hotQueries: (signals.hotQueries || []).slice(0, 30),
+    homeFeed: (signals.homeFeed || []).slice(0, 15).map(note),
+    searchNotes: (signals.searchNotes || []).slice(0, 35).map(note),
+    topics: (signals.topics || []).slice(0, 25),
+    crossPlatform: (signals.crossPlatform || []).slice(0, 35),
+    errors: signals.errors || [],
+  };
+}
+
+function buildTopicDigestPrompt(signals) {
+  return `你是每天烈刻气泡白酒的选题编辑。下面是三套方法合并后的真实信号：
+1. xiaohongshu-ops：首页推荐流里的高互动表达与视觉形式；
+2. xhs-content-plan：酒饮相关关键词按热门/最新检索得到的笔记、搜索联想与话题；
+3. inkroam-topic-expert：跨平台热点，并按热度、相关性、时效性、可写性、差异化判断。
+
+品牌任务：卖气泡白酒，兼顾强销售转化与场景种草。产品事实由后续 Market Hub 品牌事实模块提供，本步骤不得编造功效、价格、原料、度数或销量。
+
+生成 3-5 张“今日选题卡”。每张卡包含：
+- trafficKeyword：平台已有的大流量词，只负责被找到；
+- coreConcept：本篇自己建立的记忆概念，负责被记住。优先 6-14 个字，把产品功效翻译成一种让人想进入的身份、状态或场景；禁止写成“气泡白酒的XX”“XX气泡白酒”这类产品说明，也不能只是品牌口号；
+- bridge：流量词与气泡白酒的自然关联；
+- framework：A/B/C/D 之一，不改变既有框架定义；
+- intervention：仅标签 / 标题与标签 / 标题开头与标签 / 整篇语境；
+- direction：带入撰写台“补充方向”的一句操作指令；
+- rationale：为什么今天值得测试，必须引用信号，不得声称没有时间序列支持的上涨百分比；
+- visual：首图/图组建议，至少保留一张真实产品锚点图；
+- evidence：1-3 条真实证据，复制 title/source/likes/cover，不得虚构；
+- sources：实际贡献到该卡的 skill 名称数组；
+- score：0-100；kind：行业需求 / 平台表达 / 跨界热点。
+
+流量大词不能压过 coreConcept。coreConcept 要像一个用户愿意复述、搜索或拿来形容自己的新说法，而不是品类词换序。跨界热点关联弱时宁可不选。输出严格 JSON，不要 Markdown：
+{"generatedAt":"...","recommendations":[{"id":"topic-1","kind":"行业需求","trafficKeyword":"","coreConcept":"","bridge":"","framework":"B","intervention":"标题开头与标签","direction":"","rationale":"","visual":"","score":82,"sources":["xhs-content-plan"],"evidence":[{"title":"","source":"","likes":0,"cover":""}]}]}
+
+真实信号：
+${JSON.stringify(compactTopicSignals(signals), null, 2)}`;
+}
+
+function parseTopicDigest(raw) {
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('选题整理未返回 JSON');
+  const parsed = JSON.parse(match[0]);
+  if (!Array.isArray(parsed.recommendations)) throw new Error('选题整理缺少 recommendations');
+  parsed.recommendations = parsed.recommendations.slice(0, 5).map((item, index) => ({
+    ...item,
+    id: item.id || `topic-${Date.now()}-${index}`,
+    score: Math.max(0, Math.min(100, Number(item.score) || 0)),
+    sources: Array.isArray(item.sources) ? item.sources : [],
+    evidence: Array.isArray(item.evidence) ? item.evidence.slice(0, 3) : [],
+  }));
+  return parsed;
+}
+
+app.get('/api/topics', (req, res) => {
+  const data = loadTopicJson(TOPIC_RECOMMENDATIONS_PATH, { generatedAt: null, recommendations: [] });
+  const signals = loadTopicJson(TOPIC_SIGNALS_PATH, null);
+  res.json({
+    ok: true,
+    ...data,
+    config: loadTopicConfig(),
+    signalGeneratedAt: signals?.generatedAt || null,
+    skillStatus: signals?.skills || null,
+    signalErrors: signals?.errors || [],
+  });
+});
+
+app.get('/api/topics/config', (req, res) => {
+  res.json({ ok: true, config: loadTopicConfig() });
+});
+
+app.post('/api/topics/config', (req, res) => {
+  try {
+    const body = req.body || {};
+    const current = loadTopicConfig();
+    const seeds = Array.isArray(body.seeds)
+      ? body.seeds.map(v => String(v || '').trim()).filter(Boolean).slice(0, 20)
+      : current.seeds;
+    const sources = body.sources && typeof body.sources === 'object'
+      ? Object.fromEntries(Object.entries(current.sources).map(([key, val]) => [key, key in body.sources ? !!body.sources[key] : val]))
+      : current.sources;
+    const config = {
+      cacheHours: Math.max(0.25, Math.min(Number(body.cacheHours) || current.cacheHours, 24)),
+      seeds: seeds.length ? seeds : current.seeds,
+      sources,
+    };
+    saveTopicConfig(config);
+    res.json({ ok: true, config });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/topics/refresh', async (req, res) => {
+  if (topicRefreshRunning) return res.json({ ok: false, error: '今日选题正在刷新，请稍后查看' });
+  topicRefreshRunning = true;
+  try {
+    const config = loadTopicConfig();
+    let signals = loadTopicJson(TOPIC_SIGNALS_PATH);
+    const age = signals?.generatedAt ? Date.now() - new Date(signals.generatedAt).getTime() : Infinity;
+    if (!signals || age > config.cacheHours * 60 * 60 * 1000 || req.body?.forceCollect === true) {
+      await runTopicCollector();
+      signals = loadTopicJson(TOPIC_SIGNALS_PATH);
+    }
+    if (!signals) throw new Error('采集完成但没有生成 topic-signals.json');
+    const raw = await runClaudeAsync(buildTopicDigestPrompt(signals), 300000);
+    const digest = parseTopicDigest(raw);
+    digest.generatedAt = new Date().toISOString();
+    fs.writeFileSync(TOPIC_RECOMMENDATIONS_PATH, JSON.stringify(digest, null, 2), 'utf8');
+    res.json({ ok: true, ...digest, config, signalGeneratedAt: signals.generatedAt || null, skillStatus: signals.skills, signalErrors: signals.errors || [] });
+  } catch (e) {
+    console.error('[topics/refresh]', e.message);
+    res.json({ ok: false, error: e.message });
+  } finally {
+    topicRefreshRunning = false;
+  }
+});
+
 // 生成文案
 app.post('/api/generate', async (req, res) => {
   try {
-    const { framework = 'B', direction, sellingPoint, spItems = [], subTemplate = null, persona: reqPersona = null, scene: reqScene = null, refArticle = null, rawPrompt = null, angle: reqAngle = null, toneStyle = 'narrative' } = req.body;
+    const { framework = 'B', direction, sellingPoint, spItems = [], subTemplate = null, persona: reqPersona = null, scene: reqScene = null, refArticle = null, rawPrompt = null, angle: reqAngle = null, toneStyle = 'narrative', bRoute = 'product', topicSignal = null } = req.body;
     if (!sellingPoint && !rawPrompt) return res.json({ ok: false, error: '请选择或填写主推卖点' });
 
     let prompt;
@@ -1375,6 +1706,17 @@ app.post('/api/generate', async (req, res) => {
 
     if (rawPrompt) {
       prompt = rawPrompt;
+      lastPromptSnapshot = {
+        at: new Date().toISOString(),
+        mode: 'raw',
+        framework,
+        sellingPoint: sellingPoint || null,
+        bRoute,
+        usedAngle: null,
+        inputs: { direction: direction || '', toneStyle, subTemplate: null, persona: null, scene: null, refArticle: null },
+        modules: [],
+        prompt,
+      };
     } else {
       try { ctx = await fetchFeishuContext(); }
       catch (e) { console.error('[Context fetch]', e.message); }
@@ -1387,7 +1729,27 @@ app.post('/api/generate', async (req, res) => {
       // 之前这里会随机注入人群和场景，导致“只选卖点”的生成结果被其他维度污染。
       // 当前策略：只使用用户显式选择的素材维度；需要扩展时由用户主动选择。
 
-      ({ prompt } = buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems, usedAngle, toneStyle));
+      const built = buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems, usedAngle, toneStyle, bRoute, topicSignal);
+      prompt = built.prompt;
+      lastPromptSnapshot = {
+        at: new Date().toISOString(),
+        mode: 'single',
+        framework,
+        sellingPoint,
+        bRoute,
+        usedAngle: usedAngle ? { id: usedAngle.id || null, name: usedAngle.name || null, desc: usedAngle.desc || null } : null,
+        inputs: {
+          direction: direction || '',
+          toneStyle,
+          subTemplate: subTemplate?.name || null,
+          persona: persona?.name || null,
+          scene: scene?.name || null,
+          refArticle: refArticle?.title || refArticle?.name || null,
+          topicSignal: topicSignal?.coreConcept || topicSignal?.title || null,
+        },
+        modules: (built.modules || []).map(m => ({ name: m.name, chars: (m.content || '').length })),
+        prompt,
+      };
     }
 
     const rawText = await runClaudeAsync(prompt, 420000);
@@ -1421,21 +1783,28 @@ app.post('/api/generate', async (req, res) => {
 });
 
 // ─── 提示词预览（不真正生成，只返回完整 prompt 和模块列表）────────────
+app.get('/api/last-prompt', (req, res) => {
+  if (!lastPromptSnapshot) {
+    return res.json({ ok: false, error: '还没有生成过内容，暂无真实 prompt 快照' });
+  }
+  res.json({ ok: true, ...lastPromptSnapshot });
+});
+
 app.post('/api/preview-prompt', async (req, res) => {
   try {
-    const { framework = 'B', direction = '', sellingPoint = '（预览）', spItems = [], subTemplate = null, persona = null, scene = null, refArticle = null, mode = 'single', angle = null, toneStyle = 'narrative' } = req.body;
+    const { framework = 'B', direction = '', sellingPoint = '（预览）', spItems = [], subTemplate = null, persona = null, scene = null, refArticle = null, mode = 'single', angle = null, toneStyle = 'narrative', bRoute = 'product', topicSignal = null } = req.body;
     let ctx;
     try { ctx = await fetchFeishuContext(); } catch { ctx = { iterComp: [], reference: [] }; }
     const result = mode === 'batch'
       ? buildBatchPrompt(ctx, direction, sellingPoint, framework, persona, scene, refArticle, spItems)
-      : buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems, angle, toneStyle);
+      : buildPrompt(ctx, direction, sellingPoint, framework, subTemplate, persona, scene, refArticle, spItems, angle, toneStyle, bRoute, topicSignal);
     const titleCount = (() => { try { return loadTitleLibrary().length; } catch { return 0; } })();
     res.json({
       ok: true,
       prompt: result.prompt,
       modules: result.modules,
       contextStats: { iterComp: ctx.iterComp.length, reference: ctx.reference.length, titles: titleCount },
-      inputs: { framework, direction, sellingPoint, subTemplate: subTemplate?.name || null, persona: persona?.name || null, scene: scene?.name || null, refArticle: refArticle?.name || null },
+      inputs: { framework, direction, sellingPoint, bRoute, angle: angle?.name || null, topicSignal: topicSignal?.coreConcept || null, subTemplate: subTemplate?.name || null, persona: persona?.name || null, scene: scene?.name || null, refArticle: refArticle?.title || refArticle?.name || null },
     });
   } catch (e) {
     res.json({ ok: false, error: e.message });
@@ -2693,6 +3062,7 @@ const XHS_TABLE     = 'tblGpK7czdgjFZbi';
 const XHS_TRIED_F   = path.join(os.homedir(), 'xhs_tried.json');
 const UV_BIN        = path.join(os.homedir(), '.local', 'bin', 'uv.exe');
 const XHS_CLI_DIR   = path.join(os.homedir(), 'xiaohongshu-cli');
+const XHS_LOGIN_SCRIPT = path.join(__dirname, 'scripts', 'xhs-login-qrcode.ps1');
 const xhsJobStore   = new Map();
 
 function xhsLoadTried() {
@@ -2727,16 +3097,28 @@ function xhsParseNote(url) {
   return { noteId: m[1], xsecToken: t ? decodeURIComponent(t[1]) : '' };
 }
 
-function xhsFetchComments(noteId, xsecToken) {
-  const cmd = [UV_BIN, 'run', 'xhs', 'comments', noteId, '--all', '--json'];
-  if (xsecToken) cmd.push('--xsec-token', xsecToken);
+function xhsFriendlyError(code, msg = '') {
+  if (code === 'not_authenticated') return '小红书登录态已过期。请先执行 xhs login，或扫码登录后再抓评论。';
+  if (code === 'verification_required') return '小红书触发验证码/风控。请先在浏览器里完成验证，稍后再抓。';
+  if (/xsec_token/i.test(msg)) return '缺少或无法复用 xsec_token。请优先导入带 xsec_token 的完整小红书链接。';
+  return msg || code || '未知错误';
+}
+
+function xhsFetchComments(noteId, xsecToken, sourceUrl = '') {
+  const target = sourceUrl && sourceUrl.includes('xiaohongshu.com/') ? sourceUrl : noteId;
+  const cmd = [UV_BIN, 'run', 'xhs', 'comments', target, '--all', '--json'];
+  if (!sourceUrl && xsecToken) cmd.push('--xsec-token', xsecToken);
   const r = spawnSync(cmd[0], cmd.slice(1), {
     encoding: 'utf8', timeout: 60000,
     cwd: XHS_CLI_DIR, env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
   });
   let data;
-  try { data = JSON.parse(r.stdout || '{}'); } catch { return { ok: false, code: 'parse_error' }; }
-  if (!data.ok) return { ok: false, code: data.error?.code || 'unknown', msg: data.error?.message || '' };
+  try { data = JSON.parse(r.stdout || '{}'); } catch { return { ok: false, code: 'parse_error', msg: r.stderr || r.stdout || '' }; }
+  if (!data.ok) {
+    const code = data.error?.code || 'unknown';
+    const msg = data.error?.message || '';
+    return { ok: false, code, msg, hint: xhsFriendlyError(code, msg) };
+  }
   const texts = [], imgs = [];
   for (const c of (data.data?.comments || [])) {
     for (const item of [c, ...(c.sub_comments || [])]) {
@@ -2754,17 +3136,28 @@ function xhsFetchAllRecords() {
   while (true) {
     const r = larkCli(['--as', 'user', 'base', '+record-list',
       '--base-token', XHS_BASE, '--table-id', XHS_TABLE,
-      '--field-id', 'fldPISrmKu', '--field-id', 'fldL90EX2O',
+      '--field-id', 'fldPISrmKu', '--field-id', 'fldTKifb9m',
+      '--field-id', 'fldcBaFZ4R', '--field-id', 'fldL90EX2O',
+      '--field-id', 'fldsjl0bni',
       '--format', 'json', '--limit', '100', '--offset', String(offset)]);
     if (!r.ok) break;
     const d = r.data;
     const rows = d.data || [], ids = d.record_id_list || [], flds = d.fields || [];
-    const ui = flds.indexOf('地址贴这里'), ti = flds.indexOf('评论文字');
+    const ui = flds.indexOf('地址贴这里');
+    const noteUi = flds.indexOf('笔记地址');
+    const titleI = flds.indexOf('笔记标题');
+    const textI = flds.indexOf('评论文字');
+    const imageI = flds.indexOf('评论图片');
     for (let i = 0; i < ids.length; i++) {
       const row = rows[i] || [];
-      const url = xhsExtractUrl(ui >= 0 ? row[ui] : '');
-      const hasData = ti >= 0 && !!row[ti];
-      if (url) records.push({ id: ids[i], url, hasData, tried: tried.has(ids[i]) });
+      const url = xhsExtractUrl(ui >= 0 ? row[ui] : '') || xhsExtractUrl(noteUi >= 0 ? row[noteUi] : '');
+      const commentText = textI >= 0 ? String(row[textI] || '') : '';
+      const images = imageI >= 0 && Array.isArray(row[imageI]) ? row[imageI] : [];
+      if (url || commentText) records.push({
+        id: ids[i], url, title: titleI >= 0 ? String(row[titleI] || '') : '',
+        commentText, commentCount: commentText ? commentText.split(/\r?\n/).filter(Boolean).length : 0,
+        imageCount: images.length, hasData: !!commentText, tried: tried.has(ids[i]),
+      });
     }
     if (!d.has_more) break;
     offset += 100;
@@ -2775,6 +3168,156 @@ function xhsFetchAllRecords() {
 app.get('/api/xhs/records', (req, res) => {
   try { res.json({ ok: true, records: xhsFetchAllRecords() }); }
   catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
+app.get('/api/xhs/status', (req, res) => {
+  try {
+    const r = spawnSync(UV_BIN, ['run', 'xhs', 'status', '--json'], {
+      encoding: 'utf8', timeout: 30000,
+      cwd: XHS_CLI_DIR, env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+    });
+    let data;
+    try { data = JSON.parse(r.stdout || '{}'); }
+    catch { data = { ok: false, error: { code: 'parse_error', message: r.stderr || r.stdout || '' } }; }
+    if (!data.ok) {
+      const code = data.error?.code || 'unknown';
+      const msg = data.error?.message || '';
+      return res.json({ ok: false, code, error: xhsFriendlyError(code, msg), raw: msg });
+    }
+    res.json({ ok: true, user: data.data?.user || data.data || null });
+  } catch (e) { res.json({ ok: false, code: 'exception', error: e.message }); }
+});
+
+app.post('/api/xhs/login-qrcode', (req, res) => {
+  try {
+    if (!fs.existsSync(XHS_LOGIN_SCRIPT)) {
+      return res.json({ ok: false, error: '登录脚本不存在，请检查 scripts/xhs-login-qrcode.ps1' });
+    }
+    const child = spawn('powershell.exe', [
+      '-NoExit',
+      '-ExecutionPolicy', 'Bypass',
+      '-File', XHS_LOGIN_SCRIPT,
+    ], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false,
+    });
+    child.unref();
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/xhs/import', (req, res) => {
+  try {
+    const urls = [...new Set((req.body?.urls || [])
+      .map(v => String(v || '').trim())
+      .filter(v => /^https?:\/\/(?:www\.)?(?:xiaohongshu\.com|xhslink\.com)\//i.test(v)))];
+    if (!urls.length) return res.json({ ok: false, error: '请粘贴有效的小红书笔记链接' });
+    const existing = new Set(xhsFetchAllRecords().map(r => r.url).filter(Boolean));
+    const fresh = urls.filter(url => !existing.has(url));
+    if (!fresh.length) return res.json({ ok: true, created: 0, duplicate: urls.length, ids: [] });
+    const created = larkCli(['--as', 'user', 'base', '+record-batch-create',
+      '--base-token', XHS_BASE, '--table-id', XHS_TABLE,
+      '--json', JSON.stringify({ fields: ['地址贴这里', '笔记地址'], rows: fresh.map(url => [url, url]) }),
+      '--format', 'json']);
+    res.json({ ok: true, created: fresh.length, duplicate: urls.length - fresh.length,
+      ids: created.data?.record_id_list || [] });
+  } catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/xhs/analyze-comments', async (req, res) => {
+  try {
+    const rec = xhsFetchAllRecords().find(r => r.id === req.body?.id);
+    if (!rec?.commentText) return res.json({ ok: false, error: '这条记录还没有评论数据' });
+    const brandFacts = [
+      fs.readFileSync(path.join(__dirname, 'brand-facts.md'), 'utf8'),
+      fs.readFileSync(path.join(__dirname, 'product-info.md'), 'utf8'),
+    ].join('\n\n').slice(0, 18000);
+    let prompt = `你是每天烈刻的评论研究员。请研究下面一组小红书热门笔记评论，不是续写笔记，也不要假装真实消费者。
+
+目标：提炼评论区为什么会形成互动，以及以后可复用的“评论布局”。必须区分两类：
+1. 造势评论：用于品牌自有笔记下，由运营账号主动开启讨论；
+2. 定向回复：针对用户原话回答，必须承接对方问题、情绪或误解。
+
+输出固定为：
+## 评论区发生了什么
+## 高频触发器（问题 / 异议 / 求图 / 玩梗 / 购买意图 / 圈层暗号）
+## 对话链布局（哪些评论适合接第二句、第三句）
+## 可迁移到每天烈刻的机制
+## 不能照搬的内容
+## 造势评论模板（只写结构和变量，不伪造使用经历）
+## 定向回复模板（原评论类型 → 回应结构）
+
+品牌事实仅用于判断能否承接，禁止添加未提供的功效、销量和体验：
+${brandFacts}
+
+样本标题：${rec.title || '未填写'}
+评论序列：
+${rec.commentText.slice(0, 30000)}`;
+    prompt += `
+
+特别重要：这份结果要给员工直接用，不要只做宏观分析。请额外输出以下落地部分：
+
+## 可执行回复清单
+从评论序列里挑 8-12 条最值得运营介入的代表评论。每条按这个格式写：
+- 原评论：引用原评论原文，尽量短，不要改写用户意思
+- 是否值得回复：值得 / 不建议 / 只点赞不回
+- 回复目标：澄清误解 / 承接购买意图 / 引导追问 / 放大玩梗 / 降低争议 / 引导场景分享
+- 回复策略：先接住对方哪一个词，再补哪一个信息，最后要不要反问
+- 可复制回复 A：不超过 60 字，像真人运营号，不假装消费者
+- 可复制回复 B：不超过 60 字，更俏皮一点，但不油
+- 插件执行建议：适合插件直接回 / 需要人工确认 / 不适合回
+
+## 插件落地建议
+说明这些回复以后应该怎样接入小红书插件或发布助手：哪些内容由 Market Hub 生成，哪些动作必须由已登录的小红书账号执行，哪些回复必须人工确认后才能发。
+
+回复约束：
+- 不要说自己买过、喝过、库存、销量、疗效、醒酒效果，除非品牌事实里明确给出；
+- 不要冒充普通用户，只能用品牌/运营口吻；
+- 每条回复都要短，能直接复制进评论框；
+- 如果原评论不值得回，要明确说为什么。`;
+    const analysis = await runClaudeAsync(prompt, 120000);
+    res.json({ ok: true, analysis });
+  } catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/xhs/reply-suggestion', async (req, res) => {
+  try {
+    const { comment = '', noteTitle = '', noteUrl = '', context = '' } = req.body || {};
+    const cleanComment = String(comment || '').trim().slice(0, 800);
+    if (!cleanComment) return res.json({ ok: false, error: '请先选中一条评论或粘贴评论文本' });
+    const prompt = `你是每天烈刻气泡白酒的小红书评论回复助手。请根据当前笔记语境，为“被选中的这条评论”生成可复制回复。
+
+安全边界：
+- 不冒充真实消费者，不说“我买了/我喝过/我们家还有货/包邮/私信你”等无法确认的话。
+- 不承诺功效、减肥、助眠、健康收益，不劝酒，不诱导未成年人饮酒。
+- 不自动销售压迫；像真人轻轻接话，短、准、有情绪。
+- 如果评论不适合品牌号回复，直接标注“不建议回复”，并说明原因。
+- 如果适合回复，给 3 条不同风格，每条 12-45 字。
+
+当前笔记标题：${noteTitle || '未知'}
+当前笔记链接：${noteUrl || '未知'}
+页面上下文：${context || '无'}
+被选中的评论：${cleanComment}
+
+输出严格 JSON：
+{"okToReply":true,"reason":"","replies":[{"style":"轻松接话","text":""},{"style":"产品轻露出","text":""},{"style":"引导讨论","text":""}],"copyHint":""}`;
+    const raw = await runClaudeAsync(prompt, 180000);
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('回复建议未返回 JSON');
+    const parsed = JSON.parse(match[0]);
+    res.json({
+      ok: true,
+      okToReply: parsed.okToReply !== false,
+      reason: parsed.reason || '',
+      replies: Array.isArray(parsed.replies) ? parsed.replies.slice(0, 5) : [],
+      copyHint: parsed.copyHint || '',
+    });
+  } catch (e) {
+    console.error('[xhs/reply-suggestion]', e.message);
+    res.json({ ok: false, error: e.message });
+  }
 });
 
 app.post('/api/xhs/reset-tried', (req, res) => {
@@ -2839,12 +3382,12 @@ app.post('/api/xhs/scrape', (req, res) => {
       }
 
       log(`  🕷 ${info.noteId} 抓取中…`);
-      const result = xhsFetchComments(info.noteId, info.xsecToken);
+      const result = xhsFetchComments(info.noteId, info.xsecToken, url);
 
       tried.add(rec.id); xhsSaveTried(tried);
 
       if (!result.ok) {
-        const hint = result.code === 'verification_required' ? '验证码触发' : `${result.code} ${result.msg}`;
+        const hint = result.hint || `${result.code} ${result.msg || ''}`;
         log(`  ⚠ ${hint}`);
         job.results.push({ id: rec.id, status: 'skip', reason: result.code });
         continue;

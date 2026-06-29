@@ -1,0 +1,17 @@
+{
+  "cacheHours": 4,
+  "seeds": [
+    "低度酒",
+    "果酒推荐",
+    "女生喝什么酒",
+    "烧烤喝什么",
+    "微醺"
+  ],
+  "sources": {
+    "homeFeed": true,
+    "keywordSearch": true,
+    "topicSearch": true,
+    "crossPlatform": true,
+    "savedResearchFallback": true
+  }
+}

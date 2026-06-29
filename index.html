@@ -4,38 +4,50 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>每天烈刻 · AI市场部</title>
+<script>
+  if (location.protocol === 'file:') {
+    location.replace('http://127.0.0.1:3377/');
+  }
+</script>
 <style>
 :root {
-  --bg: #0d0d0f; --bg2: #141416; --bg3: #1c1c1f; --bg4: #222226;
-  --border: #2a2a2e; --border2: #333338;
-  --text: #f0f0f0; --muted: #888; --dim: #555;
-  --gold: #d4a843; --gold2: #e8c068; --gold3: rgba(212,168,67,.12);
-  --green: #4ade80; --red: #f87171; --blue: #60a5fa;
+  --bg: #f5efe3; --bg2: #fffaf0; --bg3: #eee4d2; --bg4: #e1d4bd;
+  --border: #dfd0b8; --border2: #cab79a;
+  --text: #18281f; --muted: #6f796f; --dim: #9b927f;
+  --gold: #c9822b; --gold2: #8a561d; --gold3: rgba(201,130,43,.14);
+  --green: #2f8b57; --red: #c84d4d; --blue: #3577b8;
+  --nav-w: 232px;
+  --zone-home: #1f6f55; --zone-write: #c9822b; --zone-data: #3577b8; --zone-assets: #8a63b0; --zone-system: #5d6b63;
   --radius: 10px; --radius-sm: 6px;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
-  background: var(--bg); color: var(--text);
+  background:
+    radial-gradient(circle at 16% 8%, rgba(47,139,87,.12), transparent 26%),
+    radial-gradient(circle at 90% 18%, rgba(201,130,43,.12), transparent 28%),
+    var(--bg);
+  color: var(--text);
   font-family: -apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
-  line-height: 1.65; min-height: 100vh;
+  line-height: 1.65; min-height: 100vh; overflow:hidden;
 }
+body.app-scroll-freeze { overflow:hidden; }
 
 /* ── 顶栏 ── */
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 28px; border-bottom: 1px solid var(--border);
-  background: var(--bg2);
+  height:72px; padding: 14px 24px; border-bottom: 1px solid var(--border);
+  background: rgba(255,250,240,.92); backdrop-filter: blur(18px);
 }
 .brand { display:flex; align-items:center; gap:12px; }
 .badge {
-  background: linear-gradient(135deg,#d4a843,#f0c060); color:#000;
+  background: linear-gradient(135deg,#1f6f55,#2f8b57); color:#fff;
   font-weight:700; font-size:13px; padding:4px 10px; border-radius:5px; letter-spacing:1px;
 }
 .brand-name { font-size:17px; font-weight:600; }
 .brand-sub { font-size:11px; color:var(--muted); margin-top:1px; }
 .status-pill {
   display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted);
-  background: var(--bg3); padding:6px 14px; border-radius:20px; border:1px solid var(--border);
+  background: rgba(255,250,240,.72); padding:6px 14px; border-radius:20px; border:1px solid var(--border);
 }
 .publish-image-bar { border:1px solid var(--border2); border-radius:var(--radius-sm); background:linear-gradient(180deg,var(--bg3),var(--bg2)); padding:10px; }
 .publish-image-head { display:flex; flex-direction:column; gap:8px; margin-bottom:8px; }
@@ -64,24 +76,169 @@ body {
 .dot.err { background:var(--red); }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
-/* ── Tab 导航 ── */
+/* ── 左侧导航 ── */
 .tab-nav {
-  display: flex; gap: 0; border-bottom: 1px solid var(--border);
-  background: var(--bg2); padding: 0 28px;
+  position:fixed; left:0; top:72px; bottom:0; z-index:10;
+  width:var(--nav-w); display:flex; flex-direction:column; gap:8px;
+  border-right: 1px solid var(--border);
+  background: linear-gradient(180deg,rgba(24,40,31,.96),rgba(18,29,24,.98));
+  padding: 18px 14px;
 }
 .tab-btn {
-  padding: 12px 20px; border: none; background: none;
-  color: var(--muted); font-size: 13px; font-weight: 500;
-  cursor: pointer; border-bottom: 2px solid transparent;
-  transition: all .15s; margin-bottom: -1px; text-decoration:none;
+  position:relative; width:100%; text-align:left;
+  padding: 12px 14px 12px 18px; border: 1px solid transparent;
+  background: rgba(255,255,255,.035);
+  color: rgba(255,250,240,.68); font-size: 13px; font-weight: 700;
+  cursor: pointer; border-radius:14px;
+  transition: all .15s; text-decoration:none;
 }
-.tab-btn:hover { color: var(--text); }
-.tab-btn.active { color: var(--gold2); border-bottom-color: var(--gold); }
+.tab-btn::before { content:''; position:absolute; left:8px; top:50%; width:4px; height:18px; border-radius:99px; background:var(--nav-accent,var(--gold)); transform:translateY(-50%); opacity:.45; }
+.tab-btn:hover { color: #fffaf0; background:rgba(255,255,255,.08); }
+.tab-btn.active { color:#fffaf0; background:rgba(255,255,255,.14); border-color:rgba(255,250,240,.18); box-shadow:0 12px 28px rgba(0,0,0,.16); }
+.tab-btn.active::before { opacity:1; }
+.tab-btn[data-secondary="true"] { display:none; }
+body > div[id^="tab-"] { margin-left:var(--nav-w); }
+body > div[id^="tab-"] { min-height:0; }
+.task-jump {
+  margin-left:var(--nav-w);
+  min-height:54px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:9px 18px;
+  border-bottom:1px solid var(--border);
+  background:rgba(255,250,240,.86);
+  backdrop-filter:blur(14px);
+}
+.task-jump-label {
+  color:var(--muted);
+  font-size:11px;
+  font-weight:700;
+  white-space:nowrap;
+}
+.task-jump-btn {
+  min-height:34px;
+  padding:7px 11px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--bg2);
+  color:var(--text);
+  font:inherit;
+  font-size:12px;
+  font-weight:750;
+  cursor:pointer;
+}
+.task-jump-btn:hover { border-color:var(--gold); color:var(--gold2); }
+.task-jump-btn.active { background:var(--text); border-color:var(--text); color:#fffaf0; }
+.task-jump-note { margin-left:auto; color:var(--dim); font-size:11px; white-space:nowrap; }
+
+/* ── 工作区入口 ── */
+.hub-shell { height:calc(100vh - 126px); overflow-y:auto; padding:28px 34px 52px; }
+.hub-head { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; padding-bottom:18px; border-bottom:1px solid var(--border); margin-bottom:18px; }
+.hub-title { font-size:24px; font-weight:850; letter-spacing:-.03em; }
+.hub-sub { margin-top:4px; font-size:12px; color:var(--muted); }
+.hub-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+.hub-card { border:1px solid var(--border); background:linear-gradient(180deg,rgba(255,250,240,.92),rgba(255,250,240,.62)); border-radius:18px; padding:18px; cursor:pointer; transition:all .16s; min-height:138px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 14px 32px rgba(63,47,28,.06); }
+.hub-card:hover { border-color:var(--gold); transform:translateY(-2px); background:var(--bg2); box-shadow:0 18px 38px rgba(63,47,28,.1); }
+.hub-card-title { font-size:15px; font-weight:700; color:var(--text); }
+.hub-card-body { margin-top:8px; color:var(--muted); font-size:12px; line-height:1.65; }
+.hub-card-foot { margin-top:14px; color:var(--gold2); font-size:11px; }
+.mode-rail { display:flex; gap:6px; padding:10px 12px; border-bottom:1px solid var(--border); background:var(--bg2); }
+.mode-btn { border:1px solid var(--border2); background:var(--bg3); color:var(--muted); border-radius:999px; padding:5px 11px; font-size:11px; cursor:pointer; }
+.mode-btn.active { color:#111; background:var(--gold); border-color:var(--gold); font-weight:700; }
+
+/* ── 今日选题 ── */
+.topics-shell { height:calc(100vh - 126px); overflow-y:auto; padding:24px 28px 40px; }
+.topics-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding-bottom:18px; border-bottom:1px solid var(--border); }
+.topics-title { font-size:18px; font-weight:700; }
+.topics-sub { margin-top:4px; color:var(--muted); font-size:12px; }
+.topics-skillbar { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:16px 0; }
+.topics-skill { border:1px solid var(--border); background:var(--bg2); padding:10px 12px; border-radius:var(--radius-sm); }
+.topics-skill b { display:block; font-size:11px; color:var(--text); }
+.topics-skill span { display:block; margin-top:3px; font-size:10px; color:var(--muted); }
+.topics-skill.ok { border-color:rgba(74,222,128,.45); }
+.topics-flow { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:-4px 0 16px; }
+.topics-flow-step { border:1px solid var(--border); background:rgba(255,255,255,.02); border-radius:6px; padding:9px 10px; }
+.topics-flow-step b { display:block; font-size:11px; color:var(--gold2); }
+.topics-flow-step span { display:block; margin-top:3px; color:var(--muted); font-size:10px; line-height:1.45; }
+.topics-method { border:1px solid var(--border); background:var(--bg2); border-radius:8px; padding:13px 14px; margin:-4px 0 16px; }
+.topics-method-title { color:var(--gold2); font-size:12px; font-weight:700; margin-bottom:7px; }
+.topics-method-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.topics-method-grid div { color:var(--muted); font-size:11px; line-height:1.65; }
+.topics-method-grid b { display:block; color:var(--text); font-size:11px; margin-bottom:3px; }
+.topics-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+.topics-rule { margin-top:10px; color:var(--dim); font-size:10px; line-height:1.55; }
+.topics-config { display:none; border:1px solid var(--border); background:var(--bg2); border-radius:8px; padding:13px 14px; margin:-6px 0 16px; }
+.topics-config-grid { display:grid; grid-template-columns:minmax(220px,1fr) 160px; gap:10px; align-items:start; }
+.topics-config textarea, .topics-config input { width:100%; box-sizing:border-box; background:var(--bg); border:1px solid var(--border2); border-radius:6px; color:var(--text); font:12px/1.55 inherit; padding:9px 10px; outline:none; }
+.topics-config label { display:block; color:var(--muted); font-size:11px; margin-bottom:5px; }
+.topics-source-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; color:var(--muted); font-size:11px; }
+.topics-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(310px,1fr)); gap:12px; }
+.topic-card { border:1px solid var(--border2); background:var(--bg2); border-radius:8px; overflow:hidden; }
+.topic-card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; border-bottom:1px solid var(--border); }
+.topic-kind { color:var(--gold2); font-size:11px; font-weight:600; }
+.topic-score { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.topic-card-body { padding:14px; }
+.topic-concept { font-size:17px; line-height:1.4; font-weight:700; }
+.topic-traffic { margin-top:5px; color:var(--blue); font-size:12px; }
+.topic-bridge { margin-top:10px; color:var(--text); font-size:12px; line-height:1.7; }
+.topic-meta { display:flex; flex-wrap:wrap; gap:5px; margin-top:10px; }
+.topic-meta span { border:1px solid var(--border); background:var(--bg3); color:var(--muted); border-radius:4px; padding:2px 6px; font-size:10px; }
+.topic-evidence { margin-top:12px; border-top:1px solid var(--border); padding-top:10px; }
+.topic-evidence-row { display:grid; grid-template-columns:42px 1fr; gap:8px; margin-top:7px; align-items:center; }
+.topic-evidence-row img { width:42px; height:42px; object-fit:cover; border-radius:4px; background:var(--bg3); }
+.topic-evidence-title { font-size:11px; line-height:1.45; color:var(--text); }
+.topic-evidence-meta { font-size:9px; color:var(--dim); margin-top:2px; }
+.topic-card-actions { display:flex; justify-content:space-between; gap:8px; padding:10px 14px; border-top:1px solid var(--border); background:var(--bg3); }
+.topic-empty { border:1px dashed var(--border2); padding:40px; text-align:center; color:var(--muted); font-size:13px; }
+.topic-selected { border:1px solid var(--gold); background:var(--gold3); padding:9px 10px; border-radius:var(--radius-sm); }
+.topic-selected-title { color:var(--gold2); font-weight:600; font-size:12px; }
+.topic-selected-meta { color:var(--muted); font-size:10px; margin-top:3px; line-height:1.5; }
+@media (max-width:760px) {
+  body { overflow:auto; }
+  .tab-nav { position:static; width:auto; flex-direction:row; overflow:auto; border-right:0; border-bottom:1px solid var(--border); }
+  .tab-btn { min-width:max-content; }
+  body > div[id^="tab-"] { margin-left:0; }
+  .topics-shell { padding:18px 14px 32px; }
+  .topics-head { flex-direction:column; }
+  .topics-skillbar { grid-template-columns:1fr; }
+  .topics-flow { grid-template-columns:1fr; }
+  .topics-method-grid { grid-template-columns:1fr; }
+  .topics-config-grid { grid-template-columns:1fr; }
+  .topics-grid { grid-template-columns:1fr; }
+  .hub-shell { padding:18px 14px 32px; }
+  .hub-head { flex-direction:column; align-items:flex-start; }
+}
+
+body > div[id^="tab-"][style*="height:calc(100vh - 128px)"] { height:calc(100vh - 72px) !important; }
+.topics-shell { height:calc(100vh - 72px); }
+.layout { height:calc(100vh - 113px); }
+.tab-home { --nav-accent:var(--zone-home); }
+.tab-write { --nav-accent:var(--zone-write); }
+.tab-data { --nav-accent:var(--zone-data); }
+.tab-assets { --nav-accent:var(--zone-assets); }
+.tab-system { --nav-accent:var(--zone-system); }
+.home-brief-grid { display:grid; grid-template-columns:1.25fr .75fr; gap:18px; margin-bottom:22px; }
+.home-hero-card { position:relative; overflow:hidden; border:1px solid var(--border); border-radius:24px; padding:28px; background:linear-gradient(135deg,rgba(31,111,85,.96),rgba(24,40,31,.96)); color:#fffaf0; box-shadow:0 22px 54px rgba(24,40,31,.18); }
+.home-hero-card::after { content:''; position:absolute; right:-80px; top:-90px; width:240px; height:240px; border-radius:50%; background:rgba(255,250,240,.12); }
+.home-hero-kicker { font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:rgba(255,250,240,.72); }
+.home-hero-title { margin-top:8px; font-size:32px; line-height:1.18; font-weight:900; letter-spacing:-.04em; }
+.home-hero-body { margin-top:12px; max-width:720px; color:rgba(255,250,240,.78); font-size:14px; line-height:1.9; }
+.home-action-card { border:1px solid var(--border); border-radius:24px; padding:22px; background:rgba(255,250,240,.78); box-shadow:0 18px 44px rgba(63,47,28,.08); }
+.home-action-card h3 { font-size:16px; margin-bottom:12px; }
+.home-action-card button { width:100%; margin-top:8px; }
+.zone-card { border-top:5px solid var(--zone-color,var(--gold)); }
+.zone-card .hub-card-foot { color:var(--zone-color,var(--gold2)); font-weight:800; }
+.zone-write { --zone-color:#c9822b; }
+.zone-data { --zone-color:#3577b8; }
+.zone-assets { --zone-color:#8a63b0; }
+.zone-system { --zone-color:#5d6b63; }
+@media (max-width:980px) { .home-brief-grid { grid-template-columns:1fr; } }
 
 /* ── 撰写台布局 ── */
 .layout {
   display: grid; grid-template-columns: var(--sidebar-w, 320px) 4px 1fr;
-  gap: 0; height: calc(100vh - 128px);
+  gap: 0; height: calc(100vh - 169px);
 }
 .sidebar {
   background: var(--bg2); border-right: none;
@@ -188,7 +345,7 @@ label { font-size:13px; color:var(--muted); }
 /* ── 批量生产 Tab ── */
 .batch-layout {
   display: grid; grid-template-columns: 340px 1fr;
-  height: calc(100vh - 128px);
+  height: calc(100vh - 169px);
 }
 .batch-sidebar {
   background: var(--bg2); border-right: 1px solid var(--border);
@@ -232,13 +389,14 @@ label { font-size:13px; color:var(--muted); }
 .research-layout {
   display: grid; grid-template-columns: 1fr 1fr;
   height: calc(100vh - 128px);
+  min-height: 0;
 }
 .research-input-panel {
   background: var(--bg2); border-right: 1px solid var(--border);
-  padding: 24px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto;
+  padding: 24px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; min-height:0;
 }
 .research-result-panel {
-  padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px;
+  padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; min-height:0;
 }
 .notes-textarea {
   flex: 1; min-height: 340px;
@@ -257,11 +415,11 @@ label { font-size:13px; color:var(--muted); }
 /* ── 素材库 Tab ── */
 .materials-layout {
   display: grid; grid-template-columns: 1fr 1fr 1fr;
-  height: calc(100vh - 128px); gap: 0;
+  height: calc(100vh - 128px); gap: 0; min-height:0;
 }
 .mat-panel {
   border-right: 1px solid var(--border); overflow-y: auto;
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: column; min-height:0;
 }
 .mat-panel:last-child { border-right: none; }
 .mat-panel-head {
@@ -636,6 +794,15 @@ label { font-size:13px; color:var(--muted); }
   border-radius:8px;
 }
 .guide-tip-list li b { color:var(--gold2); }
+
+/* 左侧导航 + 顶部任务导览的最终高度校准 */
+#tab-guide, #tab-matrix { height:calc(100vh - 126px) !important; }
+#tab-research { height:calc(100vh - 126px) !important; overflow-y:auto; min-height:0; }
+.topics-shell, .hub-shell, .batch-layout, .research-layout, .materials-layout, .templates-layout, .pb-layout {
+  height:calc(100vh - 126px) !important;
+  min-height:0;
+}
+.layout { height:calc(100vh - 126px) !important; }
 </style>
 </head>
 <body>
@@ -657,24 +824,44 @@ label { font-size:13px; color:var(--muted); }
   </div>
 </div>
 
+<div class="task-jump" aria-label="今日工作入口">
+  <span class="task-jump-label">今日工作入口</span>
+  <button class="task-jump-btn active" data-jump-tab="guide" onclick="switchTab('guide')">首页说明</button>
+  <button class="task-jump-btn" data-jump-tab="matrix" onclick="switchTab('matrix')">测试矩阵</button>
+  <button class="task-jump-btn" data-jump-tab="topics" onclick="switchTab('topics')">今日选题</button>
+  <button class="task-jump-btn" data-jump-tab="write" onclick="switchTab('write')">内容生产</button>
+  <button class="task-jump-btn" data-jump-tab="comments" onclick="switchTab('comments')">评论维护</button>
+  <button class="task-jump-btn" data-jump-tab="research" onclick="switchTab('research')">竞品/评论学习</button>
+  <span class="task-jump-note">先选任务，再进入具体工具</span>
+</div>
+
 <!-- Tab 导航 -->
 <div class="tab-nav">
-  <button class="tab-btn" onclick="switchTab('guide')">📖 使用说明</button>
-  <button class="tab-btn active" onclick="switchTab('write')">✍️ 撰写台</button>
-  <button class="tab-btn" onclick="switchTab('matrix')">🗺️ 测试矩阵</button>
-  <button class="tab-btn" onclick="switchTab('materials')">🗂️ 素材库</button>
-  <button class="tab-btn" onclick="switchTab('batch')">📋 批量生产</button>
-  <button class="tab-btn" onclick="switchTab('references')">📄 参考文案库</button>
-  <button class="tab-btn" onclick="switchTab('research')">🔍 竞品研究台</button>
-  <button class="tab-btn" onclick="switchTab('templates')">📂 模板库</button>
-  <button class="tab-btn" onclick="switchTab('comparison')">✏️ 修改对比</button>
-  <button class="tab-btn" onclick="switchTab('title-lib')">🌟 标题灵感库</button>
-  <button class="tab-btn" onclick="switchTab('prompt-base')">⚙️ 提示词基础</button>
+  <button class="tab-btn tab-home active" data-tab="guide" onclick="switchTab('guide')">首页说明</button>
+  <button class="tab-btn tab-write" data-tab="write" onclick="switchTab('write')">内容生产</button>
+  <button class="tab-btn tab-data" data-tab="topics" onclick="switchTab('topics')">今日选题</button>
+  <button class="tab-btn tab-data" data-tab="matrix" onclick="switchTab('matrix')">测试矩阵</button>
+  <button class="tab-btn tab-data" data-tab="comments" onclick="switchTab('comments')">评论维护</button>
+  <button class="tab-btn tab-assets" data-tab="assets" onclick="switchTab('assets')">资料/竞品</button>
+  <button class="tab-btn tab-system" data-tab="system" onclick="switchTab('system')">系统设置</button>
 </div>
 
 <!-- ══ Tab: 使用说明 ══ -->
-<div id="tab-guide" style="display:none;overflow-y:auto;height:calc(100vh - 128px)">
+<div id="tab-guide" style="display:block;overflow-y:auto;height:calc(100vh - 128px)">
   <div class="guide-wrap">
+    <div class="home-brief-grid">
+      <div class="home-hero-card">
+        <div class="home-hero-kicker">Market Hub Homepage</div>
+        <div class="home-hero-title">每天烈刻 AI 市场部</div>
+        <div class="home-hero-body">这里应该是员工打开后的第一站：知道今天要做什么、去哪生产内容、去哪看素材、去哪维护评论。生产工具放左侧导航，不再把说明藏在系统设置里。</div>
+      </div>
+      <div class="home-action-card">
+        <h3>今天最常用的入口</h3>
+        <button class="btn btn-primary" onclick="switchTab('write')">去内容生产</button>
+        <button class="btn" onclick="switchTab('comments')">去评论维护</button>
+        <button class="btn" onclick="switchTab('research')">去竞品分析台</button>
+      </div>
+    </div>
     <div class="guide-hero">
       <h1>每天烈刻 · AI 市场部使用说明</h1>
       <p>飞书数据驱动 · Claude 生成 · 小红书发布<br>越用越懂你的写作偏好，越用越准</p>
@@ -857,6 +1044,20 @@ label { font-size:13px; color:var(--muted); }
         <div style="display:flex;flex-direction:column;gap:16px">
 
           <div style="display:flex;gap:16px;align-items:flex-start">
+            <div style="font-size:11px;color:var(--dim);white-space:nowrap;padding-top:2px;min-width:72px">2026-06-29</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">今日选题与评论维护工作流</div>
+              <ul class="guide-tip-list" style="margin:0">
+                <li>新增「今日选题」：区分「重新生成卡片」和「重新采集信号」，避免误以为每次刷新都会重新抓数据</li>
+                <li>选题配置可编辑：关键词种子、缓存小时数、小红书推荐流/关键词/话题/跨平台热榜/旧研究兜底</li>
+                <li>评论维护入口调整：从评论维护页和资料/竞品页均可直达「热门评论学习台」</li>
+                <li>评论学习从“评论布局分析”升级为“回复建议”：输出可复制的代表性评论回复，但不自动发送</li>
+                <li>未接入 extension 的评论发送能力已标注为待做，避免员工误点</li>
+              </ul>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:16px;align-items:flex-start">
             <div style="font-size:11px;color:var(--dim);white-space:nowrap;padding-top:2px;min-width:72px">2026-05-31</div>
             <div>
               <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">竞品研究台全面升级</div>
@@ -902,9 +1103,197 @@ label { font-size:13px; color:var(--muted); }
 </div>
 
 <!-- ══ Tab 1: 撰写台 ══ -->
-<div id="tab-write">
+<div id="tab-topics" style="display:none">
+  <div class="topics-shell">
+    <div class="topics-head">
+      <div>
+        <div class="topics-title">今日选题</div>
+        <div class="topics-sub">推荐流模式 + 关键词验证 + 跨平台热点，合并成可直接进入撰写台的选题卡</div>
+      </div>
+      <div class="topics-controls">
+        <span id="topicsUpdated" style="font-size:11px;color:var(--muted)">尚未生成</span>
+        <button class="btn btn-sm" onclick="toggleTopicConfig()">配置</button>
+        <button class="btn btn-sm" id="topicsRefreshBtn" onclick="refreshTopics(false)">重新生成卡片</button>
+        <button class="btn btn-primary btn-sm" id="topicsCollectBtn" onclick="refreshTopics(true)">重新采集信号</button>
+      </div>
+    </div>
+    <div class="topics-skillbar" id="topicsSkillbar"></div>
+    <div class="topics-flow">
+      <div class="topics-flow-step"><b>1. 采集</b><span>推荐流、关键词搜索、跨平台热点进入同一个信号池。</span></div>
+      <div class="topics-flow-step"><b>2. 合成</b><span>流量词只做入口，核心概念负责记忆点和转化。</span></div>
+      <div class="topics-flow-step"><b>3. 领用</b><span>点击选题卡，自动带入框架、方向和提示词信号层。</span></div>
+      <div class="topics-flow-step"><b>4. 复盘</b><span>发布表现回到矩阵和修改对比，再决定要不要放大。</span></div>
+    </div>
+    <div class="topics-method">
+      <div class="topics-method-title">这些选题是怎么做出来的</div>
+      <div class="topics-method-grid">
+        <div><b>采集依据</b>不是聚光。当前读取本机 xiaohongshu-cli 的推荐流、关键词搜索、话题搜索，另加 TopHub 跨平台热榜；小红书登录失效时会用本地旧研究兜底。</div>
+        <div><b>筛选逻辑</b>笔记先按赞藏评加权排序，评论权重最高；热榜只保留能嫁接气泡白酒场景的词，热点只负责入口，不改正文结构。</div>
+        <div><b>更新规则</b>普通“重新生成卡片”会复用缓存信号；超过缓存时间或点“重新采集信号”才会重新抓。关键词和缓存时间在下面配置。</div>
+      </div>
+      <div class="topics-rule" id="topicsRuleText">当前配置加载中…</div>
+    </div>
+    <div class="topics-config" id="topicsConfigPanel">
+      <div class="topics-method-title">选题采集配置</div>
+      <div class="topics-config-grid">
+        <div>
+          <label>关键词种子，一行一个</label>
+          <textarea id="topicSeedsInput" rows="6" placeholder="低度酒&#10;果酒推荐&#10;女生喝什么酒"></textarea>
+        </div>
+        <div>
+          <label>缓存小时数</label>
+          <input id="topicCacheHoursInput" type="number" min="0.25" max="24" step="0.25">
+          <div class="topics-source-row">
+            <label><input type="checkbox" id="topicSrcHome"> 推荐流</label>
+            <label><input type="checkbox" id="topicSrcKeyword"> 关键词</label>
+            <label><input type="checkbox" id="topicSrcTopic"> 话题</label>
+            <label><input type="checkbox" id="topicSrcCross"> 跨平台</label>
+            <label><input type="checkbox" id="topicSrcSaved"> 旧研究兜底</label>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="saveTopicConfig()">保存配置</button>
+          <div id="topicConfigStatus" style="font-size:11px;color:var(--dim);margin-top:8px;min-height:16px"></div>
+        </div>
+      </div>
+    </div>
+    <div id="topicsError" style="display:none;margin-bottom:12px;padding:10px 12px;border:1px solid rgba(248,113,113,.45);background:rgba(248,113,113,.1);color:var(--red);font-size:12px;border-radius:6px"></div>
+    <div class="topics-grid" id="topicsGrid">
+      <div class="topic-empty">点“重新生成卡片”会复用当前信号；点“重新采集信号”才会重新抓小红书和热榜。</div>
+    </div>
+  </div>
+</div><!-- /tab-topics -->
+
+<div id="tab-comments" style="display:none">
+  <div class="hub-shell">
+    <div class="hub-head">
+      <div>
+        <div class="hub-title">评论维护</div>
+        <div class="hub-sub">Market Hub 负责学习热门评论、生成策略和候选回复；浏览器 extension 负责读取当前页面、热切账号、带图发送和回写飞书。</div>
+      </div>
+    </div>
+    <div class="hub-grid">
+      <div class="hub-card zone-card zone-data" onclick="openXhsCommentMaintenance()">
+        <div>
+          <div class="hub-card-title">抓评论 / 评论学习池</div>
+          <div class="hub-card-body">粘贴小红书精品笔记链接，写入飞书评论样本并抓取评论；已有评论可生成针对某条评论的回复建议。</div>
+        </div>
+        <div class="hub-card-foot">打开抓评论面板</div>
+      </div>
+      <div class="hub-card zone-card zone-assets" style="cursor:default;opacity:.86">
+        <div>
+          <div class="hub-card-title">回复别人评论</div>
+          <div class="hub-card-body">适合在小红书当前页面选中某条评论后，由 extension 读取文本，再调用 Market Hub 生成贴着语境的候选回复。</div>
+        </div>
+        <div class="hub-card-foot">extension v0：生成并复制，不自动发送</div>
+      </div>
+      <div class="hub-card zone-card zone-system">
+        <div>
+          <div class="hub-card-title">带图发送与账号</div>
+          <div class="hub-card-body">账号热切、当前登录态、评论图片选择、发送后回写飞书，都应该在 extension 里做，因为它离真实页面和 Chromium profile 最近。</div>
+        </div>
+        <div class="hub-card-foot">边界已定</div>
+      </div>
+    </div>
+  </div>
+</div><!-- /tab-comments -->
+
+<div id="tab-assets" style="display:none">
+  <div class="hub-shell">
+    <div class="hub-head">
+      <div>
+        <div class="hub-title">资料库</div>
+        <div class="hub-sub">把素材、参考、竞品研究和标题灵感收在一个工作区，顶栏不再铺满文档入口。</div>
+      </div>
+    </div>
+    <div class="hub-grid">
+      <div class="hub-card zone-card zone-assets" onclick="switchTab('materials')">
+        <div>
+          <div class="hub-card-title">素材库</div>
+          <div class="hub-card-body">查看飞书素材、产品图和可用于发布表的图片来源。适合维护素材，而不是日常写稿入口。</div>
+        </div>
+        <div class="hub-card-foot">进入素材库</div>
+      </div>
+      <div class="hub-card zone-card zone-assets" onclick="switchTab('references')">
+        <div>
+          <div class="hub-card-title">参考文案库</div>
+          <div class="hub-card-body">存放爆款参考笔记。被选中后可以回到生产台，让文案借用结构而不是照抄内容。</div>
+        </div>
+        <div class="hub-card-foot">管理参考笔记</div>
+      </div>
+      <div class="hub-card zone-card zone-data" onclick="switchTab('research')">
+        <div>
+          <div class="hub-card-title">竞品研究台</div>
+          <div class="hub-card-body">从飞书或手动粘贴笔记，提炼写作方法、卖点和场景，用来补充市场部的可测试方向。</div>
+        </div>
+        <div class="hub-card-foot">开始研究</div>
+      </div>
+      <div class="hub-card zone-card zone-data" onclick="openXhsCommentMaintenance()">
+        <div>
+          <div class="hub-card-title">评论维护</div>
+          <div class="hub-card-body">直接打开小红书评论抓取与回复建议面板。这个入口连着飞书评论字段，不是单纯说明页。</div>
+        </div>
+        <div class="hub-card-foot">抓评论 / 生成回复建议</div>
+      </div>
+      <div class="hub-card zone-card zone-write" onclick="switchTab('title-lib')">
+        <div>
+          <div class="hub-card-title">标题灵感库</div>
+          <div class="hub-card-body">收录好标题和钩子，给后续生成提供“点击欲望”的表达样本。</div>
+        </div>
+        <div class="hub-card-foot">查看标题库</div>
+      </div>
+    </div>
+  </div>
+</div><!-- /tab-assets -->
+
+<div id="tab-system" style="display:none">
+  <div class="hub-shell">
+    <div class="hub-head">
+      <div>
+        <div class="hub-title">系统设置</div>
+        <div class="hub-sub">低频维护入口：模板、提示词、修改对比和使用说明都收在这里。</div>
+      </div>
+    </div>
+    <div class="hub-grid">
+      <div class="hub-card zone-card zone-system" onclick="switchTab('templates')">
+        <div>
+          <div class="hub-card-title">模板库</div>
+          <div class="hub-card-body">维护 A/B/C/D 框架下的写作模板和场景种草的具体风格。</div>
+        </div>
+        <div class="hub-card-foot">编辑模板</div>
+      </div>
+      <div class="hub-card zone-card zone-system" onclick="switchTab('comparison')">
+        <div>
+          <div class="hub-card-title">修改对比</div>
+          <div class="hub-card-body">归档“AI 原稿 -> 人工修改”的差异，让系统持续学习你的判断。</div>
+        </div>
+        <div class="hub-card-foot">查看学习样本</div>
+      </div>
+      <div class="hub-card zone-card zone-system" onclick="switchTab('prompt-base')">
+        <div>
+          <div class="hub-card-title">提示词基础</div>
+          <div class="hub-card-body">维护品牌、产品、输出格式和研究指令。这里属于系统层，不放到日常生产顶栏。</div>
+        </div>
+        <div class="hub-card-foot">编辑提示词</div>
+      </div>
+    </div>
+  </div>
+</div><!-- /tab-system -->
+
+<div id="tab-write" style="display:none">
+  <div class="mode-rail">
+    <button class="mode-btn active" onclick="switchTab('write')">单篇撰写</button>
+    <button class="mode-btn" onclick="switchTab('batch')">批量生产</button>
+  </div>
   <div class="layout" id="writeLayout">
     <aside class="sidebar" id="writeSidebar">
+      <div id="selectedTopicBlock" class="topic-selected" style="display:none">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div>
+            <div class="topic-selected-title" id="selectedTopicTitle"></div>
+            <div class="topic-selected-meta" id="selectedTopicMeta"></div>
+          </div>
+          <button class="btn btn-sm" onclick="clearSelectedTopic()" title="取消选题信号" style="padding:2px 7px">×</button>
+        </div>
+      </div>
       <div>
         <div class="section-label">内容框架 <span class="tip tip-right" data-tip="决定文案叙事结构。A=有明确痛点（辣嗓/甜腻）；B=靠氛围/反差/新奇感；C=受众多疑需配料/工艺背书；D=靠教程干货获收藏">?</span></div>
         <div class="chip-row" id="fwChips">
@@ -912,6 +1301,15 @@ label { font-size:13px; color:var(--muted); }
           <div class="chip active" data-val="B" onclick="selectFw(this)" title="靠新奇感、反差感、生活氛围驱动点击和收藏">B · 场景种草</div>
           <div class="chip" data-val="C" onclick="selectFw(this)" title="受众多疑，需要配料/工艺/产区等硬核信任背书">C · 对比评测</div>
           <div class="chip" data-val="D" onclick="selectFw(this)" title="靠「教会你怎么喝/选/搭」获取收藏流量">D · 教程干货</div>
+        </div>
+      </div>
+
+      <div id="bRouteSection">
+        <div class="section-label">B · 种草重心 <span class="tip tip-right" data-tip="决定场景种草里产品和共鸣谁是主角。选择参考笔记后会自动切到“跟参考走”。">?</span></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button id="bRouteProduct" class="chip active" onclick="setBRoute('product')" style="font-size:11px">产品种草</button>
+          <button id="bRouteResonance" class="chip" onclick="setBRoute('resonance')" style="font-size:11px">共鸣种草</button>
+          <button id="bRouteReference" class="chip" onclick="setBRoute('reference')" style="font-size:11px">跟参考走</button>
         </div>
       </div>
 
@@ -1280,6 +1678,10 @@ label { font-size:13px; color:var(--muted); }
 
 <!-- ══ Tab 3 (was 2): 批量生产 ══ -->
 <div id="tab-batch" style="display:none">
+  <div class="mode-rail">
+    <button class="mode-btn" onclick="switchTab('write')">单篇撰写</button>
+    <button class="mode-btn active" onclick="switchTab('batch')">批量生产</button>
+  </div>
   <div class="batch-layout">
     <aside class="batch-sidebar">
       <div>
@@ -1571,19 +1973,28 @@ label { font-size:13px; color:var(--muted); }
     </div>
   </div>
 
-  <!-- ── 竞品评论抓取 ── -->
+  <!-- ── 热门评论学习台 ── -->
   <div style="padding:0 28px 20px">
-    <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;background:var(--bg2)" onclick="xhsTogglePanel()">
-        <span style="font-size:13px;font-weight:600;color:var(--gold)">💬 竞品评论抓取</span>
+    <div style="border:1px solid var(--border2);border-radius:14px;overflow:hidden;background:linear-gradient(145deg,var(--bg2),var(--bg3));box-shadow:0 18px 55px rgba(0,0,0,.16)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;cursor:pointer;background:rgba(255,255,255,.018)" onclick="xhsTogglePanel()">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--gold2);letter-spacing:.02em">热门评论学习台</div>
+          <div style="font-size:11px;color:var(--dim);margin-top:4px">把精品笔记的真实讨论，沉淀成可复用的评论布局</div>
+        </div>
         <div style="display:flex;align-items:center;gap:12px">
           <span style="font-size:11px;color:var(--muted)">✅<b id="xhsCntDone">-</b> &nbsp;⏳<b id="xhsCntPend">-</b> &nbsp;⏭<b id="xhsCntTried">-</b> &nbsp;共<b id="xhsCntAll">-</b></span>
-          <span id="xhsPanelChevron" style="font-size:11px;color:var(--muted)">▶ 展开</span>
+          <span id="xhsPanelChevron" style="font-size:11px;color:var(--muted)">▼ 收起</span>
         </div>
       </div>
-      <div id="xhsPanel" style="display:none;padding:14px 16px;background:var(--bg3)">
-        <!-- 按钮栏 -->
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+      <div id="xhsPanel" style="display:block;padding:18px;background:var(--bg3)">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:stretch;margin-bottom:12px">
+          <textarea id="xhsImportUrls" placeholder="粘贴小红书精品笔记链接，一行一个\n支持 xiaohongshu.com 和 xhslink.com" style="min-height:82px;resize:vertical;padding:12px 14px;background:var(--bg);border:1px solid var(--border2);border-radius:10px;color:var(--text);font:12px/1.65 inherit;outline:none"></textarea>
+          <button class="btn btn-primary" id="xhsImportBtn" onclick="xhsImportAndScrape()" style="min-width:145px;justify-content:center">＋ 建档并抓评论</button>
+        </div>
+        <div id="xhsImportStatus" style="font-size:11px;color:var(--dim);min-height:16px;margin-bottom:10px">数据写入飞书「评论文字 / 评论图片」字段；登录态只留在本机。</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+          <button class="btn btn-primary btn-sm" onclick="xhsStartLogin()">扫码登录/修复登录</button>
+          <button class="btn btn-sm" onclick="xhsCheckAuth()">检查小红书登录</button>
           <button class="btn btn-sm" onclick="xhsLoad()">↺ 刷新列表</button>
           <button class="btn btn-sm" id="xhsBtnSel" onclick="xhsScrapeSelected()" style="display:none">▶ 抓已选(<span id="xhsSelCount">0</span>)</button>
           <button class="btn btn-sm" onclick="xhsScrapeAll()">▶ 批量抓取</button>
@@ -1600,13 +2011,24 @@ label { font-size:13px; color:var(--muted); }
             <tr style="border-bottom:1px solid var(--border2)">
               <th style="padding:5px 4px;color:var(--muted);font-weight:500;width:20px"><input type="checkbox" id="xhsCheckAll" onchange="xhsToggleAll(this.checked)"></th>
               <th style="padding:5px 4px;text-align:left;color:var(--muted);font-weight:500">#</th>
-              <th style="padding:5px 4px;text-align:left;color:var(--muted);font-weight:500">链接</th>
+              <th style="padding:7px 6px;text-align:left;color:var(--muted);font-weight:500">笔记 / 链接</th>
+              <th style="padding:7px 6px;color:var(--muted);font-weight:500;width:82px">评论样本</th>
               <th style="padding:5px 4px;color:var(--muted);font-weight:500;width:70px">状态</th>
-              <th style="padding:5px 4px;color:var(--muted);font-weight:500;width:50px">操作</th>
+              <th style="padding:5px 4px;color:var(--muted);font-weight:500;width:116px">操作</th>
             </tr>
           </thead>
           <tbody id="xhsTableBody"></tbody>
         </table>
+        <div id="xhsStudyPanel" style="display:none;margin-top:14px;border:1px solid var(--border2);border-radius:12px;background:var(--bg);overflow:hidden">
+          <div style="display:flex;justify-content:space-between;gap:14px;align-items:center;padding:13px 15px;border-bottom:1px solid var(--border)">
+            <div><div id="xhsStudyTitle" style="font-size:13px;font-weight:700;color:var(--text)">评论学习视图</div><div id="xhsStudyMeta" style="font-size:10px;color:var(--dim);margin-top:3px"></div></div>
+            <div style="display:flex;gap:6px"><button class="btn btn-primary btn-sm" id="xhsAnalyzeBtn" onclick="xhsAnalyzeCurrent()">✦ 生成回复建议</button><button class="btn btn-sm" onclick="xhsCloseStudy()">关闭</button></div>
+          </div>
+          <div style="display:grid;grid-template-columns:minmax(280px,.9fr) minmax(320px,1.1fr);min-height:360px">
+            <pre id="xhsStudyComments" style="margin:0;padding:16px;white-space:pre-wrap;overflow:auto;max-height:520px;border-right:1px solid var(--border);font:12px/1.75 inherit;color:var(--muted)"></pre>
+            <div id="xhsStudyAnalysis" style="padding:16px;white-space:pre-wrap;overflow:auto;max-height:520px;font-size:12px;line-height:1.8;color:var(--text)">点击「生成回复建议」，系统会先分析评论区，再给出可复制的定向回复话术。</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1859,6 +2281,8 @@ const st = {
   angle: null,        // 当前预选切入方式 { id, name, desc, idx, total }
   allAngles: [],      // 当前框架的全量角度列表
   toneStyle: 'narrative', // 'narrative' | 'koc'
+  bRoute: 'product', // B: 'product' | 'resonance' | 'reference'
+  topicSignal: null,
 };
 
 // ─── 素材库数据 ────────────────────────────────────────────────────
@@ -1959,6 +2383,7 @@ function renderBatchSidebarMaterials() {
 
 function onWriteRefChange(sel) {
   st.refArticle = sel.value !== '' ? refData[parseInt(sel.value)] : null;
+  if (st.refArticle && st.framework === 'B') setBRoute('reference');
   updateRefPreview();
 }
 
@@ -2391,11 +2816,19 @@ function setTone(tone) {
   document.getElementById('toneKoc').classList.toggle('active', tone === 'koc');
 }
 
+function setBRoute(route) {
+  st.bRoute = route;
+  document.getElementById('bRouteProduct')?.classList.toggle('active', route === 'product');
+  document.getElementById('bRouteResonance')?.classList.toggle('active', route === 'resonance');
+  document.getElementById('bRouteReference')?.classList.toggle('active', route === 'reference');
+}
+
 // ─── 框架选择（撰写台）────────────────────────────────────────────
 function selectFw(el) {
   document.querySelectorAll('#fwChips .chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
   st.framework = el.dataset.val;
+  document.getElementById('bRouteSection').style.display = st.framework === 'B' ? '' : 'none';
   st.subTemplate = null;
   loadSubTemplates(el.dataset.val);
   loadAngle(el.dataset.val);
@@ -2464,6 +2897,8 @@ async function generate() {
         refArticle: st.refArticle || null,
         angle: st.angle || null,
         toneStyle: st.toneStyle || 'narrative',
+        bRoute: st.bRoute || 'product',
+        topicSignal: st.topicSignal || null,
       }),
     }).then(x => x.json());
 
@@ -3687,6 +4122,7 @@ async function clearRefSelection() {
 
 function selectRef(i) {
   st.refArticle = refData[i];
+  if (st.framework === 'B') setBRoute('reference');
   const wsel = document.getElementById('writeRefSelect');
   if (wsel) wsel.value = String(i);
   updateRefPreview();
@@ -3782,16 +4218,234 @@ async function submitRefAdd() {
   }
 }
 
+// ─── 今日选题 ─────────────────────────────────────────────────────
+let topicRecommendations = [];
+let topicConfig = null;
+
+const TOPIC_SKILL_LABELS = {
+  'xiaohongshu-ops': '推荐流模式',
+  'xhs-content-plan': '关键词验证',
+  'inkroam-topic-expert': '跨平台热点',
+};
+
+function renderTopicSkillbar(status) {
+  const bar = document.getElementById('topicsSkillbar');
+  if (!bar) return;
+  bar.innerHTML = Object.entries(TOPIC_SKILL_LABELS).map(([key, label]) => {
+    const item = status?.[key] || {};
+    return `<div class="topics-skill ${item.ok ? 'ok' : ''}">
+      <b>${escHtml(label)}</b>
+      <span>${item.ok ? `已采集 ${item.samples || 0} 条信号` : '等待采集'}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderTopics(data) {
+  topicRecommendations = data.recommendations || [];
+  if (data.config) {
+    topicConfig = data.config;
+    renderTopicConfig(data.config, data.signalGeneratedAt);
+  }
+  renderTopicSkillbar(data.skillStatus);
+  const updated = document.getElementById('topicsUpdated');
+  if (updated) updated.textContent = data.generatedAt
+    ? `更新于 ${new Date(data.generatedAt).toLocaleString('zh-CN', { hour12:false })}`
+    : '尚未生成';
+  const error = document.getElementById('topicsError');
+  const errors = data.signalErrors || [];
+  if (error) {
+    error.style.display = errors.length ? 'block' : 'none';
+    error.textContent = errors.length ? `部分信号未取到：${errors.join('；')}` : '';
+  }
+  const grid = document.getElementById('topicsGrid');
+  if (!grid) return;
+  if (!topicRecommendations.length) {
+    grid.innerHTML = '<div class="topic-empty">还没有今日推荐。点击右上角刷新，首次运行通常需要 1-3 分钟。</div>';
+    return;
+  }
+  grid.innerHTML = topicRecommendations.map((topic, index) => {
+    const evidence = (topic.evidence || []).map(item => `
+      <div class="topic-evidence-row">
+        ${item.cover ? `<img src="${escHtml(item.cover)}" alt="" loading="lazy">` : '<div style="width:42px;height:42px;background:var(--bg3);border-radius:4px"></div>'}
+        <div>
+          <div class="topic-evidence-title">${escHtml(item.title || '')}</div>
+          <div class="topic-evidence-meta">${escHtml(item.source || '')}${item.likes ? ` · ${Number(item.likes).toLocaleString()}赞` : ''}</div>
+        </div>
+      </div>`).join('');
+    return `<article class="topic-card">
+      <div class="topic-card-head">
+        <span class="topic-kind">${escHtml(topic.kind || '今日信号')}</span>
+        <span class="topic-score">建议分 ${topic.score || 0}</span>
+      </div>
+      <div class="topic-card-body">
+        <div class="topic-concept">${escHtml(topic.coreConcept || topic.title || '')}</div>
+        <div class="topic-traffic">流量入口：${escHtml(topic.trafficKeyword || '无')}</div>
+        <div class="topic-bridge">${escHtml(topic.bridge || topic.rationale || '')}</div>
+        <div class="topic-meta">
+          <span>框架 ${escHtml(topic.framework || 'B')}</span>
+          <span>${escHtml(topic.intervention || '标题与标签')}</span>
+          ${(topic.sources || []).map(source => `<span>${escHtml(TOPIC_SKILL_LABELS[source] || source)}</span>`).join('')}
+        </div>
+        ${evidence ? `<div class="topic-evidence">${evidence}</div>` : ''}
+      </div>
+      <div class="topic-card-actions">
+        <span style="font-size:10px;color:var(--muted);align-self:center">${escHtml(topic.visual || '')}</span>
+        <button class="btn btn-primary btn-sm" onclick="adoptTopic(${index})">带入撰写台</button>
+      </div>
+    </article>`;
+  }).join('');
+}
+
+function renderTopicConfig(config, signalGeneratedAt) {
+  const seedsInput = document.getElementById('topicSeedsInput');
+  const cacheInput = document.getElementById('topicCacheHoursInput');
+  if (seedsInput) seedsInput.value = (config.seeds || []).join('\n');
+  if (cacheInput) cacheInput.value = config.cacheHours || 4;
+  const src = config.sources || {};
+  const mapping = {
+    topicSrcHome: 'homeFeed',
+    topicSrcKeyword: 'keywordSearch',
+    topicSrcTopic: 'topicSearch',
+    topicSrcCross: 'crossPlatform',
+    topicSrcSaved: 'savedResearchFallback',
+  };
+  Object.entries(mapping).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (el) el.checked = src[key] !== false;
+  });
+  const rule = document.getElementById('topicsRuleText');
+  if (rule) {
+    const signalText = signalGeneratedAt ? `当前信号采集于 ${new Date(signalGeneratedAt).toLocaleString('zh-CN', { hour12:false })}` : '当前还没有信号文件';
+    rule.textContent = `缓存 ${config.cacheHours || 4} 小时；种子词：${(config.seeds || []).join('、')}。${signalText}。`;
+  }
+}
+
+function toggleTopicConfig() {
+  const panel = document.getElementById('topicsConfigPanel');
+  if (!panel) return;
+  panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+}
+
+async function saveTopicConfig() {
+  const status = document.getElementById('topicConfigStatus');
+  const seeds = (document.getElementById('topicSeedsInput')?.value || '')
+    .split(/\n+/).map(v => v.trim()).filter(Boolean);
+  const cacheHours = Number(document.getElementById('topicCacheHoursInput')?.value || 4);
+  const body = {
+    seeds,
+    cacheHours,
+    sources: {
+      homeFeed: !!document.getElementById('topicSrcHome')?.checked,
+      keywordSearch: !!document.getElementById('topicSrcKeyword')?.checked,
+      topicSearch: !!document.getElementById('topicSrcTopic')?.checked,
+      crossPlatform: !!document.getElementById('topicSrcCross')?.checked,
+      savedResearchFallback: !!document.getElementById('topicSrcSaved')?.checked,
+    }
+  };
+  if (status) status.textContent = '保存中…';
+  try {
+    const data = await fetch('/api/topics/config', {
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify(body)
+    }).then(r => r.json());
+    if (!data.ok) throw new Error(data.error || '保存失败');
+    topicConfig = data.config;
+    renderTopicConfig(data.config, null);
+    if (status) status.textContent = '已保存。点“重新采集信号”才会按新关键词抓取。';
+    showToast('选题配置已保存', 'ok');
+  } catch (e) {
+    if (status) status.textContent = '保存失败：' + e.message;
+    showToast('选题配置保存失败', 'err');
+  }
+}
+
+async function loadTopics() {
+  try {
+    const data = await fetch('/api/topics').then(r => r.json());
+    if (!data.ok) throw new Error(data.error || '读取失败');
+    renderTopics(data);
+  } catch (e) {
+    const grid = document.getElementById('topicsGrid');
+    if (grid) grid.innerHTML = `<div class="topic-empty">读取失败：${escHtml(e.message)}</div>`;
+  }
+}
+
+async function refreshTopics(forceCollect = false) {
+  const btn = document.getElementById('topicsRefreshBtn');
+  const collectBtn = document.getElementById('topicsCollectBtn');
+  const error = document.getElementById('topicsError');
+  const activeBtn = forceCollect ? collectBtn : btn;
+  if (btn) btn.disabled = true;
+  if (collectBtn) collectBtn.disabled = true;
+  if (activeBtn) activeBtn.innerHTML = `<span class="spinner"></span>${forceCollect ? '重新采集中…' : '整理卡片中…'}`;
+  if (error) error.style.display = 'none';
+  try {
+    const data = await fetch('/api/topics/refresh', {
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({ forceCollect })
+    }).then(r => r.json());
+    if (!data.ok) throw new Error(data.error || '刷新失败');
+    renderTopics(data);
+    showToast(`${forceCollect ? '已重新采集并生成' : '已重新整理'} ${data.recommendations?.length || 0} 条今日选题`, 'ok');
+  } catch (e) {
+    if (error) { error.style.display = 'block'; error.textContent = `刷新失败：${e.message}`; }
+    showToast('今日选题刷新失败', 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '重新生成卡片'; }
+    if (collectBtn) { collectBtn.disabled = false; collectBtn.textContent = '重新采集信号'; }
+  }
+}
+
+function adoptTopic(index) {
+  const topic = topicRecommendations[index];
+  if (!topic) return;
+  st.topicSignal = topic;
+  const fw = String(topic.framework || 'B').toUpperCase();
+  const fwChip = document.querySelector(`#fwChips .chip[data-val="${fw}"]`);
+  if (fwChip) selectFw(fwChip);
+  const direction = document.getElementById('dirCustom');
+  if (direction) direction.value = topic.direction || '';
+  const block = document.getElementById('selectedTopicBlock');
+  document.getElementById('selectedTopicTitle').textContent = topic.coreConcept || topic.title || '已选今日选题';
+  document.getElementById('selectedTopicMeta').textContent = `流量词：${topic.trafficKeyword || '无'} · ${topic.intervention || '标题与标签'}`;
+  if (block) block.style.display = 'block';
+  switchTab('write');
+  showToast('选题信号已带入，原有框架不会被改写', 'ok');
+}
+
+function clearSelectedTopic() {
+  st.topicSignal = null;
+  const block = document.getElementById('selectedTopicBlock');
+  if (block) block.style.display = 'none';
+}
+
 // ─── Tab 切换 ─────────────────────────────────────────────────────
-const ALL_TABS = ['guide', 'write', 'matrix', 'materials', 'batch', 'references', 'research', 'templates', 'comparison', 'title-lib', 'prompt-base'];
+const ALL_TABS = ['guide', 'matrix', 'topics', 'write', 'comments', 'assets', 'system', 'materials', 'batch', 'references', 'research', 'templates', 'comparison', 'title-lib', 'prompt-base'];
+const NAV_PARENT = {
+  batch: 'write',
+  materials: 'assets',
+  references: 'assets',
+  research: 'assets',
+  'title-lib': 'assets',
+  templates: 'system',
+  comparison: 'system',
+  'prompt-base': 'system'
+};
 function switchTab(tab) {
   ALL_TABS.forEach(t => {
     document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none';
   });
-  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
-    btn.classList.toggle('active', ALL_TABS[i] === tab);
+  const activeNav = NAV_PARENT[tab] || tab;
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === activeNav);
+  });
+  document.querySelectorAll('.task-jump-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.jumpTab === tab || btn.dataset.jumpTab === activeNav);
   });
   if (tab === 'write') { loadReferences(); loadContextStats(); }
+  if (tab === 'topics') loadTopics();
   if (tab === 'materials') loadMaterials();
   if (tab === 'references') loadReferences();
   if (tab === 'batch') {
@@ -3813,7 +4467,7 @@ function switchTab(tab) {
   }
   if (tab === 'title-lib') refreshTitleLib();
   if (tab === 'prompt-base') pbInit();
-  if (tab === 'matrix') loadMatrix();
+  if (tab === 'matrix' && typeof loadMatrix === 'function') loadMatrix();
   if (tab === 'research' && xhsRecords.length === 0) xhsLoad();
 }
 
@@ -3821,7 +4475,11 @@ function switchTab(tab) {
 // 提示词基础 Tab
 // ═══════════════════════════════════════════════════════════════════
 // ══ XHS 评论抓取 ═══════════════════════════════════════════════════
-let xhsRecords = [], xhsJobId = null, xhsPolling = null;
+let xhsRecords = [], xhsJobId = null, xhsPolling = null, xhsStudyRecord = null;
+
+function xhsEsc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
 
 function xhsTogglePanel() {
   const p = document.getElementById('xhsPanel');
@@ -3829,6 +4487,53 @@ function xhsTogglePanel() {
   const open = p.style.display === 'none';
   p.style.display = open ? 'block' : 'none';
   c.textContent = open ? '▼ 收起' : '▶ 展开';
+}
+
+function openXhsCommentMaintenance() {
+  switchTab('research');
+  setTimeout(() => {
+    const panel = document.getElementById('xhsPanel');
+    const chevron = document.getElementById('xhsPanelChevron');
+    if (panel) panel.style.display = 'block';
+    if (chevron) chevron.textContent = '▼ 收起';
+    const commentBlock = document.getElementById('xhsPanel')?.closest('[style*="border:1px solid var(--border2)"]')
+      || document.getElementById('xhsPanel');
+    const researchTab = document.getElementById('tab-research');
+    if (researchTab && commentBlock) {
+      researchTab.scrollTop = Math.max(0, commentBlock.offsetTop - 18);
+    }
+    document.getElementById('xhsImportUrls')?.focus();
+  }, 120);
+}
+
+async function xhsStartLogin() {
+  const status = document.getElementById('xhsImportStatus');
+  status.textContent = '正在打开小红书扫码登录窗口…';
+  try {
+    const r = await fetch('/api/xhs/login-qrcode', { method:'POST' }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error || '启动失败');
+    status.textContent = '已打开扫码登录窗口。扫码完成后，回到这里点「检查小红书登录」。';
+  } catch (e) {
+    status.textContent = '启动登录窗口失败：' + e.message;
+  }
+}
+
+async function xhsCheckAuth() {
+  const status = document.getElementById('xhsImportStatus');
+  status.textContent = '正在检查小红书 CLI 登录态…';
+  try {
+    const r = await fetch('/api/xhs/status').then(x => x.json());
+    if (!r.ok) {
+      status.textContent = `小红书未登录：${r.error || r.raw || '请先登录后再抓评论'}`;
+      return false;
+    }
+    const name = r.user?.nickname || r.user?.name || r.user?.id || '已登录账号';
+    status.textContent = `小红书已登录：${name}。可以抓评论。`;
+    return true;
+  } catch (e) {
+    status.textContent = '小红书登录检查失败：' + e.message;
+    return false;
+  }
 }
 
 async function xhsLoad() {
@@ -3858,12 +4563,14 @@ function xhsRenderTable() {
     <tr id="xhsRow_${rec.id}" style="border-bottom:1px solid var(--border);${rec.hasData ? 'opacity:.55' : ''}">
       <td style="padding:5px 4px"><input type="checkbox" class="xhsCb" data-id="${rec.id}" onchange="xhsOnCheck()"></td>
       <td style="padding:5px 4px;color:var(--dim)">${xhsRecords.length - i}</td>
-      <td style="padding:5px 4px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-        <a href="${rec.url}" target="_blank" style="color:var(--muted);text-decoration:none;font-size:10px">${rec.url.replace(/https?:\/\//,'')}</a>
+      <td style="padding:8px 6px;max-width:330px">
+        <div style="font-size:11px;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${xhsEsc(rec.title || '未命名精品笔记')}</div>
+        ${rec.url ? `<a href="${xhsEsc(rec.url)}" target="_blank" style="display:block;margin-top:3px;color:var(--dim);text-decoration:none;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${xhsEsc(rec.url.replace(/https?:\/\//,''))}</a>` : ''}
       </td>
+      <td style="padding:5px 4px;text-align:center;color:var(--muted)">${rec.commentCount || 0} 条${rec.imageCount ? `<br><span style="font-size:9px">${rec.imageCount} 图</span>` : ''}</td>
       <td style="padding:5px 4px">${xhsStatusBadge(rec)}</td>
-      <td style="padding:5px 4px">
-        ${!rec.hasData ? `<button class="btn btn-sm" style="font-size:10px;padding:2px 6px" onclick="xhsScrapeOne('${rec.id}')">抓取</button>` : ''}
+      <td style="padding:5px 4px;white-space:nowrap">
+        ${rec.hasData ? `<button class="btn btn-sm" style="font-size:10px;padding:3px 7px" onclick="xhsOpenStudy('${rec.id}')">学习</button>` : `<button class="btn btn-sm" style="font-size:10px;padding:3px 7px" onclick="xhsScrapeOne('${rec.id}')">抓取</button>`}
       </td>
     </tr>`).join('');
   document.getElementById('xhsLoading').style.display = 'none';
@@ -4084,6 +4791,7 @@ loadMaterials();
 loadReferences();
 loadContextStats();
 loadAngle('B');
+if (typeof loadMatrix === 'function') loadMatrix();
 </script>
 
 <!-- ══ 提示词预览浮层 ══ -->
@@ -4143,6 +4851,8 @@ async function openPromptOverlay(mode = 'single', overrideBody = null) {
           refArticle: st.refArticle || null,
           angle: st.angle || null,
           toneStyle: st.toneStyle || 'narrative',
+          bRoute: st.bRoute || 'product',
+          topicSignal: st.topicSignal || null,
         });
 
     const r = await fetch('/api/preview-prompt', {
@@ -4162,6 +4872,8 @@ async function openPromptOverlay(mode = 'single', overrideBody = null) {
     const FWLABELS = { A: '问题解决型', B: '场景种草型', C: '对比评测型', D: '教程干货型' };
     const pills = [];
     if (inp.framework) pills.push(`框架${inp.framework}·${FWLABELS[inp.framework] || inp.framework}`);
+    if (inp.angle) pills.push(`切入：${inp.angle}`);
+    if (inp.framework === 'B' && inp.bRoute) pills.push(`种草重心：${({product:'产品种草',resonance:'共鸣种草',reference:'跟参考走'})[inp.bRoute] || inp.bRoute}`);
     if (inp.direction) pills.push(`方向：${inp.direction}`);
     if (inp.sellingPoint && inp.sellingPoint !== '（预览）') pills.push(`卖点：${inp.sellingPoint}`);
     if (inp.subTemplate) pills.push(`子模板：${inp.subTemplate}`);
@@ -4850,6 +5562,56 @@ let publishImageSource = 'feishu';
 function updatePublishImageCount() {
   const el = document.getElementById('publishImageCount');
   if (el) el.textContent = `已选 ${selectedPublishImages.size} 张`;
+}
+
+async function xhsImportAndScrape() {
+  const input = document.getElementById('xhsImportUrls');
+  const status = document.getElementById('xhsImportStatus');
+  const btn = document.getElementById('xhsImportBtn');
+  const urls = input.value.split(/\s+/).map(v => v.trim()).filter(v => /^https?:\/\//i.test(v));
+  if (!urls.length) { status.textContent = '请先粘贴至少一个小红书笔记链接'; return; }
+  const authed = await xhsCheckAuth();
+  if (!authed) return;
+  btn.disabled = true; btn.textContent = '正在建档…'; status.textContent = `正在把 ${urls.length} 条链接加入飞书学习库…`;
+  try {
+    const r = await fetch('/api/xhs/import', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({urls}) }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    input.value = '';
+    status.textContent = `已新建 ${r.created} 条${r.duplicate ? `，跳过重复 ${r.duplicate} 条` : ''}${r.ids.length ? '；开始抓取评论…' : ''}`;
+    await xhsLoad();
+    if (r.ids.length) xhsStartScrape(r.ids);
+  } catch (e) { status.textContent = '建档失败：' + e.message; }
+  finally { btn.disabled = false; btn.textContent = '＋ 建档并抓评论'; }
+}
+
+function xhsOpenStudy(id) {
+  const rec = xhsRecords.find(r => r.id === id);
+  if (!rec) return;
+  xhsStudyRecord = rec;
+  document.getElementById('xhsStudyPanel').style.display = 'block';
+  document.getElementById('xhsStudyTitle').textContent = rec.title || '未命名精品笔记';
+  document.getElementById('xhsStudyMeta').textContent = `${rec.commentCount || 0} 条评论 · ${rec.imageCount || 0} 张评论图`;
+  document.getElementById('xhsStudyComments').textContent = rec.commentText || '暂无评论';
+  document.getElementById('xhsStudyAnalysis').textContent = '点击「生成回复建议」，系统会先分析评论区，再给出可复制的定向回复话术。';
+  document.getElementById('xhsStudyPanel').scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function xhsCloseStudy() {
+  xhsStudyRecord = null;
+  document.getElementById('xhsStudyPanel').style.display = 'none';
+}
+
+async function xhsAnalyzeCurrent() {
+  if (!xhsStudyRecord) return;
+  const btn = document.getElementById('xhsAnalyzeBtn');
+  const out = document.getElementById('xhsStudyAnalysis');
+  btn.disabled = true; btn.textContent = '正在生成…'; out.textContent = '正在识别问题、异议、求图、玩梗、购买意图，并生成可复制回复建议…';
+  try {
+    const r = await fetch('/api/xhs/analyze-comments', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({id:xhsStudyRecord.id}) }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error);
+    out.textContent = r.analysis;
+  } catch (e) { out.textContent = '提炼失败：' + e.message; }
+  finally { btn.disabled = false; btn.textContent = '✦ 生成回复建议'; }
 }
 
 function updatePublishImageSourceUi() {

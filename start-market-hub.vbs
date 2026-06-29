@@ -1,7 +1,7 @@
 Set WshShell = CreateObject("WScript.Shell")
 
-' 干掉占着 3377 的旧 node（如有）
-WshShell.Run "powershell -WindowStyle Hidden -Command ""try { Get-NetTCPConnection -LocalPort 3377 -State Listen -EA Stop | % { Stop-Process -Id $_.OwningProcess -Force -EA SilentlyContinue } } catch {}""", 0, True
+' 干掉占着 3377 的旧进程（如有）。netstat 比 Get-NetTCPConnection 更快，也不会卡在 CIM 查询。
+WshShell.Run "powershell -WindowStyle Hidden -Command ""$line = netstat -ano -p tcp | Select-String ':3377\s+.*LISTENING' | Select-Object -First 1; if ($line) { $pidToStop = (($line.Line.Trim() -split '\s+')[-1]); Stop-Process -Id $pidToStop -Force -EA SilentlyContinue }""", 0, True
 
 ' 用 PowerShell 以正确的 working directory 启动 node
 WshShell.Run "powershell -WindowStyle Hidden -Command ""Start-Process 'D:\nodes\node.exe' -ArgumentList 'C:\Users\Aris\market-hub\server.js' -WorkingDirectory 'C:\Users\Aris\market-hub' -WindowStyle Hidden""", 0, False
