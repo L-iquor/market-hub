@@ -42,12 +42,22 @@ Set-Location $RepoDir
 
 Write-Host ""
 Write-Host "Checking current login status..." -ForegroundColor Cyan
-& $Uv run xhs status --json
-if ($LASTEXITCODE -eq 0) {
+$StatusRaw = (& $Uv run xhs status --json 2>&1 | Out-String).Trim()
+Write-Host $StatusRaw
+$IsAuthenticated = $false
+try {
+  $StatusJson = $StatusRaw | ConvertFrom-Json
+  $IsAuthenticated = [bool]$StatusJson.ok -and -not [bool]$StatusJson.data.user.guest
+} catch {}
+if ($IsAuthenticated) {
   Write-Host ""
   Write-Host "Already logged in. You can return to Market Hub." -ForegroundColor Green
   Read-Host "Press Enter to close"
   exit 0
+}
+if ($StatusJson -and $StatusJson.data.user.guest) {
+  Write-Host ""
+  Write-Host "Current state is guest/visitor, not a real logged-in Xiaohongshu account. QR login is required." -ForegroundColor Yellow
 }
 
 Write-Host ""

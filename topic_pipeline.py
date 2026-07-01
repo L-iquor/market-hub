@@ -17,7 +17,7 @@ OUTPUT = ROOT / "topic-signals.json"
 CONFIG_PATH = ROOT / "topic-config.json"
 
 DEFAULT_CONFIG = {
-    "cacheHours": 4,
+    "cacheHours": 12,
     "seeds": ["低度酒", "果酒推荐", "女生喝什么酒", "烧烤喝什么", "微醺"],
     "sources": {
         "homeFeed": True,
@@ -71,6 +71,52 @@ def run_xhs(*args):
         return {"ok": False, "error": f"invalid xhs json: {exc}"}
 
 
+def check_xhs_status():
+    try:
+        return run_xhs("status")
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+
+def ensure_xhs_authenticated(wait_seconds=120):
+    status = check_xhs_status()
+    user = ((status or {}).get("data") or {}).get("user") or {}
+    authenticated = bool((status or {}).get("ok")) and bool((status or {}).get("data", {}).get("authenticated"))
+    guest = bool(user.get("guest"))
+    if authenticated and not guest:
+        return {"ok": True, "status": status, "needs_login": False}
+
+    helper = ROOT / "scripts" / "xhs-login-qrcode.ps1"
+    if helper.exists():
+        try:
+            subprocess.Popen(
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    str(helper),
+                ],
+                cwd=str(ROOT),
+            )
+        except Exception:
+            pass
+
+    deadline = time.time() + max(30, int(wait_seconds))
+    last = status
+    while time.time() < deadline:
+        time.sleep(5)
+        last = check_xhs_status()
+        user = ((last or {}).get("data") or {}).get("user") or {}
+        authenticated = bool((last or {}).get("ok")) and bool((last or {}).get("data", {}).get("authenticated"))
+        guest = bool(user.get("guest"))
+        if authenticated and not guest:
+            return {"ok": True, "status": last, "needs_login": False}
+
+    return {"ok": False, "status": last, "needs_login": True, "error": "xhs_login_required"}
+
+
 def count(value):
     text = str(value or "0").strip().replace(",", "")
     multiplier = 1
@@ -90,6 +136,40 @@ def cover_url(card):
             return item["url"].replace("http://", "https://")
     return ""
 
+ALCOHOL_TERMS = (
+    "酒", "微醺", "低度", "果酒", "调酒", "鸡尾酒", "小酌", "酒单", "酒鬼",
+    "啤酒", "白酒", "清酒", "梅酒", "金酒", "威士忌", "葡萄酒", "莫斯卡托",
+    "烧烤", "烤串", "撸串", "夜宵", "聚会", "开瓶", "冰杯", "气泡", "青提", "菠萝",
+)
+ATMOSPHERE_TERMS = (
+    "氛围", "松弛", "生活", "美学", "旅行", "巴黎", "咖啡", "餐桌", "窗边",
+    "晚风", "夜晚", "独居", "vlog", "浪漫", "随笔", "小彩罐", "饮料", "水",
+)
+NEGATIVE_TERMS = (
+    "找工作", "双休", "简历", "超自然", "小说", "求推荐", "管理岗", "性情大变",
+    "掉称", "减肥", "减脂", "讨好", "戒掉", "工资", "上岸", "考研",
+)
+
+
+def relevance_score(title, desc="", tags=None, keyword=""):
+    body = " ".join([str(title or ""), str(desc or ""), " ".join(tags or [])]).lower()
+    score = 0
+    if keyword and keyword.lower() in body:
+        score += 2
+    score += sum(2 for term in ALCOHOL_TERMS if term.lower() in body)
+    score += sum(1 for term in ATMOSPHERE_TERMS if term.lower() in body)
+    score -= sum(4 for term in NEGATIVE_TERMS if term.lower() in body)
+    return score
+
+
+def note_tags(card):
+    tags = []
+    for tag in card.get("tag_list") or []:
+        name = tag.get("name") or tag.get("tag_name")
+        if name:
+            tags.append(str(name))
+    return tags
+
 
 def notes_from(payload, source, keyword=""):
     notes = []
@@ -105,13 +185,26 @@ def notes_from(payload, source, keyword=""):
         if item.get("model_type") != "note":
             continue
         card = item.get("note_card") or {}
+        xsec_token = item.get("xsec_token") or card.get("xsec_token") or ""
+        xsec_source = item.get("xsec_source") or source.replace("xhs_", "pc_")
         title = card.get("display_title") or card.get("title") or ""
         if not title:
+            continue
+        desc = card.get("desc") or ""
+        tags = note_tags(card)
+        relevance = relevance_score(title, desc, tags, keyword)
+        if keyword and relevance < 2:
             continue
         interact = card.get("interact_info") or {}
         notes.append({
             "id": item.get("id", ""),
+            "xsec_token": xsec_token,
+            "xsec_source": xsec_source,
             "title": title,
+            "desc": desc,
+            "type": card.get("type") or "",
+            "tags": tags,
+            "relevance": relevance,
             "keyword": keyword,
             "source": source,
             "likes": count(interact.get("liked_count")),
@@ -216,6 +309,16 @@ def main():
     seeds = config["seeds"]
     sources = config["sources"]
     previous = load_previous()
+    auth = ensure_xhs_authenticated(wait_seconds=90)
+    if not auth["ok"]:
+        result = {
+            "ok": False,
+            "error": "XHS 登录态未就绪，已尝试打开登录助手，请先扫码后重跑。",
+            "details": auth,
+        }
+        OUTPUT.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(json.dumps(result, ensure_ascii=False))
+        return
     reuse_saved = os.environ.get("TOPIC_REUSE_SAVED") == "1"
     skip_search = os.environ.get("TOPIC_SKIP_SEARCH") == "1"
     feed_payload = {"ok": False} if reuse_saved or not sources.get("homeFeed", True) else run_xhs("feed")

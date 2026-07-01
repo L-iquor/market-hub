@@ -318,13 +318,16 @@ const state = {
 let lastPromptSnapshot = null;
 
 // ─── lark-cli 封装 ──────────────────────────────────────────────────
-function larkCli(args) {
+function larkCli(args, opts = {}) {
+  const proxyEnv = process.env.HTTPS_PROXY || process.env.HTTP_PROXY
+    ? {}
+    : { HTTPS_PROXY: 'http://127.0.0.1:7890', HTTP_PROXY: 'http://127.0.0.1:7890' };
   const result = spawnSync('lark-cli', args, {
     encoding: 'utf8',
     timeout: 30000,
     shell: true,
-    cwd: __dirname,
-    env: { ...process.env, PATH: process.env.PATH },
+    cwd: opts.cwd || __dirname,
+    env: { ...process.env, ...proxyEnv, NO_PROXY: process.env.NO_PROXY || 'localhost,127.0.0.1', PATH: process.env.PATH },
   });
   if (result.error) throw new Error(`lark-cli spawn error: ${result.error.message}`);
   if (!result.stdout) {
@@ -539,6 +542,27 @@ const OUTPUT_FIELDS = {
   点赞数:   'flduZ36FeP',
   评论数:   'fldqv3TKYd',
   测试结论: 'fld5v30x60',
+  图片:     'fldwBz8ZZm',
+  发布账号: 'fldxaFUuUt',
+  参考链接: 'fldYdip12B',
+};
+
+const COMPETITOR_TABLE_ID = 'tblGpK7czdgjFZbi';
+const COMPETITOR_FIELDS = {
+  sourceUrl: 'fldPISrmKu',
+  noteUrl: 'fldTKifb9m',
+  title: 'fldcBaFZ4R',
+  body: 'fldURB6y4Z',
+  tags: 'fldOhE1pEY',
+  attachment: 'fldAr3m51B',
+  searchTerm: 'fldKz1cHR3',
+  matchTerm: 'fldgMnJgMh',
+  purpose: 'fldmJAOy5N',
+  hotspot: 'flde2g1XaJ',
+  imageStatus: 'flduPncUd8',
+  category: 'fldYfZRMEX',
+  angle: 'fld9y5JlJo',
+  brand: 'fld7zYXUpX',
 };
 
 function readMatTable(tableId) {
@@ -653,12 +677,23 @@ async function fetchFeishuContext() {
     }))
     .filter(r => r.文案内容 && r.品牌 === refCfg.filterBrand);
 
+  const isDenseReferenceTemplate = (r) => {
+    const text = `${r.标题 || ''}\n${r.标签 || ''}\n${r.文案内容 || ''}`;
+    const denseHit = /测评|对比|清单|参数|表格|攻略|复盘|总结|教程|说明书/.test(text);
+    const lineCount = String(r.文案内容 || '').split(/\n+/).filter(Boolean).length;
+    const longDense = lineCount >= 6 || String(r.文案内容 || '').length > 500;
+    return denseHit || longDense;
+  };
+  const usableRefRecords = allRefRecords.filter(r => !isDenseReferenceTemplate(r));
+
   const selectedIds = loadSelectedRefIds();
   if (selectedIds.length > 0) {
-    const pinned = allRefRecords.filter(r => selectedIds.includes(r._id));
-    ctx.reference = pinned.length > 0 ? pinned : allRefRecords.slice(-refCfg.readLimit);
+    const pinned = usableRefRecords.filter(r => selectedIds.includes(r._id));
+    ctx.reference = pinned.length > 0
+      ? pinned
+      : (usableRefRecords.length > 0 ? usableRefRecords.slice(-refCfg.readLimit) : allRefRecords.slice(-refCfg.readLimit));
   } else {
-    ctx.reference = allRefRecords.slice(-refCfg.readLimit);
+    ctx.reference = usableRefRecords.length > 0 ? usableRefRecords.slice(-refCfg.readLimit) : allRefRecords.slice(-refCfg.readLimit);
   }
 
   state.contextCache = ctx;
@@ -807,18 +842,54 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
   // ② 品牌固定事实（从 brand-facts.md 读取，支持 UI 编辑）
   const brandBlock = loadBrandFacts();
 
-  const topicSignalBlock = topicSignal ? `## 本次选题信号（只改变流量入口，不推翻内容结构）
-- 流量词：${topicSignal.trafficKeyword || '无'}。这是平台已有入口，在标题、正文或标签中自然出现，不要反复堆砌。
-- 核心概念：${topicSignal.coreConcept || topicSignal.title || '无'}。这是本篇真正要建立的记忆钩子，优先放在标题或开头。
-- 关联桥梁：${topicSignal.bridge || '围绕本次卖点建立真实关联'}
-- 介入范围：${topicSignal.intervention || '标题、开头与标签'}
-- 热点证据：${(topicSignal.evidence || []).slice(0, 3).map(x => typeof x === 'string' ? x : x.title).filter(Boolean).join('；') || '无'}
+  const longTailTerms = topicSignal ? [...new Set([
+    ...(Array.isArray(topicSignal.longTailTerms) ? topicSignal.longTailTerms : []),
+    ...(Array.isArray(topicSignal.searchTerms) ? topicSignal.searchTerms : []),
+    topicSignal.bridge,
+    topicSignal.intervention,
+  ].filter(Boolean).map(x => String(x).trim()))].slice(0, 8) : [];
 
-硬约束：
-1. 继续严格执行所选 A/B/C/D 框架，热点不得替代正文的销售与说服任务。
-2. 核心概念负责被记住，流量词只负责被找到；不要把大词写成全文主角。
-3. 不得虚构热度、趋势增幅、用户评价或产品事实。
-4. 如果热点和产品关联很弱，只在标签或一句过渡中轻量出现，不要硬蹭。` : '';
+  const topicSignalBlock = topicSignal ? `## Topic signal
+- Topic keyword: ${topicSignal.trafficKeyword || '(missing)'}
+- Core concept: ${topicSignal.coreConcept || topicSignal.title || '(missing)'}
+- Bridge term: ${topicSignal.bridge || '(missing)'}
+- Intervention: ${topicSignal.intervention || '(missing)'}
+- Evidence: ${(topicSignal.evidence || []).slice(0, 3).map(x => typeof x === 'string' ? x : x.title).filter(Boolean).join(' / ') || '(missing)'}
+
+Requirements:
+1. Translate the topic into the natural way users would actually search and click.
+2. Make sure search terms appear naturally in the title, first two body paragraphs, and tags.
+3. Always keep the brand term: 每天烈刻气泡白酒.
+4. If there are hot words, scene words, or colloquial terms, embed them naturally instead of dumping a keyword list.
+5. Write the search-layout first, then the body.
+` : '';
+
+  const searchTermBlock = topicSignal ? `## Search terms and long-tail terms — highest priority
+- Core search terms: ${[topicSignal.trafficKeyword, topicSignal.coreConcept].filter(Boolean).join(' / ') || '(none)'}
+- Long-tail terms: ${longTailTerms.join(' / ') || '(derive 3-5 natural long-tail phrases from core search intent)'}
+- Brand term fixed: #每天烈刻气泡白酒
+- Search priority: title > first two paragraphs > tags
+- You may split words into more natural phrases, but keep the searchable root terms.
+- Decide search intent and placement before choosing the narrative structure and writing the full text.
+- These terms are a hard retrieval constraint, but they must not replace the reference article's subject, emotional curve or cadence. Plan their placement before drafting.
+` : '';
+
+  const referencePriorityBlock = refArticle ? `## Reference priority
+- The reference article's structure, cadence, density, and emotional progression outrank the generic writing rules.
+- Read the whole reference body before choosing the angle; do not rely on the title or excerpt only.
+- The reference body is complete; do not fill blanks yourself or expand it into a new product explainer.
+- Before drafting, silently extract the reference's real subject, central emotional question, paragraph-by-paragraph function, sentence-and-pause pattern, and product exposure ratio.
+- Preserve that subject-level mechanism, emotional curve, paragraph rhythm and image-to-text atmosphere. Turning it into a generic tasting review is a failed adaptation.
+- Product facts may enter only where the reference naturally introduces an object, action or consumption detail. They must not replace the reference theme.
+` : '';
+
+  const referenceSearchSynthesisBlock = refArticle && topicSignal ? `## Reference + search synthesis — first execution step
+1. Use the complete reference body as the narrative blueprint: preserve its core subject, emotional progression, paragraph functions, cadence, restraint and product exposure ratio.
+2. Build a search placement map before drafting. The exact core search root must appear naturally in the title or first 120 Chinese characters; place at least two distinct long-tail phrases in later body paragraphs; include the brand term once in the body and again in tags.
+3. Tags do not count as body placement. Do not dump keywords, repeat one root mechanically, or add a detached SEO paragraph.
+4. Search phrases must sound like thoughts and actions belonging to the reference's narrator. If a keyword breaks the atmosphere, rewrite the surrounding sentence rather than abandoning the reference theme.
+5. Final check: readers should recognize the reference's subject and emotional movement without seeing copied sentences, while search intent remains retrievable from title, opening, body and tags.
+` : '';
 
   const bRouteBlock = framework === 'B' ? (() => {
     if (bRoute === 'resonance') return `## B框架本次种草重心：共鸣种草
@@ -982,7 +1053,7 @@ ${angle.desc}`;
 
   // ③a 仿写参考范文（用户在参考文案库中选择后注入）
   const imitBlock = refArticle
-    ? `## ★ 本次首要任务：仿写以下参考范文\n本次生成的节奏、情绪走向、句式结构必须以此范文为蓝本。品牌事实和框架内容逻辑服务于这个结构，不得覆盖它。内容完全原创，不得复制原文字句。\n\n标题：${refArticle.title || '（无标题）'}\n标签：${refArticle.tag || '（无标签）'}\n\n${(refArticle.content || '').slice(0, 1000)}`
+    ? `## ★ 本次首要任务：仿写以下参考范文\n本次生成的节奏、情绪走向、句式结构必须以此范文为蓝本。品牌事实和框架内容逻辑服务于这个结构，不得覆盖它。内容完全原创，不得复制原文字句。\n\n标题：${refArticle.title || '（无标题）'}\n标签：${refArticle.tag || '（无标签）'}\n\n${(refArticle.content || '')}`
     : '';
 
   // 参考示例优先级：选中的子模板 example > 框架基础模板 example。
@@ -1164,12 +1235,15 @@ ${stylePriorityLine}
 保留真人分享感：短句、具体动作、朋友原话、即时反应、明确判断。不要为了显得高级而压低情绪。`;
 
   const modules = [
+    ...(referenceSearchSynthesisBlock ? [{ name: '00 参考主题与搜索词融合（最高执行优先级）', content: referenceSearchSynthesisBlock }] : []),
+    ...(searchTermBlock ? [{ name: '00 搜索词＋长尾词（最高优先级）', content: searchTermBlock }] : []),
+    ...(topicSignalBlock ? [{ name: '01 本次选题信号', content: topicSignalBlock }] : []),
     // KOC 模式：example 放最前，先定调；跳过飞书学习材料（防止其中文学性内容拉偏风格）
     ...(!imitBlock && frameworkExampleBlock ? [{ name: '① 风格参考范例（本次写法基准）', content: frameworkExampleBlock }] : []),
     ...(subTemplateBlock ? [{ name: '①-2 风格子模板（用户选择，优先于框架基础）', content: subTemplateBlock }] : []),
     { name: frameworkExampleBlock ? '② 撰写规范' : '① 撰写规范', key: styleLocked ? undefined : 'writing', content: effectiveSystemBlock },
     { name: '② 品牌事实', key: 'brand',   content: brandBlock },
-    ...(topicSignalBlock ? [{ name: '②-0 本次选题信号', content: topicSignalBlock }] : []),
+    ...(referencePriorityBlock ? [{ name: '②-0b 参考范文优先级', content: referencePriorityBlock }] : []),
     ...(bRouteBlock ? [{ name: '②-1 B框架种草重心', content: bRouteBlock }] : []),
     ...(bAngleEngineBlock ? [{ name: '②-2 B框架叙事发动机（本次唯一结构）', content: bAngleEngineBlock }] : []),
     ...(sellingPointBlock ? [{ name: '② 本次主推卖点详情', content: sellingPointBlock }] : []),
@@ -1261,7 +1335,7 @@ function buildBatchPrompt(ctx, direction, sellingPoint, framework, persona = nul
 
   let imitBatchBlock = '';
   if (refArticle) {
-    imitBatchBlock = `## ★ 本次首要任务：仿写以下参考范文\n节奏、情绪走向、句式结构以此范文为蓝本，品牌事实和框架逻辑服务于这个结构。内容完全原创。\n\n标题：${refArticle.title || '（无标题）'}\n标签：${refArticle.tag || '（无标签）'}\n\n${(refArticle.content || '').slice(0, 800)}`;
+    imitBatchBlock = `## ★ 本次首要任务：仿写以下参考范文\n节奏、情绪走向、句式结构以此范文为蓝本，品牌事实和框架逻辑服务于这个结构。内容完全原创。\n\n标题：${refArticle.title || '（无标题）'}\n标签：${refArticle.tag || '（无标签）'}\n\n${(refArticle.content || '')}`;
   }
 
   const batchTaskFocus = (() => {
@@ -1397,9 +1471,99 @@ function writeToBase(tableId, fields, baseToken = CFG.feishu.baseToken) {
   } finally { try { fs.unlinkSync(tmpFile); } catch (_) {} }
 }
 
-function writeOutputRecord(fields) { return writeToBase(OUTPUT_TABLE, fields, OUTPUT_BASE); }
+function updateBaseRecord(tableId, recordId, fields, baseToken = CFG.feishu.baseToken) {
+  const tmpName = `_tmp_lark_update_${Date.now()}.json`;
+  const tmpFile = path.join(__dirname, tmpName);
+  fs.writeFileSync(tmpFile, JSON.stringify(fields), 'utf8');
+  try {
+    return larkCli([
+      'base', '+record-upsert',
+      '--base-token', baseToken,
+      '--table-id', tableId,
+      '--record-id', recordId,
+      '--json', `@${tmpName}`,
+    ]);
+  } finally { try { fs.unlinkSync(tmpFile); } catch (_) {} }
+}
+
+function writeOutputRecord(fields) {
+  const normalized = {};
+  for (const [key, value] of Object.entries(fields || {})) {
+    normalized[OUTPUT_FIELDS[key] || key] = value;
+  }
+  return writeToBase(OUTPUT_TABLE, normalized, OUTPUT_BASE);
+}
 function writeMatRecord(tableId, fields) { return writeToBase(tableId, fields, MAT_BASE); }
 function writeRecord(tableId, fields) { return writeToBase(tableId, fields); }
+
+function extractRecordIdFromWrite(result) {
+  return result?.data?.record?.record_id
+    || result?.data?.record_id
+    || result?.data?.id
+    || result?.record_id
+    || result?.id
+    || '';
+}
+
+function findOutputRecordIdByTitle(title) {
+  const needle = String(title || '').trim();
+  if (!needle) return '';
+  const out = larkCli([
+    'base', '+record-list',
+    '--base-token', OUTPUT_BASE,
+    '--table-id', OUTPUT_TABLE,
+    '--limit', '100',
+    '--format', 'json',
+  ]);
+  const rows = out.data?.data || [];
+  const fields = out.data?.fields || [];
+  const ids = out.data?.record_id_list || [];
+  const titleIdx = fields.indexOf('标题');
+  if (titleIdx < 0) return '';
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i]?.[titleIdx] || '').trim() === needle) return ids[i] || '';
+  }
+  return '';
+}
+
+function readOutputRecordBody(recordId) {
+  if (!recordId) return '';
+  const out = larkCli([
+    'base', '+record-get',
+    '--base-token', OUTPUT_BASE,
+    '--table-id', OUTPUT_TABLE,
+    '--record-id', recordId,
+    '--field-id', OUTPUT_FIELDS.正文,
+    '--format', 'json',
+  ]);
+  const fields = out.data?.record?.fields || out.data?.fields || {};
+  return cellText(fields[OUTPUT_FIELDS.正文] || fields.正文 || '');
+}
+
+function uploadBaseAttachments(recordId, fieldId, filePaths) {
+  const files = (filePaths || []).map(resolvePoolImage);
+  if (!recordId || !fieldId || !files.length) return { count: 0, files: [] };
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'market-hub-base-attach-'));
+  try {
+    const args = [
+      'base', '+record-upload-attachment',
+      '--base-token', OUTPUT_BASE,
+      '--table-id', OUTPUT_TABLE,
+      '--record-id', recordId,
+      '--field-id', fieldId,
+      '--format', 'json',
+    ];
+    files.forEach((src, i) => {
+      const safeName = `publish-image-${String(i + 1).padStart(2, '0')}${path.extname(src).toLowerCase() || '.jpg'}`;
+      fs.copyFileSync(src, path.join(tmpDir, safeName));
+      args.push('--file', safeName);
+    });
+    const out = larkCli(args, { cwd: tmpDir });
+    return { count: files.length, files: out?.data || out };
+  } finally {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+  }
+}
 
 const WORK_BASE = 'REDACTED';
 const WORK_TABLES = {
@@ -1492,15 +1656,57 @@ function linkIds(value) {
 }
 
 // ─── Claude 异步调用（用于批量/竞品分析，不阻塞事件循环）─────────────
-function runClaudeAsync(prompt, timeoutMs = 90000) {
+function runCodexAsync(prompt, timeoutMs = 420000) {
   const { spawn } = require('child_process');
   return new Promise((resolve, reject) => {
-    const { ANTHROPIC_API_KEY: _drop, ...envWithoutKey } = process.env;
+    const outputFile = path.join(require('os').tmpdir(), `market-hub-codex-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`);
+    const codexBin = path.join(process.env.APPDATA || '', 'npm', 'codex.cmd');
+    const child = spawn(codexBin, ['exec', '--skip-git-repo-check', '-o', outputFile], {
+      shell: true, cwd: __dirname, env: process.env, windowsHide: true,
+    });
+    let stderr = '';
+    child.stderr.on('data', data => { stderr += data.toString(); });
+    child.stdin.write(prompt, 'utf8');
+    child.stdin.end();
+    const timer = setTimeout(() => {
+      try { require('child_process').spawn('taskkill', ['/F', '/T', '/PID', String(child.pid)], { shell: true, detached: true }).unref(); } catch (_) {}
+      reject(new Error(`Codex generation timeout (${Math.round(timeoutMs / 1000)}s)`));
+    }, timeoutMs);
+    child.on('error', error => { clearTimeout(timer); reject(error); });
+    child.on('close', code => {
+      clearTimeout(timer);
+      let text = '';
+      try { text = fs.readFileSync(outputFile, 'utf8').trim(); fs.unlinkSync(outputFile); } catch (_) {}
+      if (!text) return reject(new Error(stderr.trim().slice(-500) || `codex exit ${code}`));
+      resolve(text);
+    });
+  });
+}
+
+function runClaudeAsync(prompt, timeoutMs = 90000) {
+  const provider = (process.env.MARKET_HUB_TEXT_PROVIDER || 'gpt-plus').toLowerCase();
+  if (provider !== 'claude') {
+    return (async () => {
+      try {
+        await postLocalJson('http://127.0.0.1:8765/gpt_launch', { rotate: false }, 30000);
+      } catch (e) {
+        throw new Error(`GPT Plus 文案引擎未能打开：${e.message}`);
+      }
+      const data = await postLocalJson('http://127.0.0.1:8765/gpt_text', {
+        prompt,
+        timeout: Math.ceil(Math.max(timeoutMs, 90000) / 1000),
+      }, Math.max(timeoutMs + 60000, 180000));
+      if (!data.ok || !data.text) throw new Error(data.error || 'GPT Plus 文案引擎没有返回文本');
+      return data.text;
+    })();
+  }
+  const { spawn } = require('child_process');
+  return new Promise((resolve, reject) => {
     const npmBin = path.join(process.env.APPDATA || '', 'npm');
     const child = spawn('claude', ['-p', '--dangerously-skip-permissions'], {
       shell: true,
       env: {
-        ...envWithoutKey,
+        ...process.env,
         PATH: `${npmBin};${process.env.PATH || ''}`,
         CLAUDE_CODE_GIT_BASH_PATH: 'D:\\nodes\\Git\\usr\\bin\\bash.exe',
       },
@@ -1520,7 +1726,7 @@ function runClaudeAsync(prompt, timeoutMs = 90000) {
     child.on('close', code => {
       clearTimeout(timer);
       const text = stdout.trim();
-      if (!text) return reject(new Error(stderr.trim() || `exit ${code}`));
+      if (!text || /not logged in|invalid api key|please run \/login/i.test(text)) return reject(new Error('Claude CLI 未登录或无输出'));
       resolve(text);
     });
     child.on('error', e => { clearTimeout(timer); reject(e); });
@@ -1901,23 +2107,36 @@ app.get('/api/feishu-result-images/file', (req, res) => {
 
 app.post('/api/save-to-publish', (req, res) => {
   try {
-    const { title, body, imagePaths = [] } = req.body;
+    const { title, body, tags = '', imagePaths = [], publishAccount = '' } = req.body;
     if (!body || !body.trim()) return res.json({ ok: false, error: '正文不能为空' });
     const fields = {
       '标题':    title  || '',
       '正文':    body.trim(),
-      '发布计划': '立即发布',
-      '是否发布': '否',
+      '是否发布': '待发布',
+      '发布计划': '自动生成',
     };
+    if (publishAccount) fields['发布账号'] = String(publishAccount).slice(0, 120);
+    if (tags) fields['话题'] = String(tags).trim().slice(0, 240);
+
     const selectedImages = Array.isArray(imagePaths) ? imagePaths.slice(0, 9) : [];
+    const localImages = [];
     if (selectedImages.length) {
-      fields['图片'] = selectedImages.map(x => {
+      const feishuImages = selectedImages.map(x => {
         const feishuImage = resolveFeishuResultImage(x);
-        return feishuImage || uploadPoolImageToLark(x);
-      });
+        if (feishuImage) return feishuImage;
+        localImages.push(x);
+        return null;
+      }).filter(Boolean);
+      if (feishuImages.length) fields['图片'] = feishuImages;
     }
-    writeOutputRecord(fields);
-    res.json({ ok: true, imageCount: selectedImages.length });
+
+    const written = writeOutputRecord(fields);
+    const recordId = extractRecordIdFromWrite(written) || findOutputRecordIdByTitle(title || '');
+    if (localImages.length) {
+      if (!recordId) throw new Error('已写入发布表，但未拿到 record_id，无法上传本地图片');
+      uploadBaseAttachments(recordId, OUTPUT_FIELDS.图片, localImages);
+    }
+    res.json({ ok: true, recordId, imageCount: selectedImages.length });
   } catch (e) {
     res.json({ ok: false, error: e.message });
   }
@@ -2114,6 +2333,483 @@ app.post('/api/references/select', (req, res) => {
 });
 
 // ─── 批量生成 ──────────────────────────────────────────────────────
+const dailyRunStore = new Map();
+
+function dailyLog(job, message) {
+  job.logs.push(`[${new Date().toLocaleTimeString('zh-CN', { hour12: false })}] ${message}`);
+  if (job.logs.length > 100) job.logs.splice(0, job.logs.length - 100);
+}
+
+function postLocalJson(url, payload, timeoutMs = 30000) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const raw = Buffer.from(JSON.stringify(payload || {}), 'utf8');
+    const request = require(u.protocol === 'https:' ? 'https' : 'http').request({
+      hostname: u.hostname, port: u.port, path: u.pathname + u.search, method: 'POST',
+      headers: { 'content-type': 'application/json', 'content-length': raw.length }, timeout: timeoutMs,
+    }, response => {
+      let text = '';
+      response.on('data', chunk => { text += chunk; });
+      response.on('end', () => {
+        try { resolve(JSON.parse(text || '{}')); }
+        catch { reject(new Error(`local service returned invalid JSON (${response.statusCode})`)); }
+      });
+    });
+    request.on('timeout', () => request.destroy(new Error('local service timeout')));
+    request.on('error', reject);
+    request.end(raw);
+  });
+}
+
+function getLocalJson(url, timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
+    const request = require('http').get(url, { timeout: timeoutMs }, response => {
+      let text = '';
+      response.on('data', chunk => { text += chunk; });
+      response.on('end', () => {
+        try { resolve(JSON.parse(text || '{}')); }
+        catch { reject(new Error(`local service returned invalid JSON (${response.statusCode})`)); }
+      });
+    });
+    request.on('timeout', () => request.destroy(new Error('local service timeout')));
+    request.on('error', reject);
+  });
+}
+
+async function getFeishuProductReferenceIds() {
+  const payload = await getLocalJson('http://127.0.0.1:5000/api/feishu-products?refresh=1', 60000);
+  const products = (payload.products || []).filter(p => p.record_id && p.file_token);
+  if (!products.length) throw new Error('\u4ea7\u54c1\u7d20\u6750\u8868\u6ca1\u6709\u53ef\u7528\u7684\u4ea7\u54c1\u56fe\u7247');
+  const withLabel = products.filter(p => p.label_file_token);
+  // One product photo is not enough for GPT to reconstruct bottle identity.
+  // Prefer records with a label crop, then add more full-bottle angles so the
+  // task receives: label detail + silhouette/proportion + perspective evidence.
+  const ordered = [...withLabel, ...products.filter(p => !withLabel.some(x => x.record_id === p.record_id))];
+  return ordered.slice(0, 4).map(p => p.record_id);
+}
+
+function buildImageOverlayTexts(body, count) {
+  const text = String(body || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/^#+\s*/gm, '')
+    .replace(/^\s*(?:备选标题|标题\d*|评论区话术|优化方向|推断依据|框架选择理由|目标人群|主次卖点逻辑)\s*[：:].*$/gm, '')
+    .replace(/^\s*\d+[\.、]\s*/gm, '')
+    .replace(/#[^\s#]+/g, '')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line && !/^(---|标题|正文|评论|优化|推断|备选)/.test(line))
+    .join(' ');
+  const clean = text.replace(/\s+/g, ' ').trim();
+  const sentences = clean
+    .split(/(?<=[\u3002\uff01\uff1f!?])/)
+    .map(s => s.trim())
+    .filter(s => s.length >= 12 && s.length <= 90 && !/备选标题|评论区话术|优化方向|推断依据|标题\d/.test(s));
+  return Array.from({ length: count }, (_, i) => {
+    const s = sentences[i % Math.max(1, sentences.length)] || clean.slice(i * 35, i * 35 + 65);
+    return s.slice(0, 72);
+  });
+}
+
+const waitMs = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+function newestThreeReferenceImages() {
+  const roots = [path.join(__dirname, 'xhs-image-cache'), path.join(__dirname, '.tmp')];
+  const groups = new Map();
+  for (const root of roots) {
+    if (!fs.existsSync(root)) continue;
+    const walk = dir => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (/\.(?:png|jpe?g|webp)$/i.test(entry.name)) {
+          const key = entry.name.replace(/-\d+\.(?:png|jpe?g|webp)$/i, '') || path.dirname(full);
+          const stat = fs.statSync(full);
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push({ path: full, mtime: stat.mtimeMs });
+        }
+      }
+    };
+    walk(root);
+  }
+  return [...groups.values()].filter(files => files.length >= 3)
+    .sort((a, b) => Math.max(...b.map(x => x.mtime)) - Math.max(...a.map(x => x.mtime)))[0]
+    ?.sort((a, b) => a.path.localeCompare(b.path)).slice(0, 3).map(x => x.path) || [];
+}
+
+function extractUrlFromCell(value) {
+  const text = String(value || '');
+  const match = text.match(/https?:\/\/[^\s)\]]+/);
+  return match ? match[0] : '';
+}
+
+function asArrayCell(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  return [value];
+}
+
+function cellText(value) {
+  if (Array.isArray(value)) return value.map(v => {
+    if (v && typeof v === 'object') return v.name || v.text || v.value || JSON.stringify(v);
+    return String(v || '');
+  }).join(' ');
+  if (value && typeof value === 'object') return value.name || value.text || value.value || JSON.stringify(value);
+  return String(value || '');
+}
+
+function readCompetitorReferences(limit = 200) {
+  const args = [
+    'base', '+record-list',
+    '--base-token', CFG.feishu.baseToken,
+    '--table-id', COMPETITOR_TABLE_ID,
+    '--limit', String(Math.min(Math.max(limit, 1), 200)),
+    '--format', 'json',
+  ];
+  Object.values(COMPETITOR_FIELDS).forEach(fid => args.push('--field-id', fid));
+  const out = larkCli(args);
+  const rows = out.data?.data || [];
+  const ids = out.data?.record_id_list || [];
+  const fieldIds = out.data?.field_id_list || [];
+  const idx = {};
+  fieldIds.forEach((fid, i) => { idx[fid] = i; });
+  return rows.map((row, i) => {
+    const get = fid => row[idx[fid]];
+    const attachments = asArrayCell(get(COMPETITOR_FIELDS.attachment))
+      .filter(file => file && /\.(?:png|jpe?g|webp)$/i.test(file.name || 'file.jpg'));
+    const url = extractUrlFromCell(get(COMPETITOR_FIELDS.noteUrl)) || extractUrlFromCell(get(COMPETITOR_FIELDS.sourceUrl));
+    return {
+      id: ids[i],
+      url,
+      title: cellText(get(COMPETITOR_FIELDS.title)),
+      body: cellText(get(COMPETITOR_FIELDS.body)),
+      tags: cellText(get(COMPETITOR_FIELDS.tags)),
+      searchTerm: cellText(get(COMPETITOR_FIELDS.searchTerm)),
+      matchTerm: cellText(get(COMPETITOR_FIELDS.matchTerm)),
+      hotspot: cellText(get(COMPETITOR_FIELDS.hotspot)),
+      purpose: cellText(get(COMPETITOR_FIELDS.purpose)),
+      imageStatus: cellText(get(COMPETITOR_FIELDS.imageStatus)),
+      category: cellText(get(COMPETITOR_FIELDS.category)),
+      angle: cellText(get(COMPETITOR_FIELDS.angle)),
+      brand: cellText(get(COMPETITOR_FIELDS.brand)),
+      attachments,
+    };
+  }).filter(r => r.id && r.url && r.attachments.length >= 3);
+}
+
+function scoreReferenceForTopic(ref, topic) {
+  const hay = [ref.title, ref.body, ref.tags, ref.searchTerm, ref.matchTerm, ref.hotspot, ref.purpose, ref.angle, ref.brand].join(' ');
+  const topicTerms = [
+    topic?.trafficKeyword,
+    topic?.coreConcept,
+    ...(String(topic?.bridge || '').match(/[\u4e00-\u9fa5A-Za-z0-9]{2,}/g) || []).slice(0, 8),
+  ].filter(Boolean).map(String);
+  let score = 0;
+  for (const term of topicTerms) {
+    if (term && hay.includes(term)) score += term === topic?.trafficKeyword ? 8 : 3;
+  }
+  if (/图片参考|可直接换图/.test(ref.purpose)) score += 12;
+  if (/热点话题/.test(ref.purpose)) score += 5;
+  if (/调酒|氛围|生活|意境|分享/.test(ref.angle + ref.title + ref.tags)) score += 5;
+  if (/文字封面参考/.test(ref.purpose)) score += 18;
+  if (/叙事|造梦|城市|旅行|桌面/.test(ref.angle + ref.title + ref.tags)) score += 8;
+  if (ref.attachments.length >= 6) score += 8;
+  if (/无效|失败|重排失败|不合格/.test(ref.imageStatus + ref.purpose + ref.title)) score -= 50;
+  if (/视频/.test(ref.category)) score -= 8;
+  if (/测评|攻略|揭秘|真相|0失误|信息图/.test(ref.title) && !/可直接换图/.test(ref.purpose)) score -= 20;
+  score += Math.min(ref.attachments.length, 9);
+  return score;
+}
+
+function isAutoImageReferenceUsable(ref) {
+  const text = [ref.title, ref.body, ref.tags, ref.purpose, ref.angle, ref.category].join(' ');
+  const mlCount = (text.match(/\b\d+\s*ml\b/gi) || []).length;
+  if (/视频/.test(ref.category)) return false;
+  if (/无效|失败|不合格|重排失败|跳过/.test(ref.imageStatus + ref.purpose + ref.title)) return false;
+  if (/求个名字|取个名字|叫什么|不带.+字/.test(text)) return false;
+  if (/配方|公式|教程|攻略|揭秘|真相|测评|认识一款酒|信息图|知识点|一图秒懂|懂酒达人|基酒|酒单|合集|清单|无限回购|严选|穷人版/.test(ref.title)) return false;
+  if (mlCount >= 2 && /调酒|鸡尾酒|金酒|糖浆|柠檬汁|菠萝汁/.test(text)) return false;
+  const hasUsableScene = /氛围|生活|居家|聚会|餐桌|桌面|冰杯|酒饮|微醺|喝酒日常|调酒|鸡尾酒|露营|烧烤|便利店/.test(text);
+  const hasImagePurpose = /图片参考|可直接换图|热点话题/.test(ref.purpose);
+  return hasUsableScene && hasImagePurpose && ref.attachments.length >= 3;
+}
+
+function chooseReferenceForTopic(topic) {
+  const refs = readCompetitorReferences(200)
+    .filter(isAutoImageReferenceUsable)
+    .map(ref => ({ ...ref, score: scoreReferenceForTopic(ref, topic) }))
+    .filter(ref => ref.score > -10)
+    .sort((a, b) => b.score - a.score);
+  if (!refs.length) throw new Error('竞品表没有找到 3 张以上附件的可用参考 post');
+  return refs[0];
+}
+
+function downloadCompetitorAttachments(recordId, maxImages = Number.POSITIVE_INFINITY) {
+  const dir = path.join(__dirname, '.tmp', `daily-reference-${recordId}-${Date.now()}`);
+  fs.mkdirSync(dir, { recursive: true });
+  const outputDir = path.relative(__dirname, dir) || '.';
+  larkCli([
+    'base', '+record-download-attachment',
+    '--base-token', CFG.feishu.baseToken,
+    '--table-id', COMPETITOR_TABLE_ID,
+    '--record-id', recordId,
+    '--output', outputDir,
+    '--overwrite',
+    '--format', 'json',
+  ]);
+  const files = fs.readdirSync(dir)
+    .filter(name => /\.(?:png|jpe?g|webp)$/i.test(name))
+    .sort((a, b) => a.localeCompare(b))
+    .map(name => path.join(dir, name));
+  return files.slice(0, maxImages);
+}
+
+function markCompetitorImageStatus(recordId, status) {
+  if (!recordId || !status) return;
+  try {
+    updateBaseRecord(COMPETITOR_TABLE_ID, recordId, { 换图状态: status }, CFG.feishu.baseToken);
+  } catch (e) {
+    console.warn('[competitor status]', e.message);
+  }
+}
+
+function parseDailyDraft(raw) {
+  const plan = parsePlan(raw);
+  let title = plan.titles?.[0] || '';
+  let body = plan.body || '';
+  const sectionBody = String(raw || '').match(/(?:^|\n)\s*(?:#{1,4}\s*)?正文\s*\n+([\s\S]*?)(?=\n\s*(?:#{1,4}\s*)?(?:评论区话术|优化方向|推断依据)|$)/);
+  if (sectionBody?.[1]) body = sectionBody[1].trim();
+  if (/备选标题|评论区话术|优化方向|推断依据/.test(body)) {
+    body = body
+      .replace(/^[\s\S]*?(?:^|\n)\s*(?:#{1,4}\s*)?正文\s*\n+/m, '')
+      .replace(/\n\s*(?:#{1,4}\s*)?评论区话术[\s\S]*$/m, '')
+      .replace(/\n\s*(?:#{1,4}\s*)?优化方向[\s\S]*$/m, '')
+      .replace(/\n\s*(?:#{1,4}\s*)?推断依据[\s\S]*$/m, '')
+      .trim();
+  }
+  if (!title) {
+    const match = raw.match(/(?:\u6807\u9898\s*\d*|title)\s*[\uff1a:]\s*(.+)/i);
+    title = match ? match[1].trim() : '';
+  }
+  if (!body) {
+    const match = raw.match(/###\s*\u6b63\u6587\s*\n([\s\S]*?)(?=\n###|$)/);
+    body = match ? match[1].trim() : raw.trim();
+  }
+  return { title: title || '\u4eca\u65e5\u5c0f\u7ea2\u4e66\u8349\u7a3f', body };
+}
+
+app.get('/api/daily/preview-reference', (req, res) => {
+  try {
+    const digest = loadTopicJson(TOPIC_RECOMMENDATIONS_PATH, { recommendations: [] });
+    const topic = [...(digest.recommendations || [])].sort((a, b) => Number(b.score || 0) - Number(a.score || 0))[0];
+    if (!topic) throw new Error('\u6ca1\u6709\u53ef\u7528\u7684\u70ed\u70b9\u9009\u9898');
+    const selectedReference = chooseReferenceForTopic(topic);
+    res.json({
+      ok: true,
+      topic: {
+        coreConcept: topic.coreConcept || '',
+        trafficKeyword: topic.trafficKeyword || '',
+        searchTerms: topic.searchTerms || [],
+        score: topic.score || '',
+      },
+      reference: {
+        id: selectedReference.id,
+        title: selectedReference.title,
+        url: selectedReference.url,
+        purpose: selectedReference.purpose,
+        category: selectedReference.category,
+        angle: selectedReference.angle,
+        score: selectedReference.score,
+        attachmentCount: selectedReference.attachments.length,
+      },
+    });
+  } catch (error) {
+    res.json({ ok: false, error: error.message });
+  }
+});
+
+app.get('/api/daily/preview-references', (req, res) => {
+  try {
+    const limit = Math.max(1, Math.min(30, Number(req.query.limit || 12)));
+    const digest = loadTopicJson(TOPIC_RECOMMENDATIONS_PATH, { recommendations: [] });
+    const topic = [...(digest.recommendations || [])].sort((a, b) => Number(b.score || 0) - Number(a.score || 0))[0];
+    if (!topic) throw new Error('\u6ca1\u6709\u53ef\u7528\u7684\u70ed\u70b9\u9009\u9898');
+    const references = readCompetitorReferences(260)
+      .filter(isAutoImageReferenceUsable)
+      .map(ref => ({ ...ref, score: scoreReferenceForTopic(ref, topic) }))
+      .filter(ref => ref.score > -10)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map(ref => ({
+        id: ref.id,
+        title: ref.title,
+        url: ref.url,
+        purpose: ref.purpose,
+        category: ref.category,
+        angle: ref.angle,
+        score: ref.score,
+        attachmentCount: ref.attachments.length,
+      }));
+    res.json({ ok: true, topic: { coreConcept: topic.coreConcept || '', trafficKeyword: topic.trafficKeyword || '', score: topic.score || '' }, references });
+  } catch (error) {
+    res.json({ ok: false, error: error.message });
+  }
+});
+
+app.post('/api/daily/run', (req, res) => {
+  const running = [...dailyRunStore.values()].find(job => !job.done);
+  if (running) return res.json({ ok: true, jobId: running.id, resumed: true });
+  const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+  const job = { id, done: false, ok: true, error: '', logs: [], result: {} };
+  dailyRunStore.set(id, job);
+  res.json({ ok: true, jobId: id });
+
+  (async () => {
+    try {
+      dailyLog(job, '\u5f00\u59cb\u68c0\u67e5\u70ed\u70b9\u4fe1\u53f7');
+      let signals = loadTopicJson(TOPIC_SIGNALS_PATH, null);
+      if (req.body?.forceCollect === true) {
+        try {
+          await runTopicCollector();
+          signals = loadTopicJson(TOPIC_SIGNALS_PATH, signals);
+          dailyLog(job, '\u70ed\u70b9\u4fe1\u53f7\u91c7\u96c6\u5b8c\u6210');
+        } catch (error) {
+          dailyLog(job, `\u5b9e\u65f6\u91c7\u96c6\u4e0d\u53ef\u7528\uff0c\u4f7f\u7528\u6700\u8fd1\u6709\u6548\u70ed\u70b9\uff1a${error.message}`);
+        }
+      } else {
+        dailyLog(job, '\u4f7f\u7528 12 \u5c0f\u65f6\u70ed\u70b9\u7f13\u5b58\uff0c\u4e0d\u91cd\u590d\u89e6\u53d1\u5e73\u53f0\u98ce\u63a7');
+      }
+
+      let digest = loadTopicJson(TOPIC_RECOMMENDATIONS_PATH, { recommendations: [] });
+      if (signals && !signals.error) {
+        try {
+          const rawDigest = await runClaudeAsync(buildTopicDigestPrompt(signals), 300000);
+          digest = parseTopicDigest(rawDigest);
+          digest.generatedAt = new Date().toISOString();
+          fs.writeFileSync(TOPIC_RECOMMENDATIONS_PATH, JSON.stringify(digest, null, 2), 'utf8');
+          dailyLog(job, '\u70ed\u70b9\u7b5b\u9009\u4e0e\u9009\u9898\u8bc4\u5206\u5b8c\u6210');
+        } catch (error) {
+          dailyLog(job, `\u9009\u9898\u91cd\u7b97\u5931\u8d25\uff0c\u6cbf\u7528\u6700\u8fd1\u7ed3\u679c\uff1a${error.message}`);
+        }
+      }
+      const topic = [...(digest.recommendations || [])].sort((a, b) => Number(b.score || 0) - Number(a.score || 0))[0];
+      if (!topic) throw new Error('\u6ca1\u6709\u53ef\u7528\u7684\u70ed\u70b9\u9009\u9898');
+      dailyLog(job, `\u5df2\u9009\u4e2d\uff1a${topic.coreConcept || topic.trafficKeyword || topic.id}`);
+
+      const requestedReferenceId = String(req.body?.referenceId || '').trim();
+      const selectedReference = requestedReferenceId
+        ? readCompetitorReferences(300).find(ref => ref.id === requestedReferenceId)
+        : chooseReferenceForTopic(topic);
+      if (!selectedReference) throw new Error(`\u6307\u5b9a\u7684\u7ade\u54c1\u8bb0\u5f55\u4e0d\u5b58\u5728\uff1a${requestedReferenceId}`);
+      const refArticle = {
+        title: selectedReference.title,
+        tag: selectedReference.tags,
+        content: selectedReference.body,
+      };
+      dailyLog(job, `\u5df2\u9009\u4e2d\u6362\u56fe\u53c2\u8003\uff1a${selectedReference.title || selectedReference.url}`);
+
+      let ctx;
+      try { ctx = await fetchFeishuContext(); } catch { ctx = { iterComp: [], reference: [] }; }
+      const sellingPoint = '\u6bcf\u5929\u70c8\u523b\u6c14\u6ce1\u767d\u9152\uff1a10\u5ea6\u30010\u7cd60\u5361\u300120%\u539f\u69a8\u679c\u6c41\u3001\u6c14\u6ce1\u53e3\u611f';
+      const built = buildPrompt(ctx, topic.direction || topic.bridge || '', sellingPoint, topic.framework || 'B', null, null, null, refArticle, [], null, 'narrative', 'reference', topic);
+      dailyLog(job, '\u6b63\u5728\u751f\u6210\u5305\u542b\u70ed\u70b9\u8bcd\u548c\u641c\u7d22\u8bcd\u7684\u6587\u6848');
+      const compliance = '\n\n\u5408\u89c4\u8981\u6c42\uff1a0\u7cd60\u5361\u53ea\u80fd\u5ba2\u89c2\u9648\u8ff0\uff0c\u4e0d\u80fd\u5ef6\u4f38\u4e3a\u8eab\u4f53\u8d1f\u62c5\u8f7b\u3001\u51cf\u80a5\u3001\u5065\u5eb7\u6216\u65e0\u8d1f\u62c5\u3002\u4e0d\u5f97\u627f\u8bfa\u4e0d\u9189\u3001\u4e0d\u4e0a\u5934\u6216\u65e0\u523a\u6fc0\u3002';
+      const rawDraft = await runClaudeAsync(built.prompt + compliance, 420000);
+      const draft = parseDailyDraft(rawDraft);
+      const tags = ['#\u6bcf\u5929\u70c8\u523b\u6c14\u6ce1\u767d\u9152', topic.trafficKeyword, topic.coreConcept]
+        .filter(Boolean).map(x => String(x).startsWith('#') ? String(x) : `#${x}`).join(' ');
+      const written = writeOutputRecord({
+        '\u6807\u9898': draft.title, '\u6b63\u6587': draft.body, '\u8bdd\u9898': tags,
+        '\u53d1\u5e03\u8ba1\u5212': '\u81ea\u52a8\u751f\u6210', '\u662f\u5426\u53d1\u5e03': '\u5426',
+        '\u53d1\u5e03\u8d26\u53f7': '\u6bcf\u5929\u70c8\u523b / legacy',
+        '\u53c2\u8003\u94fe\u63a5': selectedReference.url,
+      });
+      const recordId = extractRecordIdFromWrite(written) || findOutputRecordIdByTitle(draft.title);
+      dailyLog(job, `\u6587\u6848\u5df2\u56de\u586b\u53d1\u5e03\u8868${recordId ? `\uff08${recordId}\uff09` : ''}`);
+      const savedBody = readOutputRecordBody(recordId) || draft.body;
+
+      const expectedImageCount = selectedReference.attachments.length;
+      const refs = downloadCompetitorAttachments(selectedReference.id, expectedImageCount);
+      if (refs.length !== expectedImageCount) throw new Error(`\u7ade\u54c1\u8868\u767b\u8bb0 ${expectedImageCount} \u5f20\u56fe\uff0c\u5b9e\u9645\u4e0b\u8f7d ${refs.length} \u5f20`);
+      markCompetitorImageStatus(selectedReference.id, '\u5df2\u5efa\u961f\u5217');
+      try {
+        await postLocalJson('http://127.0.0.1:5000/api/gpt-queue-state', { action: 'clear' }, 30000);
+        dailyLog(job, '\u5df2\u6e05\u7a7a\u65e7 GPT \u6362\u56fe\u961f\u5217');
+      } catch (error) {
+        dailyLog(job, `\u65e7 GPT \u961f\u5217\u6e05\u7406\u5931\u8d25\uff1a${error.message}`);
+      }
+      const productReferenceIds = await getFeishuProductReferenceIds();
+      const overlayTextList = buildImageOverlayTexts(savedBody, refs.length);
+      dailyLog(job, `\u5df2\u4ece\u53d1\u5e03\u8868\u6b63\u6587\u5b57\u6bb5\u63d0\u53d6 ${overlayTextList.length} \u6761\u6c1b\u56f4\u56fe\u6587\u5b57`);
+      const queue = await postLocalJson('http://127.0.0.1:5000/api/gpt-helper-queue', {
+        scenes: refs.map(file => ({ path: file, record_id: selectedReference.id, name: path.basename(file) })),
+        batch_size: expectedImageCount, gen_count: 1, match_mode: 'manual', product_record_ids: productReferenceIds,
+        scene_modes: Object.fromEntries(refs.map((_, i) => [String(i), 'auto'])),
+        overlay_texts: Object.fromEntries(overlayTextList.map((text, i) => [String(i), text])),
+        positive: '\u9010\u56fe\u5224\u65ad\u3002\u65e0\u4ea7\u54c1\u7684\u6c1b\u56f4\u56fe\uff1a\u751f\u6210\u76f8\u4f3c\u6c1b\u56f4\u65b0\u573a\u666f\uff0c\u6392\u5165\u672c\u7bc7 post \u6b63\u6587\u91d1\u53e5\u7247\u6bb5\u3002\u539f\u56fe\u5df2\u6709\u660e\u786e\u9152\u7c7b\u4ea7\u54c1\uff1a\u4ec5\u66ff\u6362\u8be5\u4ea7\u54c1\uff0c\u5e76\u4e25\u683c\u4f7f\u7528\u98de\u4e66\u4ea7\u54c1\u7d20\u6750\u8868\u7684\u74f6\u8eab\u4e0e\u6807\u7b7e\u7ec6\u8282\u56fe\u3002',
+        negative: '\u6a21\u7cca\u3001\u53d8\u5f62\u3001\u9519\u8bef\u74f6\u6807\u3001\u591a\u4f59\u74f6\u5b50\u3001AI\u611f\u3001\u590d\u5236\u539f\u56fe\u6587\u5b57\u3001\u590d\u5236\u5546\u6807\u6216\u6c34\u5370\u3001\u76f4\u63a5\u7167\u642c\u539f\u56fe\u4eba\u7269\u548c\u88c5\u9970',
+      }, 120000);
+      if (!queue.ok) throw new Error(queue.error || '\u521b\u5efa GPT \u6362\u56fe\u961f\u5217\u5931\u8d25');
+      const queueState = await getLocalJson('http://127.0.0.1:5000/api/gpt-queue-state');
+      const queueItems = queueState.items || [];
+      const mismatchedItems = queueItems.filter(item => item.scene_record_id !== selectedReference.id);
+      if (queueItems.length !== expectedImageCount || mismatchedItems.length) {
+        throw new Error('\u65b0 GPT \u961f\u5217\u6821\u9a8c\u5931\u8d25\uff1a\u53c2\u8003\u56fe\u4e0d\u662f\u5f53\u524d\u9009\u4e2d post');
+      }
+      dailyLog(job, `\u5df2\u6309\u539f post \u9644\u4ef6\u6570\u521b\u5efa ${expectedImageCount} \u4e2a GPT \u751f\u56fe\u4efb\u52a1`);
+      try {
+        await postLocalJson('http://127.0.0.1:8765/gpt_launch', { rotate: false }, 30000);
+        dailyLog(job, '\u5df2\u6253\u5f00 GPT Profile\uff0c\u7b49\u5f85\u6269\u5c55\u5904\u7406\u961f\u5217');
+      } catch (error) { dailyLog(job, `GPT Profile \u6253\u5f00\u5931\u8d25\uff1a${error.message}`); }
+
+      job.result = { topic, reference: { id: selectedReference.id, title: selectedReference.title, url: selectedReference.url }, draft: { title: draft.title, tags }, recordId, imageTasks: expectedImageCount, stage: 'waiting_images' };
+      dailyLog(job, `\u5df2\u8fdb\u5165\u751f\u56fe\u9636\u6bb5\uff0c\u5c06\u81ea\u52a8\u7b49\u5f85 ${expectedImageCount} \u5f20\u7ed3\u679c\u56fe`);
+
+      let lastDone = -1;
+      let unchanged = 0;
+      for (let attempt = 0; attempt < 720; attempt++) {
+        await waitMs(10000);
+        const state = await getLocalJson('http://127.0.0.1:5000/api/gpt-queue-state');
+        const items = state.items || [];
+        const completed = items.filter(item => ['done', 'complete'].includes(item.status)).length;
+        if (completed !== lastDone) {
+          lastDone = completed; unchanged = 0;
+          dailyLog(job, `GPT \u751f\u56fe\u8fdb\u5ea6\uff1a${completed}/${items.length || expectedImageCount}`);
+        } else { unchanged += 1; }
+        if (items.length === expectedImageCount && completed >= expectedImageCount) break;
+        if (unchanged >= 12 && completed === 0) {
+          throw new Error('GPT Profile \u9700\u8981\u5b8c\u6210\u4e00\u6b21\u767b\u5f55\uff1b\u961f\u5217\u5df2\u4fdd\u7559\uff0c\u767b\u5f55\u540e\u4f1a\u7ee7\u7eed');
+        }
+      }
+      const finalQueueState = await getLocalJson('http://127.0.0.1:5000/api/gpt-queue-state');
+      const files = (finalQueueState.items || [])
+        .slice(0, expectedImageCount)
+        .map(item => item.result_file || (Array.isArray(item.result_files) ? item.result_files[0] : ''))
+        .filter(Boolean);
+      if (files.length < expectedImageCount) throw new Error(`GPT \u53ea\u4e0b\u8f7d\u5230 ${files.length} \u5f20\u56fe\uff0c\u5e94\u6709 ${expectedImageCount} \u5f20`);
+      uploadBaseAttachments(recordId, OUTPUT_FIELDS.\u56fe\u7247, files);
+      markCompetitorImageStatus(selectedReference.id, '\u5df2\u5b8c\u6210');
+      dailyLog(job, `\u5df2\u4e0a\u4f20 ${files.length} \u5f20\u6210\u54c1\u56fe\u5230\u98de\u4e66\u9644\u4ef6\u5b57\u6bb5`);
+      await Promise.allSettled([
+        postLocalJson('http://127.0.0.1:8765/cleanup_gpt_results', {}, 30000),
+        postLocalJson('http://127.0.0.1:8765/open_publish_page', {}, 30000),
+      ]);
+      try { fs.rmSync(path.dirname(refs[0]), { recursive: true, force: true }); } catch {}
+      job.result.stage = 'ready_for_review';
+      job.result.imageCount = files.length;
+      dailyLog(job, '\u672c\u5730\u7f13\u5b58\u5df2\u6e05\u7406\uff0c\u5c0f\u7ea2\u4e66\u53d1\u5e03\u9875\u5df2\u6253\u5f00\uff0c\u7b49\u5f85\u4eba\u5de5\u5ba1\u6838');
+    } catch (error) {
+      job.ok = false; job.error = error.message; dailyLog(job, `\u5931\u8d25\uff1a${error.message}`);
+    } finally { job.done = true; }
+  })();
+});
+
+app.get('/api/daily/poll/:id', (req, res) => {
+  const job = dailyRunStore.get(req.params.id);
+  if (!job) return res.json({ ok: false, error: '\u4efb\u52a1\u4e0d\u5b58\u5728' });
+  res.json({ ok: job.ok, done: job.done, error: job.error, logs: job.logs, result: job.result });
+});
+
 const batchStore = new Map();
 
 app.post('/api/batch-start', async (req, res) => {
@@ -3428,7 +4124,7 @@ const httpServer = app.listen(PORT, () => {
   console.log(`\n🍾 每天烈刻 · AI市场部 第二期`);
   console.log(`📡 http://localhost:${PORT}`);
   console.log(`\n环境检查:`);
-  console.log(`  生成引擎:          claude CLI (Pro 账户)`)
+  console.log(`  生成引擎:          GPT Plus 网页账户（本机 ChatGPT Profile）`)
   console.log(`  飞书 base: ${CFG.feishu.baseToken}`);
   console.log(`  飞书群:    ${CFG.feishu.groupId}`);
 });
