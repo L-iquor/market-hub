@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 每天烈刻 · AI市场部 · 第一期服务器
  * 撰写助理
  */
@@ -31,7 +31,11 @@ const TOPIC_SIGNALS_PATH = path.join(__dirname, 'topic-signals.json');
 const TOPIC_RECOMMENDATIONS_PATH = path.join(__dirname, 'topic-recommendations.json');
 const TOPIC_PIPELINE_PATH = path.join(__dirname, 'topic_pipeline.py');
 const TOPIC_CONFIG_PATH = path.join(__dirname, 'topic-config.json');
+const MARKET_INSIGHTS_PATH = path.join(__dirname, 'market-insights.json');
+const MARKET_INSIGHT_TABLE = 'tbl6uTJb7IGWWzVg';
+const MARKET_INSIGHT_NAME_FIELD = 'fldtel2qsK';
 let topicRefreshRunning = false;
+let insightRefreshRunning = false;
 
 const DEFAULT_TOPIC_CONFIG = {
   cacheHours: 4,
@@ -50,7 +54,7 @@ function loadTopicConfig() {
   try { incoming = JSON.parse(fs.readFileSync(TOPIC_CONFIG_PATH, 'utf8')); }
   catch (e) { incoming = {}; }
   const seeds = Array.isArray(incoming.seeds)
-    ? incoming.seeds.map(v => String(v || '').trim()).filter(Boolean).slice(0, 20)
+    ? [...new Set(incoming.seeds.map(v => String(v || '').trim()).filter(Boolean))].slice(0, 20)
     : [];
   const sourceInput = incoming.sources && typeof incoming.sources === 'object' ? incoming.sources : {};
   return {
@@ -563,6 +567,12 @@ const COMPETITOR_FIELDS = {
   category: 'fldYfZRMEX',
   angle: 'fld9y5JlJo',
   brand: 'fld7zYXUpX',
+  likes: 'fldkwhCXdq',
+  collects: 'fldrRTrjMW',
+  comments: 'fldsiNypBW',
+  shares: 'fldsNoorh7',
+  commentText: 'fldL90EX2O',
+  commentImages: 'fldsjl0bni',
 };
 
 function readMatTable(tableId) {
@@ -849,29 +859,36 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
     topicSignal.intervention,
   ].filter(Boolean).map(x => String(x).trim()))].slice(0, 8) : [];
 
-  const topicSignalBlock = topicSignal ? `## Topic signal
-- Topic keyword: ${topicSignal.trafficKeyword || '(missing)'}
-- Core concept: ${topicSignal.coreConcept || topicSignal.title || '(missing)'}
-- Bridge term: ${topicSignal.bridge || '(missing)'}
-- Intervention: ${topicSignal.intervention || '(missing)'}
-- Evidence: ${(topicSignal.evidence || []).slice(0, 3).map(x => typeof x === 'string' ? x : x.title).filter(Boolean).join(' / ') || '(missing)'}
+  const topicSignalBlock = topicSignal ? `## 用户决策路径 brief（写作前先读）
+种子词/热点词：${topicSignal.trafficKeyword || topicSignal.coreConcept || topicSignal.title || '(missing)'}
+核心概念：${topicSignal.coreConcept || topicSignal.title || '(missing)'}
+用户为什么会停下来：${topicSignal.searchIntent || topicSignal.rationale || topicSignal.bridge || '(根据参考文和搜索词推断)'}
+当前决策阶段：${topicSignal.decisionStage || topicSignal.intervention || '(判断是停留、代入、理解、信任还是购买)'}
+内容要完成的任务：${topicSignal.contentTask || topicSignal.direction || '(只完成一个任务)'}
+想进入的状态：${topicSignal.desiredState || topicSignal.scene || '(从用户缺口推断)'}
+产品承接：${topicSignal.productBridge || topicSignal.bridge || '(只选一个真实产品事实)'}
+证据：${(topicSignal.evidence || []).slice(0, 3).map(x => typeof x === 'string' ? x : x.title).filter(Boolean).join(' / ') || '(missing)'}
 
-Requirements:
-1. Translate the topic into the natural way users would actually search and click.
-2. Make sure search terms appear naturally in the title, first two body paragraphs, and tags.
-3. Always keep the brand term: 每天烈刻气泡白酒.
-4. If there are hot words, scene words, or colloquial terms, embed them naturally instead of dumping a keyword list.
-5. Write the search-layout first, then the body.
+写作动作：
+1. 先判断这篇内容解决用户决策路径里的哪一步。
+2. 写出一个具体人、具体时间地点、具体物件、具体动作，让用户有“这说的不就是我吗”的代入。
+3. 产品只在能承接这个状态的位置出现；不要把文章改成产品说明书。
+4. 搜索词像真人自问、判断、比较那样进入正文，不能堆成关键词列表。
 ` : '';
 
-  const searchTermBlock = topicSignal ? `## Search terms and long-tail terms — highest priority
-- Core search terms: ${[topicSignal.trafficKeyword, topicSignal.coreConcept].filter(Boolean).join(' / ') || '(none)'}
-- Long-tail terms: ${longTailTerms.join(' / ') || '(derive 3-5 natural long-tail phrases from core search intent)'}
-- Brand term fixed: #每天烈刻气泡白酒
-- Search priority: title > first two paragraphs > tags
-- You may split words into more natural phrases, but keep the searchable root terms.
-- Decide search intent and placement before choosing the narrative structure and writing the full text.
-- These terms are a hard retrieval constraint, but they must not replace the reference article's subject, emotional curve or cadence. Plan their placement before drafting.
+  const searchTermBlock = topicSignal ? `## 搜索词布局与造梦约束
+核心搜索词：${[topicSignal.trafficKeyword, topicSignal.coreConcept].filter(Boolean).join(' / ') || '(none)'}
+长尾词：${longTailTerms.join(' / ') || '(从搜索意图里推导 3-5 个自然长尾词)'}
+固定品牌词：每天烈刻气泡白酒
+可用造梦时刻：${Array.isArray(topicSignal.dreamMoments) ? topicSignal.dreamMoments.join(' / ') : '(根据用户缺口生成 2-3 个生活时刻)'}
+可用物件承载：${Array.isArray(topicSignal.objectCarriers) ? topicSignal.objectCarriers.join(' / ') : '(杯子、桌面、冰箱灯、杯壁水汽、聊天记录、便利店小票等)'}
+
+布局规则：
+1. 核心搜索词进入标题或前 120 字。
+2. 至少两个长尾词进入正文，写成自然语境里的问句、判断句或自我解释。
+3. 标签保留品牌词和核心搜索根，但标签不能替代正文埋词。
+4. 若参考文是氛围/互动/生活切片，搜索词必须服从参考文主题和情绪推进。
+5. 输出前检查：如果删掉搜索词后文章还只是泛泛氛围，说明没有解决用户决策问题；如果只剩产品卖点，说明造梦失败。
 ` : '';
 
   const referencePriorityBlock = refArticle ? `## Reference priority
@@ -883,12 +900,12 @@ Requirements:
 - Product facts may enter only where the reference naturally introduces an object, action or consumption detail. They must not replace the reference theme.
 ` : '';
 
-  const referenceSearchSynthesisBlock = refArticle && topicSignal ? `## Reference + search synthesis — first execution step
-1. Use the complete reference body as the narrative blueprint: preserve its core subject, emotional progression, paragraph functions, cadence, restraint and product exposure ratio.
-2. Build a search placement map before drafting. The exact core search root must appear naturally in the title or first 120 Chinese characters; place at least two distinct long-tail phrases in later body paragraphs; include the brand term once in the body and again in tags.
-3. Tags do not count as body placement. Do not dump keywords, repeat one root mechanically, or add a detached SEO paragraph.
-4. Search phrases must sound like thoughts and actions belonging to the reference's narrator. If a keyword breaks the atmosphere, rewrite the surrounding sentence rather than abandoning the reference theme.
-5. Final check: readers should recognize the reference's subject and emotional movement without seeing copied sentences, while search intent remains retrievable from title, opening, body and tags.
+  const referenceSearchSynthesisBlock = refArticle && topicSignal ? `## 参考笔记 + 决策路径合成（第一执行步骤）
+1. 先提取参考文的真正主题、核心矛盾、段落功能、情绪推进、产品露出比例。
+2. 再判断本次搜索词对应用户决策路径里的哪一步：停留、代入、理解、信任或购买。
+3. 用“用户为什么搜这个词”改造标题和开头；用“她想进入的状态”改造正文的画面；用“她需要相信什么”安排产品事实。
+4. 核心搜索根进入标题或前 120 字；至少两个长尾词进入后文，但必须像参考文叙述者自己的想法。
+5. 参考文主题必须可被读者识别，搜索词必须可被平台检索，产品事实必须自然出现。三者同时成立才算完成。
 ` : '';
 
   const bRouteBlock = framework === 'B' ? (() => {
@@ -1113,6 +1130,37 @@ ${angle.desc}`;
     learningBlock += '（本次无额外小红书参考笔记，依据参考模板、卖点和品牌事实撰写）\n';
   }
 
+  const compactFeedbackLines = [];
+  if (ctx.iterComp.length > 0) {
+    ctx.iterComp.slice(-6).forEach((r, i) => {
+      const before = String(r.修改前 || '').replace(/\s+/g, ' ').slice(0, 70);
+      const after = String(r.修改后 || '').replace(/\s+/g, ' ').slice(0, 70);
+      const reason = String(r.修改理由 || '').replace(/\s+/g, ' ').slice(0, 50);
+      if (before && after) compactFeedbackLines.push(`${i + 1}. ${before} → ${after}${reason ? `｜${reason}` : ''}`);
+    });
+  }
+  const compactFeedbackBlock = compactFeedbackLines.length
+    ? `## 复盘偏好摘要\n这些是人工修改留下的语言偏好，只用于校准句子手感和表达取舍。\n${compactFeedbackLines.join('\n')}`
+    : '';
+
+  const compactReferenceLines = [];
+  if (!refArticle && ctx.reference.length > 0) {
+    ctx.reference.slice(-6).forEach((r, i) => {
+      const title = String(r.标题 || '').trim();
+      const tag = String(r.标签 || '').trim();
+      const content = String(r.文案内容 || '').replace(/\s+/g, ' ').trim();
+      const first = content.slice(0, 80);
+      if (title || first) compactReferenceLines.push(`${i + 1}. ${title ? `《${title}》` : '无标题'}${tag ? `｜${tag}` : ''}｜开头/质感：${first}`);
+    });
+  }
+  const compactReferenceBlock = compactReferenceLines.length
+    ? `## 参考笔记结构信号\n这些是历史参考的标题、标签和开头质感，用来学习平台表达和互动入口；本次主题仍由当前热点、用户路径和造梦 brief 决定。\n${compactReferenceLines.join('\n')}`
+    : '';
+
+  const compactFrameworkExampleBlock = (!refArticle && activeExample)
+    ? `## 框架基础范文骨架\n框架：${framework} · ${fwLabel}\n用途：学习它的段落功能、信息密度和转折节奏，再用本次热点、用户决策路径和造梦 brief 重新落地。\n${String(activeExample).slice(0, 1200)}`
+    : '';
+
   // ⑤ 当前任务
   const fwNote = refArticle
     ? `框架${framework} · ${fwLabel}（内容逻辑参考，结构节奏以上方参考范文为准）`
@@ -1222,17 +1270,57 @@ ${stylePriorityLine}
   const kocToneBlock = (!isPhilMode && toneStyle === 'koc') ? `## ⚡ 本次语气目标\n\n语气、能量、开场方式、句式节奏全部对齐上方注入的参考范例。直接给感受和产品事实，产品好就直接说好，结尾给出明确推荐。` : '';
 
   const naturalnessBlock = `## 输出前自然度自检
-提交前先默读一遍，删掉以下痕迹：
-- 像客服回答的句子：如“很多人问”“有人问”“能接受”“放心”“想尝鲜的抓紧”“直接冲”。
-- 过度网感或 AI 常用热词：如“破防了”“真的绝”“上头了”“狠狠”“封神”，除非参考范例明确使用。
-- 像运营硬拉互动的句子：如突兀的二选一、为了评论而评论的问题。
-- 解释型套话：连续使用“不是那种”“而是”“反而”“关键是”。
-- 故作冷静的散文腔：如“整个人懵了两秒”“不慌不乱”“完全清醒地爽着”“那个时刻很对劲”“敬而远之”。
-- 空泛情绪词：只说“惊艳/好喝/绝了”，但后面没有具体口感或动作。
-- 固定链路：配料表震惊 → 白酒刻板印象 → 第一口不辣 → 解释甜味来源 → 10度微醺 → 49.9购买建议。除非本次叙事发动机明确要求其中某一环，否则不要连着写。
-- 假装事后考证的口头禅：如“后来又翻了一下”“甜的来源后来搞明白了”“才注意到是0糖”。如果不是本篇核心发现，不要用这种补说明结构。
+成稿需要满足这 5 点：
+1. 开头有一个具体动作、判断或现场反应。
+2. 每一段都服务本次内容入口，段落之间有推进。
+3. 至少有一个能被拍出来的物件或场景细节。
+4. 产品事实落在具体体验、选择或信任理由里。
+5. 评论区话术像真实读者会接话的问题或补充。`;
 
-保留真人分享感：短句、具体动作、朋友原话、即时反应、明确判断。不要为了显得高级而压低情绪。`;
+  const leanSystemBlock = `## 生成原则（瘦身版）
+先确定这篇内容解决用户决策路径里的哪一步，再写正文。
+如果有参考笔记，参考笔记的主题、段落功能、情绪推进和产品露出比例优先。
+如果没有参考笔记，基础范文只提供骨架；本次热点、用户路径和造梦 brief 决定正文内容。
+造梦只负责给出具体时刻、物件和状态，不负责把每篇都写成同一种散文腔。
+产品事实只选 1 个主事实，最多 1 个辅助事实。`;
+
+  const leanTaskBlock = `## 本次任务 brief
+框架：${framework} · ${fwLabel}
+方向：${direction || '未指定'}
+主推卖点：${sellingPoint || '未指定'}
+${persona?.name ? `人群：${persona.name}` : ''}
+${scene?.name ? `场景：${scene.name}` : ''}
+${topicSignal?.coreConcept || topicSignal?.trafficKeyword ? `搜索/热点：${topicSignal.coreConcept || topicSignal.trafficKeyword}` : ''}
+
+执行顺序：
+1. 先提炼用户为什么停下来、哪个场景击中她、她需要相信什么。
+2. 再选择一个内容入口：问题、场景、互动封面、产品推荐、评测/对比、教程。
+3. 用一个具体物件承载状态，例如杯子、桌面、冰箱灯、杯壁水汽、聊天记录、便利店小票。
+4. 搜索词自然进入标题、开头或正文判断句；不要另起 SEO 段落。
+5. 输出时只给成稿，不解释方法。`;
+
+  const leanModules = [
+    { name: '00 生成原则（瘦身版）', content: leanSystemBlock },
+    ...(referenceSearchSynthesisBlock ? [{ name: '01 参考笔记与搜索合成', content: referenceSearchSynthesisBlock }] : []),
+    ...(imitBlock ? [{ name: '02 参考母本', content: imitBlock }] : []),
+    ...(topicSignalBlock ? [{ name: '03 用户决策路径 brief', content: topicSignalBlock }] : []),
+    ...(searchTermBlock ? [{ name: '04 搜索词与造梦约束', content: searchTermBlock }] : []),
+    { name: '05 本次任务', content: leanTaskBlock },
+    ...(compactFrameworkExampleBlock ? [{ name: '05-1 框架基础范文骨架', content: compactFrameworkExampleBlock }] : []),
+    ...(compactFeedbackBlock ? [{ name: '05-2 飞书复盘偏好摘要', content: compactFeedbackBlock }] : []),
+    ...(compactReferenceBlock ? [{ name: '05-3 飞书参考笔记结构信号', content: compactReferenceBlock }] : []),
+    { name: '06 必要品牌事实', key: 'brand', content: brandBlock.slice(0, 2600) },
+    ...(sellingPointBlock ? [{ name: '07 选中卖点详情', content: sellingPointBlock }] : []),
+    ...(materialBlock ? [{ name: '08 人群/场景材料', content: materialBlock }] : []),
+    ...(productBlock ? [{ name: '09 产品信息补充', key: 'product', content: productBlock.slice(0, 2200) }] : []),
+    { name: '10 输出前检查', content: naturalnessBlock },
+    { name: '11 输出格式', key: isPhilMode ? 'output-phil' : 'output-single', content: outputBlock },
+  ];
+
+  if (!isPhilMode) {
+    const prompt = leanModules.map(m => m.content).join('\n\n---\n\n');
+    return { prompt, modules: leanModules };
+  }
 
   const modules = [
     ...(referenceSearchSynthesisBlock ? [{ name: '00 参考主题与搜索词融合（最高执行优先级）', content: referenceSearchSynthesisBlock }] : []),
@@ -1526,6 +1614,33 @@ function findOutputRecordIdByTitle(title) {
   return '';
 }
 
+function findOutputRecordIdByReference(referenceUrl) {
+  const needle = String(referenceUrl || '').trim();
+  if (!needle) return '';
+  const out = larkCli([
+    'base', '+record-list',
+    '--base-token', OUTPUT_BASE,
+    '--table-id', OUTPUT_TABLE,
+    '--field-id', 'fldYdip12B',
+    '--field-id', 'fldNhY7hvG',
+    '--limit', '200',
+    '--format', 'json',
+  ]);
+  const rows = out.data?.data || [];
+  const fields = out.data?.fields || [];
+  const ids = out.data?.record_id_list || [];
+  const refIdx = fields.indexOf('参考链接');
+  const publishedIdx = fields.indexOf('是否发布');
+  if (refIdx < 0) return '';
+  const textOf = value => Array.isArray(value) ? value.join(' ') : String(value || '');
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const ref = textOf(rows[i]?.[refIdx]);
+    const published = publishedIdx >= 0 ? textOf(rows[i]?.[publishedIdx]) : '否';
+    if (ref.includes(needle) && published !== '是') return ids[i] || '';
+  }
+  return '';
+}
+
 function readOutputRecordBody(recordId) {
   if (!recordId) return '';
   const out = larkCli([
@@ -1540,9 +1655,35 @@ function readOutputRecordBody(recordId) {
   return cellText(fields[OUTPUT_FIELDS.正文] || fields.正文 || '');
 }
 
+function readOutputRecordSnapshot(recordId) {
+  if (!recordId) return { title: '', body: '', reference: '', images: [] };
+  const out = larkCli([
+    'base', '+record-get',
+    '--base-token', OUTPUT_BASE,
+    '--table-id', OUTPUT_TABLE,
+    '--record-id', recordId,
+    '--field-id', 'fld8r1kMve',
+    '--field-id', 'fld7V7kUMc',
+    '--field-id', 'fldwBz8ZZm',
+    '--field-id', 'fldYdip12B',
+    '--format', 'json',
+  ]);
+  const names = out.data?.fields || [];
+  const row = out.data?.data?.[0] || [];
+  const value = name => row[names.indexOf(name)];
+  return {
+    title: String(value('标题') || '').trim(),
+    body: String(value('正文') || '').trim(),
+    images: Array.isArray(value('图片')) ? value('图片') : [],
+    reference: String(value('参考链接') || '').trim(),
+  };
+}
+
 function uploadBaseAttachments(recordId, fieldId, filePaths) {
   const files = (filePaths || []).map(resolvePoolImage);
-  if (!recordId || !fieldId || !files.length) return { count: 0, files: [] };
+  if (!recordId) throw new Error('附件上传缺少发布表 recordId');
+  if (!fieldId) throw new Error('附件上传缺少飞书图片字段 ID');
+  if (!files.length) throw new Error('附件上传没有本地成品图');
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'market-hub-base-attach-'));
   try {
     const args = [
@@ -1688,11 +1829,22 @@ function runClaudeAsync(prompt, timeoutMs = 90000) {
   if (provider !== 'claude') {
     return (async () => {
       try {
-        await postLocalJson('http://127.0.0.1:8765/gpt_launch', { rotate: false }, 30000);
+        await postLocalJson('http://127.0.0.1:8766/gpt_launch', { rotate: false }, 30000);
       } catch (e) {
         throw new Error(`GPT Plus 文案引擎未能打开：${e.message}`);
       }
-      const data = await postLocalJson('http://127.0.0.1:8765/gpt_text', {
+      let cdpReady = false;
+      for (let attempt = 0; attempt < 35; attempt++) {
+        try {
+          await getLocalJson('http://127.0.0.1:9223/json/version', 1500);
+          cdpReady = true;
+          break;
+        } catch {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      if (!cdpReady) throw new Error('GPT Profile 已启动，但浏览器在 35 秒内没有准备好');
+      const data = await postLocalJson('http://127.0.0.1:8766/gpt_text', {
         prompt,
         timeout: Math.ceil(Math.max(timeoutMs, 90000) / 1000),
       }, Math.max(timeoutMs + 60000, 180000));
@@ -1769,6 +1921,8 @@ function loadTopicJson(file, fallback = null) {
 
 function compactTopicSignals(signals) {
   const note = row => ({
+    id: row.id || '',
+    type: row.type || '',
     title: row.title,
     keyword: row.keyword || '',
     source: row.source || '',
@@ -1776,6 +1930,7 @@ function compactTopicSignals(signals) {
     collects: row.collects || 0,
     comments: row.comments || 0,
     cover: row.cover || '',
+    url: row.url || '',
   });
   return {
     generatedAt: signals.generatedAt,
@@ -1791,6 +1946,7 @@ function compactTopicSignals(signals) {
 }
 
 function buildTopicDigestPrompt(signals) {
+  const insight = selectedMarketInsight();
   return `你是每天烈刻气泡白酒的选题编辑。下面是三套方法合并后的真实信号：
 1. xiaohongshu-ops：首页推荐流里的高互动表达与视觉形式；
 2. xhs-content-plan：酒饮相关关键词按热门/最新检索得到的笔记、搜索联想与话题；
@@ -1798,8 +1954,12 @@ function buildTopicDigestPrompt(signals) {
 
 品牌任务：卖气泡白酒，兼顾强销售转化与场景种草。产品事实由后续 Market Hub 品牌事实模块提供，本步骤不得编造功效、价格、原料、度数或销量。
 
+本次市场洞察（热点必须服务这条洞察）：
+${JSON.stringify(insight || {}, null, 2)}
+
 生成 3-5 张“今日选题卡”。每张卡包含：
 - trafficKeyword：平台已有的大流量词，只负责被找到；
+- searchTerms：本次正文必须布局的核心搜索词与长尾词，优先取市场洞察；
 - coreConcept：本篇自己建立的记忆概念，负责被记住。优先 6-14 个字，把产品功效翻译成一种让人想进入的身份、状态或场景；禁止写成“气泡白酒的XX”“XX气泡白酒”这类产品说明，也不能只是品牌口号；
 - bridge：流量词与气泡白酒的自然关联；
 - framework：A/B/C/D 之一，不改变既有框架定义；
@@ -1807,12 +1967,14 @@ function buildTopicDigestPrompt(signals) {
 - direction：带入撰写台“补充方向”的一句操作指令；
 - rationale：为什么今天值得测试，必须引用信号，不得声称没有时间序列支持的上涨百分比；
 - visual：首图/图组建议，至少保留一张真实产品锚点图；
-- evidence：1-3 条真实证据，复制 title/source/likes/cover，不得虚构；
+- evidence：1-3 条真实证据，复制 title/source/likes/cover/url，不得虚构；优先选择带可读取 url 的具体笔记；
+- evidence：1-3 条真实证据，复制 title/source/likes/cover/url，不得虚构；优先选择 type=normal、带可读取 url、正文可用于改写的图文笔记，视频只能作为趋势证据，不得排在图文仿写候选第一位；
+- evidence 第 1 条就是后续仿写母本：标题与 keyword 必须直接命中本卡的具体生活场景/用户问题；相关性高于点赞量。泛酒单、泛果酒推荐、聚会内容不能替代“下班独处小酌”，除非卡片本身就是这些主题。
 - sources：实际贡献到该卡的 skill 名称数组；
 - score：0-100；kind：行业需求 / 平台表达 / 跨界热点。
 
 流量大词不能压过 coreConcept。coreConcept 要像一个用户愿意复述、搜索或拿来形容自己的新说法，而不是品类词换序。跨界热点关联弱时宁可不选。输出严格 JSON，不要 Markdown：
-{"generatedAt":"...","recommendations":[{"id":"topic-1","kind":"行业需求","trafficKeyword":"","coreConcept":"","bridge":"","framework":"B","intervention":"标题开头与标签","direction":"","rationale":"","visual":"","score":82,"sources":["xhs-content-plan"],"evidence":[{"title":"","source":"","likes":0,"cover":""}]}]}
+{"generatedAt":"...","recommendations":[{"id":"topic-1","kind":"行业需求","trafficKeyword":"","searchTerms":[""],"coreConcept":"","bridge":"","framework":"B","intervention":"标题开头与标签","direction":"","rationale":"","visual":"","score":82,"sources":["xhs-content-plan"],"evidence":[{"title":"","source":"","likes":0,"cover":"","url":""}]}]}
 
 真实信号：
 ${JSON.stringify(compactTopicSignals(signals), null, 2)}`;
@@ -1822,7 +1984,21 @@ function parseTopicDigest(raw) {
   const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
   const match = cleaned.match(/\{[\s\S]*\}/);
   if (!match) throw new Error('选题整理未返回 JSON');
-  const parsed = JSON.parse(match[0]);
+  let jsonText = match[0];
+  let inString = false;
+  let escaped = false;
+  let repaired = '';
+  for (const ch of jsonText) {
+    if (inString && ch.charCodeAt(0) < 0x20) {
+      repaired += ' ';
+      continue;
+    }
+    repaired += ch;
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\' && inString) { escaped = true; continue; }
+    if (ch === '"') inString = !inString;
+  }
+  const parsed = JSON.parse(repaired);
   if (!Array.isArray(parsed.recommendations)) throw new Error('选题整理缺少 recommendations');
   parsed.recommendations = parsed.recommendations.slice(0, 5).map((item, index) => ({
     ...item,
@@ -1834,6 +2010,62 @@ function parseTopicDigest(raw) {
   return parsed;
 }
 
+app.get('/api/insights', (req, res) => {
+  res.json({ ok: true, ...loadMarketInsights(), tableId: MARKET_INSIGHT_TABLE });
+});
+
+app.post('/api/insights/preview-prompt', async (req, res) => {
+  try {
+    const manualBehavior = req.body?.manualBehavior ?? loadMarketInsights().manualBehavior ?? '';
+    if (req.body?.forceCollect === true || !loadTopicJson(TOPIC_SIGNALS_PATH, null)) {
+      await runTopicCollector();
+    }
+    const signals = loadTopicJson(TOPIC_SIGNALS_PATH, null);
+    if (!signals || signals.error) throw new Error(signals?.error || '没有可用搜索信号');
+    const prompt = buildMarketInsightPrompt(signals, manualBehavior);
+    res.json({ ok: true, prompt, signals: compactInsightSignals(signals), manualBehavior });
+  } catch (error) {
+    res.json({ ok: false, error: error.message });
+  }
+});
+
+app.post('/api/insights/refresh', async (req, res) => {
+  if (insightRefreshRunning) return res.json({ ok: false, error: '市场洞察正在生成，请稍后查看' });
+  insightRefreshRunning = true;
+  try {
+    if (req.body?.forceCollect === true || !loadTopicJson(TOPIC_SIGNALS_PATH, null)) {
+      await runTopicCollector();
+    }
+    const signals = loadTopicJson(TOPIC_SIGNALS_PATH, null);
+    if (!signals || signals.error) throw new Error(signals?.error || '没有可用搜索信号');
+    const manualBehavior = String(req.body?.manualBehavior ?? loadMarketInsights().manualBehavior ?? '');
+    const prompt = buildMarketInsightPrompt(signals, manualBehavior);
+    const raw = await runClaudeAsync(prompt, 300000);
+    const parsed = parseMarketInsights(raw);
+    const state = saveMarketInsights({
+      ...parsed,
+      selectedId: '',
+      manualBehavior,
+      lastPrompt: prompt,
+      lastSignals: compactInsightSignals(signals),
+    });
+    res.json({ ok: true, ...state, tableId: MARKET_INSIGHT_TABLE });
+  } catch (error) {
+    res.json({ ok: false, error: error.message });
+  } finally {
+    insightRefreshRunning = false;
+  }
+});
+
+app.post('/api/insights/select', (req, res) => {
+  try {
+    const result = selectMarketInsight(String(req.body?.id || '').trim());
+    res.json({ ok: true, ...result.state, selected: result.insight, tableId: MARKET_INSIGHT_TABLE });
+  } catch (error) {
+    res.json({ ok: false, error: error.message });
+  }
+});
+
 app.get('/api/topics', (req, res) => {
   const data = loadTopicJson(TOPIC_RECOMMENDATIONS_PATH, { generatedAt: null, recommendations: [] });
   const signals = loadTopicJson(TOPIC_SIGNALS_PATH, null);
@@ -1844,6 +2076,7 @@ app.get('/api/topics', (req, res) => {
     signalGeneratedAt: signals?.generatedAt || null,
     skillStatus: signals?.skills || null,
     signalErrors: signals?.errors || [],
+    marketInsight: selectedMarketInsight(),
   });
 });
 
@@ -1856,7 +2089,7 @@ app.post('/api/topics/config', (req, res) => {
     const body = req.body || {};
     const current = loadTopicConfig();
     const seeds = Array.isArray(body.seeds)
-      ? body.seeds.map(v => String(v || '').trim()).filter(Boolean).slice(0, 20)
+      ? [...new Set(body.seeds.map(v => String(v || '').trim()).filter(Boolean))].slice(0, 20)
       : current.seeds;
     const sources = body.sources && typeof body.sources === 'object'
       ? Object.fromEntries(Object.entries(current.sources).map(([key, val]) => [key, key in body.sources ? !!body.sources[key] : val]))
@@ -2334,10 +2567,234 @@ app.post('/api/references/select', (req, res) => {
 
 // ─── 批量生成 ──────────────────────────────────────────────────────
 const dailyRunStore = new Map();
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MARKET_INSIGHT_TTL_MS = 7 * DAY_MS;
+const TOPIC_DIGEST_TTL_MS = 3 * DAY_MS;
 
 function dailyLog(job, message) {
   job.logs.push(`[${new Date().toLocaleTimeString('zh-CN', { hour12: false })}] ${message}`);
   if (job.logs.length > 100) job.logs.splice(0, job.logs.length - 100);
+}
+
+function parseTimeMs(value) {
+  const time = Date.parse(value || '');
+  return Number.isFinite(time) ? time : 0;
+}
+
+function isFreshTimestamp(value, ttlMs) {
+  const time = parseTimeMs(value);
+  return !!time && Date.now() - time < ttlMs;
+}
+
+function pickMarketInsightForRun({ forceInsight = false } = {}) {
+  const state = loadMarketInsights();
+  if (forceInsight || !isFreshTimestamp(state.generatedAt, MARKET_INSIGHT_TTL_MS) || !Array.isArray(state.insights) || !state.insights.length) {
+    return { insight: null, state, needsRefresh: true, reason: forceInsight ? '手动强制刷新' : '库存为空或已超过 7 天' };
+  }
+  const candidates = [...state.insights].filter(item => item.coreSearchTerm);
+  const unused = candidates.filter(item => !item.usedAt);
+  const pool = unused.length ? unused : candidates;
+  const picked = [...pool].sort((a, b) => {
+    const usedDelta = parseTimeMs(a.usedAt) - parseTimeMs(b.usedAt);
+    if (usedDelta) return usedDelta;
+    return Number(b.score || 0) - Number(a.score || 0);
+  })[0] || null;
+  if (!picked) return { insight: null, state, needsRefresh: true, reason: '没有可用市场洞察' };
+  state.selectedId = picked.id;
+  saveMarketInsights(state);
+  return { insight: picked, state, needsRefresh: false, reason: unused.length ? '使用未消耗洞察库存' : '洞察库存已轮完，复用最早使用的一条' };
+}
+
+function markMarketInsightUsed(insightId, patch = {}) {
+  const state = loadMarketInsights();
+  const target = state.insights.find(item => item.id === insightId);
+  if (target) {
+    Object.assign(target, patch, { usedAt: new Date().toISOString() });
+    state.selectedId = insightId;
+    saveMarketInsights(state);
+  }
+  return target;
+}
+
+function loadMarketInsights() {
+  return loadTopicJson(MARKET_INSIGHTS_PATH, {
+    generatedAt: null,
+    category: '低度酒 / 气泡白酒',
+    selectedId: '',
+    manualBehavior: '',
+    lastPrompt: '',
+    lastSignals: null,
+    insights: [],
+  });
+}
+
+function saveMarketInsights(state) {
+  fs.writeFileSync(MARKET_INSIGHTS_PATH, JSON.stringify(state, null, 2), 'utf8');
+  return state;
+}
+
+function compactInsightSignals(signals) {
+  const compact = compactTopicSignals(signals || {});
+  return {
+    seeds: compact.seeds,
+    hotQueries: compact.hotQueries,
+    searchNotes: compact.searchNotes.slice(0, 24),
+    topics: compact.topics.slice(0, 18),
+  };
+}
+
+function normalizeBehaviorChain(raw) {
+  return String(raw || '')
+    .split(/\r?\n|[>→]/)
+    .map(v => v.replace(/^\s*[-*、\d.]+\s*/, '').trim())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+function buildMarketInsightPrompt(signals, manualBehavior = '') {
+  const seedTerms = normalizeBehaviorChain(manualBehavior);
+  const seedBlock = seedTerms.length
+    ? `\n\n## 人工输入的种子词 / 假设词\n${seedTerms.map((item, i) => `${i + 1}. ${item}`).join('\n')}\n\n这些不是完整路径。请把它们当作入口线索，反推出真实用户可能怎样一步步搜索、比较、相信和行动。`
+    : '\n\n## 人工输入的种子词 / 假设词\n暂无。请从真实信号里挑出最有生产价值的入口词，再反推用户决策路径。';
+  return `你是每天烈刻气泡白酒的市场洞察编辑。你的任务不是列关键词，而是从一个“可能会被搜的词”反推用户决策路径。
+
+核心问题：
+1. 用户为什么会被这个词吸引并停下来？
+2. 她正被哪个具体场景击中？
+3. 她看到什么内容会有“这说的不就是我吗”的代入感？
+4. 她需要看到什么证据才会开始相信？
+5. 她从感兴趣走到咨询、下单或收藏，需要跨过哪一个顾虑？
+
+请输出 3-5 条可直接驱动热点抓取和写作的洞察。每条洞察只解决一个主要决策阶段，结构必须完整：
+- coreSearchTerm：用户最可能真的输入的核心搜索词。
+- longTailTerms：3-5 个继续搜索词，必须体现用户从模糊兴趣到具体顾虑的递进。
+- searchBehaviorChain：从种子词反推出来的搜索路径，写成 4-6 步；每一步都要像真实用户会搜的词。
+- searchIntent：解释她为什么这样搜，以及这一搜背后的真实需求。
+- userProblem：她当下遇到的问题，不要写成品牌想表达的卖点。
+- decisionStage：只能选 停留 / 代入 / 理解 / 信任 / 购买。
+- desiredState：她想进入的状态，也就是内容要帮她“造梦”的方向。
+- dreamMoments：三个被产品改变的具体时刻。每个时刻都要有：人物状态、时间地点、动作、物件、情绪变化。
+- objectCarriers：承载欲望的物件，优先是杯子、冰箱灯、外卖袋、桌面、杯壁水汽、聊天记录、便利店小票这类生活物件；产品只作为其中一个物件。
+- productBridge：每天烈刻用一个真实产品事实自然接住，不要堆资料。
+- contentTask：这篇内容应该完成的单一任务。
+- referenceNeed：后续应该抓什么样的图文笔记作为母本，比如互动封面、氛围文字图、产品推荐图、生活切片。
+- evidence：列出真实信号依据。
+
+判断标准：
+- 好洞察会像“用户真的会这么搜”，不是品牌自己想说什么。
+- 好造梦不是漂亮形容词，而是三个能拍出来、能写进正文、能放进封面的生活时刻。
+- 搜索词布局要服务内容主题：核心词进标题或前 120 字，长尾词进正文的自然问句、判断句或评论引导。
+- 只使用下面真实信号里出现或能直接组合出的搜索表达，不编造搜索量、增幅和用户规模。
+- “0糖0卡”只能客观陈述，不能写成0负担、健康、减肥或身体负担更轻；气泡清爽不能推导成解腻、刮油；低度不能推导成不醉、不上头。
+- 不输出空泛人群画像、复杂内容矩阵、传播策略或多余分类。
+
+产品事实：
+${loadProductInfo().slice(0, 8000)}
+
+输出严格 JSON：
+{"generatedAt":"","category":"低度酒 / 气泡白酒","insights":[{"id":"insight-1","name":"","coreSearchTerm":"","longTailTerms":[""],"searchBehaviorChain":[""],"searchIntent":"","userProblem":"","decisionStage":"代入","contentTask":"","productBridge":"","scene":"","desiredState":"","objectCarriers":[""],"dreamMoments":[""],"referenceNeed":"","evidence":[""],"score":85}]}
+${seedBlock}
+
+真实搜索信号：
+${JSON.stringify(compactInsightSignals(signals), null, 2)}`;
+}
+
+function parseMarketInsights(raw) {
+  const cleaned = String(raw || '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('市场洞察没有返回 JSON');
+  const parsed = JSON.parse(match[0]);
+  if (!Array.isArray(parsed.insights)) throw new Error('市场洞察缺少 insights');
+  const allowedStages = new Set(['停留', '代入', '理解', '信任', '购买']);
+  parsed.generatedAt = new Date().toISOString();
+  parsed.category = parsed.category || '低度酒 / 气泡白酒';
+  parsed.insights = parsed.insights.slice(0, 5).map((item, index) => ({
+    id: item.id || `insight-${Date.now()}-${index}`,
+    name: String(item.name || item.coreSearchTerm || `洞察 ${index + 1}`).trim(),
+    coreSearchTerm: String(item.coreSearchTerm || '').trim(),
+    longTailTerms: Array.isArray(item.longTailTerms) ? item.longTailTerms.map(String).map(v => v.trim()).filter(Boolean).slice(0, 5) : [],
+    searchBehaviorChain: Array.isArray(item.searchBehaviorChain) ? item.searchBehaviorChain.map(String).map(v => v.trim()).filter(Boolean).slice(0, 8) : [],
+    searchIntent: String(item.searchIntent || '').trim(),
+    userProblem: String(item.userProblem || '').trim(),
+    decisionStage: allowedStages.has(item.decisionStage) ? item.decisionStage : '代入',
+    contentTask: String(item.contentTask || '').trim(),
+    productBridge: String(item.productBridge || '').trim(),
+    scene: String(item.scene || '').trim(),
+    desiredState: String(item.desiredState || '').trim(),
+    objectCarriers: Array.isArray(item.objectCarriers) ? item.objectCarriers.map(String).map(v => v.trim()).filter(Boolean).slice(0, 5) : [],
+    dreamMoments: Array.isArray(item.dreamMoments) ? item.dreamMoments.map(String).map(v => v.trim()).filter(Boolean).slice(0, 3) : [],
+    referenceNeed: String(item.referenceNeed || '').trim(),
+    evidence: Array.isArray(item.evidence) ? item.evidence.map(String).filter(Boolean).slice(0, 3) : [],
+    score: Math.max(0, Math.min(100, Number(item.score) || 0)),
+  })).filter(item => item.coreSearchTerm && item.userProblem);
+  if (!parsed.insights.length) throw new Error('市场洞察没有有效搜索词');
+  return parsed;
+}
+
+function findMarketInsightRecordId(name) {
+  const listed = larkCli([
+    'base', '+record-list', '--base-token', OUTPUT_BASE,
+    '--table-id', MARKET_INSIGHT_TABLE, '--limit', '100',
+    '--field-id', MARKET_INSIGHT_NAME_FIELD, '--format', 'json',
+  ]);
+  const rows = listed.data?.data || [];
+  const ids = listed.data?.record_id_list || [];
+  const fields = listed.data?.field_id_list || [];
+  const nameIndex = fields.indexOf(MARKET_INSIGHT_NAME_FIELD);
+  const matchIndex = rows.findIndex(row => String(row[nameIndex] || '').trim() === String(name || '').trim());
+  return matchIndex >= 0 ? ids[matchIndex] : '';
+}
+
+function writeInsightToFeishu(insight, status = '本次采用') {
+  const extendedEvidence = [
+    ...(insight.evidence || []),
+    insight.searchIntent ? `搜索意图：${insight.searchIntent}` : '',
+    insight.desiredState ? `想进入的状态：${insight.desiredState}` : '',
+    (insight.searchBehaviorChain || []).length ? `搜索行为链：${insight.searchBehaviorChain.join(' → ')}` : '',
+    (insight.objectCarriers || []).length ? `物件承载：${insight.objectCarriers.join(' / ')}` : '',
+    (insight.dreamMoments || []).length ? `造梦三时刻：\n${insight.dreamMoments.map((v, i) => `${i + 1}. ${v}`).join('\n')}` : '',
+    insight.referenceNeed ? `后续参考笔记要求：${insight.referenceNeed}` : '',
+  ].filter(Boolean);
+  const fields = {
+    洞察名称: insight.name,
+    品类: '低度酒 / 气泡白酒',
+    核心搜索词: insight.coreSearchTerm,
+    长尾词: insight.longTailTerms.join('\n'),
+    用户问题: insight.userProblem,
+    决策阶段: insight.decisionStage,
+    内容任务: insight.contentTask,
+    产品承接: insight.productBridge,
+    使用场景: insight.scene,
+    信号证据: extendedEvidence.join('\n'),
+    状态: status,
+  };
+  const existingId = findMarketInsightRecordId(insight.name);
+  if (existingId) {
+    updateBaseRecord(MARKET_INSIGHT_TABLE, existingId, fields, OUTPUT_BASE);
+    return existingId;
+  }
+  const result = writeToBase(MARKET_INSIGHT_TABLE, fields, OUTPUT_BASE);
+  const directId = extractRecordIdFromWrite(result);
+  if (directId) return directId;
+  return findMarketInsightRecordId(insight.name);
+}
+
+function selectMarketInsight(insightId, { writeFeishu = true } = {}) {
+  const state = loadMarketInsights();
+  const insight = state.insights.find(item => item.id === insightId);
+  if (!insight) throw new Error('市场洞察不存在');
+  state.selectedId = insight.id;
+  if (writeFeishu && !insight.feishuRecordId) insight.feishuRecordId = writeInsightToFeishu(insight);
+  saveMarketInsights(state);
+  const current = loadTopicConfig();
+  const seeds = [insight.coreSearchTerm, ...insight.longTailTerms].filter(Boolean).slice(0, 8);
+  saveTopicConfig({ ...current, seeds: seeds.length ? seeds : current.seeds });
+  return { state, insight };
+}
+
+function selectedMarketInsight() {
+  const state = loadMarketInsights();
+  return state.insights.find(item => item.id === state.selectedId) || null;
 }
 
 function postLocalJson(url, payload, timeoutMs = 30000) {
@@ -2396,19 +2853,84 @@ function buildImageOverlayTexts(body, count) {
     .replace(/^\s*(?:备选标题|标题\d*|评论区话术|优化方向|推断依据|框架选择理由|目标人群|主次卖点逻辑)\s*[：:].*$/gm, '')
     .replace(/^\s*\d+[\.、]\s*/gm, '')
     .replace(/#[^\s#]+/g, '')
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line && !/^(---|标题|正文|评论|优化|推断|备选)/.test(line))
-    .join(' ');
+    .trim();
+  const paragraphs = text.split(/\n\s*\n+/)
+    .map(p => p.split('\n').map(line => line.trim()).filter(Boolean).join(' '))
+    .filter(p => p.length >= 36 && p.length <= 180)
+    .filter(p => !/^(---|标题|正文|评论|优化|推断|备选)/.test(p));
+  const atmosphereWords = /选择|未来|生活|城市|离开|回来|那年|春天|夏天|秋天|冬天|后来|当时|终于|仍然|自己|长大|想去|想要|困扰|犹豫|自由|远方|某一天|好像|突然|明白|记得/;
+  const salesWords = /第一口|入口|回甘|青提|菠萝|气泡|白酒|酒液|酒精|度|0糖|配料|购买|下单|链接|火锅|烧烤|聚会|朋友家|一瓶|两瓶|值得买/;
+  const ranked = paragraphs
+    .map((p, index) => ({ p, index, score: (atmosphereWords.test(p) ? 8 : 0) - (salesWords.test(p) ? 12 : 0) + Math.min(p.length, 120) / 40 }))
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .filter(item => item.score > 0)
+    .map(item => item.p);
   const clean = text.replace(/\s+/g, ' ').trim();
-  const sentences = clean
-    .split(/(?<=[\u3002\uff01\uff1f!?])/)
-    .map(s => s.trim())
-    .filter(s => s.length >= 12 && s.length <= 90 && !/备选标题|评论区话术|优化方向|推断依据|标题\d/.test(s));
+  const candidates = ranked.length ? ranked : paragraphs.filter(p => !salesWords.test(p));
   return Array.from({ length: count }, (_, i) => {
-    const s = sentences[i % Math.max(1, sentences.length)] || clean.slice(i * 35, i * 35 + 65);
-    return s.slice(0, 72);
+    const source = candidates[i % Math.max(1, candidates.length)] || clean.slice(i * 70, i * 70 + 110);
+    const sentences = source.split(/(?<=[。！？!?])/).map(s => s.trim()).filter(Boolean);
+    const selected = sentences.slice(0, 3).join('');
+    return (selected || source).slice(0, 120);
   });
+}
+
+function buildImageOverlayTexts(body, count) {
+  const clean = String(body || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/^#+\s*/gm, '')
+    .replace(/#[^\s#]+/g, '')
+    .replace(/未成年人及孕妇禁止饮酒。?/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const salesWords = /每天烈刻|气泡白酒|白酒|青提|菠萝|口感|入口|回甘|0糖|0卡|配料|购买|下单|链接|推荐|适合|喝什么|朋友家|火锅|烧烤|测评|好喝|不亏|一瓶|两瓶|价格|酒精|度数|孕妇|未成年/;
+  const riskyWords = /崩溃|散掉|治愈|修好|恢复|救命|续命|解药|靠酒|断片|不上头|不醉/;
+  const sentenceParts = clean
+    .split(/(?<=[。！？!?…])\s*|[；;]/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  const candidates = [];
+  for (const sentence of sentenceParts) {
+    const compact = sentence.replace(/[，,]\s*/g, '，').trim();
+    if (compact.length < 10 || compact.length > 58) continue;
+    if (salesWords.test(compact) || riskyWords.test(compact)) continue;
+    candidates.push(compact);
+  }
+  const paragraphs = String(body || '')
+    .split(/\n\s*\n+/)
+    .map(p => p.replace(/\s+/g, ' ').trim())
+    .filter(p => p.length >= 22 && p.length <= 80 && !salesWords.test(p) && !riskyWords.test(p));
+  const fallback = candidates.length ? candidates : paragraphs;
+  const safeFallbacks = [
+    '今晚只想把自己慢慢放回来。',
+    '人要有一点属于自己的安静。',
+    '把今天放轻一点，再回到生活里。',
+    '留一盏灯，也留一点松弛给自己。',
+  ];
+  if (/崩溃|喝酒|靠酒|治愈|修好|恢复|难喝|百威|rio/i.test(clean)) {
+    return Array.from({ length: count }, (_, i) => safeFallbacks[i % safeFallbacks.length]);
+  }
+  return Array.from({ length: count }, (_, i) => {
+    const source = fallback[i % Math.max(1, fallback.length)] || safeFallbacks[i % safeFallbacks.length];
+    return source.slice(0, 58);
+  });
+}
+
+function isEngagementCoverReference(reference) {
+  const text = [reference?.title, reference?.body, reference?.tags, reference?.purpose, reference?.angle].join(' ');
+  return /想囤点|求推荐|有没有|友友|评论|心情|崩溃|难喝|喝点酒|小酌喝什么|推荐吗|问一下/.test(text);
+}
+
+function buildEngagementCoverHooks(reference, draft, count) {
+  const title = String(reference?.title || '');
+  const body = String(draft?.body || '');
+  const hooks = [];
+  if (/囤点/.test(title) || /推荐/.test(title)) hooks.push('想囤一点晚上的松弛，求推荐');
+  if (/下班|小酌|微醺/.test(body)) hooks.push('下班后想小酌一杯，有推荐吗？');
+  hooks.push('一个人小酌喝什么，友友们有答案吗？');
+  hooks.push('想找一瓶不难入口的晚安小酒');
+  return Array.from({ length: count }, (_, i) => hooks[i % hooks.length]);
 }
 
 const waitMs = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -2492,9 +3014,15 @@ function readCompetitorReferences(limit = 200) {
       category: cellText(get(COMPETITOR_FIELDS.category)),
       angle: cellText(get(COMPETITOR_FIELDS.angle)),
       brand: cellText(get(COMPETITOR_FIELDS.brand)),
+      likes: Number(get(COMPETITOR_FIELDS.likes) || 0),
+      collects: Number(get(COMPETITOR_FIELDS.collects) || 0),
+      comments: Number(get(COMPETITOR_FIELDS.comments) || 0),
+      shares: Number(get(COMPETITOR_FIELDS.shares) || 0),
+      commentText: cellText(get(COMPETITOR_FIELDS.commentText)),
+      commentImages: asArrayCell(get(COMPETITOR_FIELDS.commentImages)),
       attachments,
     };
-  }).filter(r => r.id && r.url && r.attachments.length >= 3);
+  }).filter(r => r.id && r.url && r.attachments.length >= 1);
 }
 
 function scoreReferenceForTopic(ref, topic) {
@@ -2517,6 +3045,11 @@ function scoreReferenceForTopic(ref, topic) {
   if (/无效|失败|重排失败|不合格/.test(ref.imageStatus + ref.purpose + ref.title)) score -= 50;
   if (/视频/.test(ref.category)) score -= 8;
   if (/测评|攻略|揭秘|真相|0失误|信息图/.test(ref.title) && !/可直接换图/.test(ref.purpose)) score -= 20;
+  const ces = ref.likes + ref.collects + ref.comments * 4 + ref.shares * 4;
+  if (ces > 0) score += Math.min(18, Math.log10(ces + 1) * 3);
+  const effectiveCommentCount = String(ref.commentText || '').split(/\r?\n/).filter(line => /^\d+\.\s+/.test(line)).length;
+  score += Math.min(6, effectiveCommentCount / 2);
+  score += Math.min(6, ref.commentImages.length);
   score += Math.min(ref.attachments.length, 9);
   return score;
 }
@@ -2524,14 +3057,17 @@ function scoreReferenceForTopic(ref, topic) {
 function isAutoImageReferenceUsable(ref) {
   const text = [ref.title, ref.body, ref.tags, ref.purpose, ref.angle, ref.category].join(' ');
   const mlCount = (text.match(/\b\d+\s*ml\b/gi) || []).length;
-  if (/视频/.test(ref.category)) return false;
+  // Only confirmed image/text notes may enter the image-post pipeline.
+  // Empty legacy classifications are not evidence that a note is image/text.
+  if (!/文案|图文/.test(ref.category) || /视频/.test(ref.category)) return false;
   if (/无效|失败|不合格|重排失败|跳过/.test(ref.imageStatus + ref.purpose + ref.title)) return false;
   if (/求个名字|取个名字|叫什么|不带.+字/.test(text)) return false;
+  if (String(ref.body || '').replace(/\s+/g, '').length < 80) return false;
   if (/配方|公式|教程|攻略|揭秘|真相|测评|认识一款酒|信息图|知识点|一图秒懂|懂酒达人|基酒|酒单|合集|清单|无限回购|严选|穷人版/.test(ref.title)) return false;
   if (mlCount >= 2 && /调酒|鸡尾酒|金酒|糖浆|柠檬汁|菠萝汁/.test(text)) return false;
   const hasUsableScene = /氛围|生活|居家|聚会|餐桌|桌面|冰杯|酒饮|微醺|喝酒日常|调酒|鸡尾酒|露营|烧烤|便利店/.test(text);
   const hasImagePurpose = /图片参考|可直接换图|热点话题/.test(ref.purpose);
-  return hasUsableScene && hasImagePurpose && ref.attachments.length >= 3;
+  return hasUsableScene && hasImagePurpose && ref.attachments.length >= 1;
 }
 
 function chooseReferenceForTopic(topic) {
@@ -2577,6 +3113,8 @@ function parseDailyDraft(raw) {
   const plan = parsePlan(raw);
   let title = plan.titles?.[0] || '';
   let body = plan.body || '';
+  const sectionTitle = String(raw || '').match(/(?:^|\n)\s*(?:#{1,4}\s*)?标题\s*\n+([^\n]+)/);
+  if (sectionTitle?.[1]) title = sectionTitle[1].trim().replace(/^[-—（(\s]+|[）)\s]+$/g, '');
   const sectionBody = String(raw || '').match(/(?:^|\n)\s*(?:#{1,4}\s*)?正文\s*\n+([\s\S]*?)(?=\n\s*(?:#{1,4}\s*)?(?:评论区话术|优化方向|推断依据)|$)/);
   if (sectionBody?.[1]) body = sectionBody[1].trim();
   if (/备选标题|评论区话术|优化方向|推断依据/.test(body)) {
@@ -2595,8 +3133,448 @@ function parseDailyDraft(raw) {
     const match = raw.match(/###\s*\u6b63\u6587\s*\n([\s\S]*?)(?=\n###|$)/);
     body = match ? match[1].trim() : raw.trim();
   }
+  body = body.replace(/\n\s*(?:#[^\s#]+\s*){2,}[\s\S]*$/m, '').trim();
   return { title: title || '\u4eca\u65e5\u5c0f\u7ea2\u4e66\u8349\u7a3f', body };
 }
+
+function buildReferenceBlueprintPrompt(reference) {
+  return `只分析下面这一篇参考笔记，不谈产品、不做营销、不调用任何旧模板。
+
+标题：${reference.title || ''}
+正文：
+${reference.body || ''}
+
+输出严格 JSON：
+{"coreSubject":"这篇真正写的生活主题，不是表层场景","centralTension":"叙述者在为什么犹豫、缺少或做选择","emotionalCurve":["起点","转折","落点"],"paragraphFunctions":["第1段作用"],"voice":"人称、语气、句长与留白","imageTextMechanism":"原文适合放进氛围图的文字机制","productExposure":"原文物件或产品出现比例"}
+
+若正文为空或不足以判断，coreSubject 必须写 INVALID。`;
+}
+
+function parseReferenceBlueprint(raw) {
+  const match = String(raw || '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('参考笔记主题分析没有返回 JSON');
+  const parsed = JSON.parse(match[0]);
+  if (!parsed.coreSubject || parsed.coreSubject === 'INVALID') throw new Error('参考笔记正文不足，不能据此仿写');
+  return parsed;
+}
+
+function buildEngagementBlueprint(reference) {
+  return {
+    coreSubject: '互动共鸣封面：用一个真实小问题让用户停下、代入并愿意评论推荐',
+    centralTension: sanitizeDailySeedText(`${reference?.title || ''} ${reference?.body || ''}`) || '想找一个不麻烦、不难入口的晚间小酌选择',
+    emotionalCurve: ['一句问题停留', '读者代入自己的小酌场景', '评论区给出推荐'],
+    paragraphFunctions: ['开头直接抛问题', '中间给出自己正在寻找的标准', '结尾邀请评论推荐'],
+    voice: '口语、短句、像真实用户发问，不写测评腔',
+    imageTextMechanism: '大字互动问题，文字少，留白明确，核心是评论入口',
+    productExposure: '首图不露产品，正文和话题轻挂品牌词与搜索词',
+  };
+}
+
+function buildDailyReferencePrompt(reference, topic, insight, blueprint) {
+  const searchTerms = [...new Set([
+    insight?.coreSearchTerm,
+    ...(insight?.longTailTerms || []),
+    ...(topic?.searchTerms || []),
+    topic?.trafficKeyword,
+  ].filter(Boolean).map(String))];
+  return `你只完成一次“单篇参考笔记改写”。不要调用或复用 Market Hub 的旧框架、旧范文、固定种草结构、火锅聚会开场或产品测评套路。
+
+## 最高优先级：参考笔记主题指纹
+真正主题：${blueprint?.coreSubject || ''}
+核心矛盾：${blueprint?.centralTension || ''}
+情绪推进：${(blueprint?.emotionalCurve || []).join(' → ')}
+段落功能：${(blueprint?.paragraphFunctions || []).join(' / ')}
+叙述声音：${blueprint?.voice || ''}
+氛围图文字机制：${blueprint?.imageTextMechanism || ''}
+原文产品露出：${blueprint?.productExposure || ''}
+
+成稿必须仍在谈这个主题和矛盾。市场洞察、搜索词与产品只能进入原文已有的叙事位置，不能另起一个饮酒故事。
+
+## 唯一写作蓝本
+标题：${reference.title}
+原话题：${reference.tags || '无'}
+正文：
+${reference.body}
+
+## 本次市场洞察
+洞察：${insight?.name || ''}
+搜索行为链：${(insight?.searchBehaviorChain || []).join(' → ')}
+搜索意图：${insight?.searchIntent || ''}
+用户问题：${insight?.userProblem || ''}
+决策阶段：${insight?.decisionStage || ''}
+内容任务：${insight?.contentTask || ''}
+使用场景：${insight?.scene || ''}
+想进入的状态：${insight?.desiredState || ''}
+物件承载：${(insight?.objectCarriers || []).join(' / ')}
+造梦三时刻：
+${(insight?.dreamMoments || []).map((v, i) => `${i + 1}. ${v}`).join('\n')}
+参考笔记筛选要求：${insight?.referenceNeed || ''}
+产品承接：${insight?.productBridge || ''}
+
+## 搜索布局
+核心搜索词：${searchTerms[0] || ''}
+长尾词：${searchTerms.slice(1).join(' / ')}
+固定品牌词：每天烈刻气泡白酒
+
+布局顺序：
+1. 标题必须优先承接核心搜索词或它的自然变体；标题像用户会搜/会点的句子，不像品牌口号。
+2. 正文前 120 字必须自然出现核心搜索词；不能硬塞，必须是叙述者真实处境里的问句、判断句或选择句。
+3. 长尾词不要求逐字生硬堆砌；允许嵌入长句中形成可被搜索切中的连续片段。比如长尾词“夫人”可以存在于“丈夫人很好”这种连续文本片段里，但不能为了埋词破坏语义。
+4. 至少 2 个长尾词要分散进入正文中段/结尾/评论引导，不集中堆在一段。
+5. 话题标签承担收录补充：优先 1 个核心词、2-3 个长尾词、1-2 个品类词、1 个品牌词；不用泛泛的 #生活 #分享。
+6. 如果参考文是品牌调性/造梦/巴黎式母本，搜索词只作为“可被搜到的暗线”，不得压过母本的审美、情绪和标题机制。
+
+## 可使用的少量产品事实（最多取两条）
+${loadBrandFacts().slice(0, 2200)}
+
+## 改写规则
+1. 第一优先级是复现“真正主题 + 核心矛盾 + 情绪推进 + 段落作用”，不是复现表面名词。读者看完必须能说出它与参考文在讨论同一种人生问题。
+2. 段落数量与原文相差不超过 1 段。每段继续承担原文对应段落的作用，内容和句子必须原创。
+3. 市场洞察只负责提供搜索意图和造梦材料：把“用户为什么搜、想进入什么状态、三个具体时刻”融进原文已有主题。不要把它改成旧的 Market Hub 饮酒测评模板。
+4. 产品只在原文出现物件、饮用动作或消费选择的位置进入；产品露出比例跟随原文。若原文没有产品中心段，品牌只允许作为一个生活物件出现一次。
+   参考文里的竞品品牌、酒名、口味、颜色、包装和购买数量全部只是占位符，成稿不得保留；只能换成“可使用的少量产品事实”里真实存在的每天烈刻信息。
+5. 搜索词必须被改写成符合叙述者处境的自然语句；不能为了埋词把地点、人物、事件改成聚会、火锅、测评或第一口体验。核心词进入标题或前 120 字，至少两个长尾词进入后文；长尾词可以作为连续字词片段自然藏在一句话里。
+6. 正文只使用一个主产品事实，最多一个辅助事实。不得把资料平均铺满。
+7. 正文至少保留两段可直接放进氛围图片的文字：每段 45-120 字，写人生处境、选择或情绪转折，不写口感、参数、购买和劝酒。
+8. 标题保留参考标题的点击机制，同时包含搜索意图，控制在 20 个汉字左右；除搜索词外，不得连续复用参考标题 6 个以上相同字词。正文末尾附未成年人及孕妇禁酒提示。
+9. 输出前自检：若正文的主语换成任意酒仍成立、或主题变成“什么时候喝/好不好喝”，说明已经跑偏，必须重写后再输出。
+10. 直接输出成品，不解释方法，不输出优化方向、推断依据或写作分析。
+
+严格格式：
+### 标题
+（一个标题）
+
+### 正文
+（完整正文）`;
+}
+
+function collectDailyDraftIssues(draft, reference, topic, insight) {
+  const issues = [];
+  const title = String(draft?.title || '').trim();
+  const body = String(draft?.body || '').trim();
+  const all = `${title}\n${body}`;
+  const searchTerms = [...new Set([
+    insight?.coreSearchTerm,
+    ...(insight?.longTailTerms || []),
+    ...(topic?.searchTerms || []),
+    topic?.trafficKeyword,
+  ].filter(Boolean).map(String))];
+  if (title.length < 8 || title.length > 28) issues.push('标题长度不适合小红书，需要 8-28 个汉字左右');
+  if (/[，,、；;：:]$/.test(title) || /想囤点$|喝什么$/.test(title)) issues.push('标题像半句话或烂尾，需要完整、有点击点');
+  if (body.length < 160) issues.push('正文太短，无法承接参考文的主题和搜索词布局');
+  if (/崩溃.*喝酒|靠酒|治愈|修好|恢复行动力|续命|救命|解药|无负担|0负担|刮油|解腻|不上头|不醉|不伤身|健康喝酒/.test(all)) {
+    issues.push('存在不适合酒类内容的情绪/健康暗示，需要改成生活状态与小仪式，不写靠酒解决问题');
+  }
+  if (/330ml|500ml|750ml/.test(all) && !/330ml|500ml|750ml/.test(loadBrandFacts())) {
+    issues.push('出现了资料里未确认的容量参数，需要删除');
+  }
+  if (searchTerms[0] && !all.includes(searchTerms[0])) {
+    issues.push(`核心搜索词「${searchTerms[0]}」没有布局`);
+  }
+  const longTailHits = searchTerms.slice(1).filter(term => term && all.includes(term)).length;
+  if (searchTerms.slice(1).length >= 2 && longTailHits < 2) {
+    issues.push('长尾搜索词布局不足，至少自然放入两个');
+  }
+  const referenceBody = String(reference?.body || '');
+  if (referenceBody && body && body.includes(referenceBody.slice(0, 30))) {
+    issues.push('正文疑似直接复用参考原文，需要保留主题结构但重写表达');
+  }
+  return issues;
+}
+
+function buildDailyDraftRepairPrompt(draft, reference, topic, insight, blueprint, issues) {
+  const searchTerms = [...new Set([
+    insight?.coreSearchTerm,
+    ...(insight?.longTailTerms || []),
+    ...(topic?.searchTerms || []),
+    topic?.trafficKeyword,
+  ].filter(Boolean).map(String))];
+  return `只修下面这篇小红书草稿。保留参考笔记的主题指纹，不要回到旧 Market Hub 模板，不要另起炉灶。
+
+参考笔记主题：${blueprint?.coreSubject || ''}
+核心矛盾：${blueprint?.centralTension || ''}
+参考标题：${reference?.title || ''}
+参考正文：${reference?.body || ''}
+
+搜索词要求：
+核心搜索词：${searchTerms[0] || ''}
+长尾词：${searchTerms.slice(1).join(' / ')}
+品牌词：每天烈刻气泡白酒
+
+需要修掉的问题：
+${issues.map((item, i) => `${i + 1}. ${item}`).join('\n')}
+
+当前草稿：
+### 标题
+${draft.title || ''}
+
+### 正文
+${draft.body || ''}
+
+修稿要求：
+1. 标题写完整，保留点击点，核心搜索词进入标题或前 120 字。
+2. 至少两个长尾词自然进入正文，像真实搜索或自问，不像堆词。
+3. 酒只能作为生活物件、小仪式、场景道具出现；不写靠酒解决情绪、健康、睡眠或身体问题。
+4. 氛围图可取的句子要短、安静、完整；正文里至少保留 2 句适合放在图上的短句。
+5. 不输出分析，不输出优化方向。
+
+严格格式：
+### 标题
+（一个标题）
+
+### 正文
+（完整正文）`;
+}
+
+async function repairDailyDraftIfNeeded(draft, reference, topic, insight, blueprint) {
+  const firstIssues = collectDailyDraftIssues(draft, reference, topic, insight);
+  if (!firstIssues.length) return { draft, issues: [], repairedFrom: [] };
+  const repairedRaw = await runClaudeAsync(
+    buildDailyDraftRepairPrompt(draft, reference, topic, insight, blueprint, firstIssues),
+    300000,
+  );
+  const repaired = parseDailyDraft(repairedRaw);
+  const secondIssues = collectDailyDraftIssues(repaired, reference, topic, insight);
+  return { draft: repaired, issues: secondIssues, repairedFrom: firstIssues };
+}
+
+function buildDailyTags(reference, topic, insight) {
+  const raw = [
+    ...(String(reference?.tags || '').match(/#[^#\s\[\]]+/g) || []),
+    insight?.coreSearchTerm,
+    ...(insight?.longTailTerms || []),
+    topic?.trafficKeyword,
+    topic?.coreConcept,
+    ...(topic?.searchTerms || []),
+    '每天烈刻气泡白酒',
+    '气泡白酒',
+  ];
+  const cleaned = raw.map(value => String(value || '').replace(/^#/, '').replace(/\[话题\]$/g, '').trim())
+    .filter(value => value.length >= 2 && value.length <= 24)
+    .filter(value => !/0负担|无负担|解腻|刮油|不上头|不醉|健康喝酒|330ml|500ml|750ml/.test(value));
+  return [...new Set(cleaned)].slice(0, 10).map(value => `#${value}`).join(' ');
+}
+
+function sanitizeDailySeedText(value) {
+  return String(value || '')
+    .replace(/0糖0负担/g, '0糖')
+    .replace(/0负担|无负担/g, '')
+    .replace(/解腻刮油|刮油|解腻/g, '清爽')
+    .replace(/不醉|不上头|不伤身|健康喝酒/g, '')
+    .replace(/330ml|500ml|750ml/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function sanitizeDailySeed(value) {
+  if (Array.isArray(value)) return value.map(sanitizeDailySeed).filter(v => v !== '');
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, sanitizeDailySeed(item)]));
+  }
+  return typeof value === 'string' ? sanitizeDailySeedText(value) : value;
+}
+
+function loadTopicDigest() {
+  return loadTopicJson(TOPIC_RECOMMENDATIONS_PATH, { generatedAt: null, recommendations: [] });
+}
+
+function saveTopicDigest(digest) {
+  fs.writeFileSync(TOPIC_RECOMMENDATIONS_PATH, JSON.stringify(digest || { recommendations: [] }, null, 2), 'utf8');
+  return digest;
+}
+
+function topicHasUsableEvidence(topic) {
+  return Array.isArray(topic?.evidence) && topic.evidence.some(item => /^https?:\/\//.test(String(item?.url || '')));
+}
+
+function pickTopicForRun(digest, { forceDigest = false } = {}) {
+  const recommendations = Array.isArray(digest?.recommendations) ? digest.recommendations : [];
+  if (forceDigest || !isFreshTimestamp(digest?.generatedAt, TOPIC_DIGEST_TTL_MS) || !recommendations.length) {
+    return { topic: null, needsRefresh: true, reason: forceDigest ? '手动强制刷新' : '热点库存为空或已超过 3 天' };
+  }
+  const usable = recommendations.filter(topic => topicHasUsableEvidence(topic));
+  const unused = usable.filter(topic => !topic.usedAt);
+  const pool = unused.length ? unused : usable;
+  const topic = [...pool].sort((a, b) => {
+    const usedDelta = parseTimeMs(a.usedAt) - parseTimeMs(b.usedAt);
+    if (usedDelta) return usedDelta;
+    return Number(b.score || 0) - Number(a.score || 0);
+  })[0] || null;
+  if (!topic) return { topic: null, needsRefresh: true, reason: '热点没有可登记的笔记链接' };
+  return { topic, needsRefresh: false, reason: unused.length ? '使用未消耗热点库存' : '热点库存已轮完，复用最早使用的一条' };
+}
+
+function markTopicUsed(topicId, patch = {}) {
+  const digest = loadTopicDigest();
+  const target = (digest.recommendations || []).find(item => item.id === topicId);
+  if (target) {
+    Object.assign(target, patch, { usedAt: new Date().toISOString() });
+    saveTopicDigest(digest);
+  }
+  return target;
+}
+
+function runCompetitorEnricher(recordId) {
+  const script = path.join(__dirname, 'scripts', 'enrich_competitor_from_xhs.py');
+  const result = spawnSync('python', [script, '--record-ids', recordId, '--max-images', '9', '--max-comments', '10'], {
+    cwd: __dirname,
+    encoding: 'utf8',
+    timeout: 240000,
+    windowsHide: true,
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8', HTTPS_PROXY: process.env.HTTPS_PROXY || 'http://127.0.0.1:7890', HTTP_PROXY: process.env.HTTP_PROXY || 'http://127.0.0.1:7890' },
+  });
+  if (result.error) throw result.error;
+  let parsed = {};
+  try { parsed = JSON.parse(result.stdout || '{}'); } catch {}
+  const row = parsed.results?.[0];
+  if (result.status !== 0 || !row?.ok) throw new Error(row?.error || result.stderr || '竞品笔记抓取失败');
+  return row;
+}
+
+function findCompetitorRecordIdByUrl(url) {
+  const target = String(url || '').split('?')[0];
+  if (!target) return '';
+  const out = larkCli([
+    'base', '+record-list', '--base-token', CFG.feishu.baseToken,
+    '--table-id', COMPETITOR_TABLE_ID, '--limit', '200',
+    '--field-id', COMPETITOR_FIELDS.sourceUrl,
+    '--field-id', COMPETITOR_FIELDS.noteUrl,
+    '--format', 'json',
+  ]);
+  const rows = out.data?.data || [];
+  const ids = out.data?.record_id_list || [];
+  const fields = out.data?.field_id_list || [];
+  const sourceIndex = fields.indexOf(COMPETITOR_FIELDS.sourceUrl);
+  const noteIndex = fields.indexOf(COMPETITOR_FIELDS.noteUrl);
+  const index = rows.findIndex(row => {
+    const candidate = extractUrlFromCell(row[noteIndex]) || extractUrlFromCell(row[sourceIndex]);
+    return candidate && candidate.split('?')[0] === target;
+  });
+  return index >= 0 ? ids[index] : '';
+}
+
+function normalizeReferenceUrl(value) {
+  return String(value || '').trim().split('?')[0].replace(/\/$/, '');
+}
+
+function ensureCompetitorReferenceForTopic(topic, insight, options = {}) {
+  const excludeReferenceIds = new Set((options.excludeReferenceIds || []).map(String).filter(Boolean));
+  const excludeReferenceUrls = new Set((options.excludeReferenceUrls || []).map(normalizeReferenceUrl).filter(Boolean));
+  const candidates = [...new Set((topic?.evidence || []).map(item => String(item?.url || '').trim()).filter(Boolean))];
+  if (!candidates.length) throw new Error('本次热点没有携带具体笔记链接，已停止，避免拿无关旧笔记凑数');
+  const failures = [];
+  const validReferences = [];
+  for (const url of candidates) {
+    try {
+      const cleanUrl = normalizeReferenceUrl(url);
+      if (excludeReferenceUrls.has(cleanUrl)) {
+        failures.push(`${cleanUrl}：已按本轮要求排除旧参考`);
+        continue;
+      }
+      let recordId = findCompetitorRecordIdByUrl(url);
+      if (recordId && excludeReferenceIds.has(recordId)) {
+        failures.push(`${cleanUrl}：已按本轮要求排除旧参考记录 ${recordId}`);
+        continue;
+      }
+      if (!recordId) {
+        const created = writeToBase(COMPETITOR_TABLE_ID, {
+          地址贴这里: url,
+          笔记地址: url,
+          热点来源: topic.coreConcept || topic.trafficKeyword || insight?.name || '市场洞察',
+          搜索词: insight?.coreSearchTerm || topic.trafficKeyword || '',
+          匹配词: [...new Set([...(insight?.longTailTerms || []), ...(topic.searchTerms || [])])].join(' / '),
+          换图状态: '待抓取',
+        }, CFG.feishu.baseToken);
+        recordId = extractRecordIdFromWrite(created) || findCompetitorRecordIdByUrl(url);
+      }
+      if (!recordId) throw new Error('登记后没有返回 record_id');
+      let ref = readCompetitorReferences(260).find(item => item.id === recordId);
+      if (!ref || String(ref.body || '').replace(/\s+/g, '').length < 80) {
+        runCompetitorEnricher(recordId);
+        ref = readCompetitorReferences(260).find(item => item.id === recordId);
+      }
+      const bodyLength = String(ref?.body || '').replace(/\s+/g, '').length;
+      if (!ref || /视频/.test(ref.category || '') || bodyLength < 80) {
+        try { markCompetitorImageStatus(recordId, /视频/.test(ref?.category || '') ? '视频待转写' : '正文过短'); } catch {}
+        throw new Error(/视频/.test(ref?.category || '') ? '视频笔记暂不用于本轮图文仿写' : `正文仅 ${bodyLength} 字`);
+      }
+      validReferences.push({ ...ref, score: scoreReferenceForTopic(ref, topic) });
+    } catch (error) {
+      failures.push(`${url.split('?')[0]}：${error.message}`);
+    }
+  }
+  if (validReferences.length) {
+    return validReferences.sort((a, b) => b.score - a.score)[0];
+  }
+  throw new Error(`候选热点笔记都不满足“正文与图片同源且正文完整”：${failures.join('；')}`);
+}
+
+function registerManualCompetitorReference(url, meta = {}) {
+  const cleanUrl = String(url || '').trim();
+  if (!/^https?:\/\/(www\.)?xiaohongshu\.com\//i.test(cleanUrl)) {
+    throw new Error('请粘贴有效的小红书笔记链接');
+  }
+  let recordId = findCompetitorRecordIdByUrl(cleanUrl);
+  if (!recordId) {
+    const created = writeToBase(COMPETITOR_TABLE_ID, {
+      地址贴这里: cleanUrl,
+      笔记地址: cleanUrl,
+      热点来源: meta.source || '人工指定母本',
+      搜索词: meta.searchTerm || '',
+      匹配词: meta.matchTerm || '',
+      参考用途: meta.purpose || '人工灵感入库 / 可直接仿写',
+      换图状态: '待抓取',
+    }, CFG.feishu.baseToken);
+    recordId = extractRecordIdFromWrite(created) || findCompetitorRecordIdByUrl(cleanUrl);
+  }
+  if (!recordId) throw new Error('登记竞品表后没有拿到 record_id');
+  runCompetitorEnricher(recordId);
+  const ref = readCompetitorReferences(300).find(item => item.id === recordId);
+  if (!ref) throw new Error(`竞品记录已登记但读取失败：${recordId}`);
+  return ref;
+}
+
+function inferQueueSceneMode(reference, engagementCover = false) {
+  if (engagementCover) return 'engagement_cover';
+  const text = [
+    reference?.title,
+    reference?.category,
+    reference?.purpose,
+    reference?.angle,
+    reference?.body,
+  ].map(v => String(v || '')).join(' ');
+  if (/酒单|回购|推荐|测评|评测|合集|好物|产品|瓶|罐|包装|开箱|种草|品酒|葡萄酒|起泡酒|甜酒|莫斯卡托|果酒/i.test(text)) {
+    return 'product_replace';
+  }
+  if (/氛围|文字图|情绪|造梦|巴黎|生活方式|街景|风景|截图|金句/i.test(text)) {
+    return 'atmosphere';
+  }
+  return 'auto';
+}
+
+app.post('/api/daily/intake-reference', (req, res) => {
+  try {
+    const ref = registerManualCompetitorReference(req.body?.url || '', {
+      source: req.body?.source || '人工指定母本',
+      searchTerm: req.body?.searchTerm || '',
+      matchTerm: req.body?.matchTerm || '',
+      purpose: req.body?.purpose || '人工灵感入库 / 可直接仿写',
+    });
+    res.json({
+      ok: true,
+      reference: {
+        id: ref.id,
+        title: ref.title,
+        url: ref.url,
+        category: ref.category,
+        purpose: ref.purpose,
+        attachmentCount: ref.attachments?.length || 0,
+      },
+    });
+  } catch (error) {
+    res.json({ ok: false, error: error.message });
+  }
+});
 
 app.get('/api/daily/preview-reference', (req, res) => {
   try {
@@ -2666,69 +3644,132 @@ app.post('/api/daily/run', (req, res) => {
 
   (async () => {
     try {
-      dailyLog(job, '\u5f00\u59cb\u68c0\u67e5\u70ed\u70b9\u4fe1\u53f7');
-      let signals = loadTopicJson(TOPIC_SIGNALS_PATH, null);
-      if (req.body?.forceCollect === true) {
-        try {
+      dailyLog(job, '第 0 步：读取市场洞察库存（7 天内轮用）');
+      let insightPick = pickMarketInsightForRun({ forceInsight: req.body?.forceInsight === true });
+      let insight = insightPick.insight;
+      let insightWasCreated = false;
+      if (insightPick.needsRefresh) {
+        dailyLog(job, `市场洞察需要刷新：${insightPick.reason}`);
+        let broadSignals = loadTopicJson(TOPIC_SIGNALS_PATH, null);
+        if (!broadSignals || req.body?.forceCollect === true) {
           await runTopicCollector();
-          signals = loadTopicJson(TOPIC_SIGNALS_PATH, signals);
-          dailyLog(job, '\u70ed\u70b9\u4fe1\u53f7\u91c7\u96c6\u5b8c\u6210');
-        } catch (error) {
-          dailyLog(job, `\u5b9e\u65f6\u91c7\u96c6\u4e0d\u53ef\u7528\uff0c\u4f7f\u7528\u6700\u8fd1\u6709\u6548\u70ed\u70b9\uff1a${error.message}`);
+          broadSignals = loadTopicJson(TOPIC_SIGNALS_PATH, null);
         }
+        if (!broadSignals || broadSignals.error) throw new Error(broadSignals?.error || '市场洞察缺少搜索信号');
+        const savedInsightState = loadMarketInsights();
+        const insightPrompt = buildMarketInsightPrompt(broadSignals, savedInsightState.manualBehavior || '');
+        const rawInsight = await runClaudeAsync(insightPrompt, 300000);
+        const parsedInsights = parseMarketInsights(rawInsight);
+        saveMarketInsights({
+          ...parsedInsights,
+          selectedId: '',
+          manualBehavior: savedInsightState.manualBehavior || '',
+          lastPrompt: insightPrompt,
+          lastSignals: compactInsightSignals(broadSignals),
+        });
+        insight = [...parsedInsights.insights].sort((a, b) => b.score - a.score)[0];
+        insight = selectMarketInsight(insight.id).insight;
+        insightWasCreated = true;
       } else {
-        dailyLog(job, '\u4f7f\u7528 12 \u5c0f\u65f6\u70ed\u70b9\u7f13\u5b58\uff0c\u4e0d\u91cd\u590d\u89e6\u53d1\u5e73\u53f0\u98ce\u63a7');
+        dailyLog(job, `市场洞察复用：${insightPick.reason}`);
       }
-
-      let digest = loadTopicJson(TOPIC_RECOMMENDATIONS_PATH, { recommendations: [] });
-      if (signals && !signals.error) {
-        try {
-          const rawDigest = await runClaudeAsync(buildTopicDigestPrompt(signals), 300000);
-          digest = parseTopicDigest(rawDigest);
-          digest.generatedAt = new Date().toISOString();
-          fs.writeFileSync(TOPIC_RECOMMENDATIONS_PATH, JSON.stringify(digest, null, 2), 'utf8');
-          dailyLog(job, '\u70ed\u70b9\u7b5b\u9009\u4e0e\u9009\u9898\u8bc4\u5206\u5b8c\u6210');
-        } catch (error) {
-          dailyLog(job, `\u9009\u9898\u91cd\u7b97\u5931\u8d25\uff0c\u6cbf\u7528\u6700\u8fd1\u7ed3\u679c\uff1a${error.message}`);
-        }
-      }
-      const topic = [...(digest.recommendations || [])].sort((a, b) => Number(b.score || 0) - Number(a.score || 0))[0];
-      if (!topic) throw new Error('\u6ca1\u6709\u53ef\u7528\u7684\u70ed\u70b9\u9009\u9898');
-      dailyLog(job, `\u5df2\u9009\u4e2d\uff1a${topic.coreConcept || topic.trafficKeyword || topic.id}`);
+      dailyLog(job, `市场洞察已采用并登记飞书：${insight.name}｜${insight.coreSearchTerm}`);
 
       const requestedReferenceId = String(req.body?.referenceId || '').trim();
-      const selectedReference = requestedReferenceId
-        ? readCompetitorReferences(300).find(ref => ref.id === requestedReferenceId)
-        : chooseReferenceForTopic(topic);
-      if (!selectedReference) throw new Error(`\u6307\u5b9a\u7684\u7ade\u54c1\u8bb0\u5f55\u4e0d\u5b58\u5728\uff1a${requestedReferenceId}`);
-      const refArticle = {
-        title: selectedReference.title,
-        tag: selectedReference.tags,
-        content: selectedReference.body,
-      };
-      dailyLog(job, `\u5df2\u9009\u4e2d\u6362\u56fe\u53c2\u8003\uff1a${selectedReference.title || selectedReference.url}`);
+      let topic;
+      let selectedReference;
+      if (requestedReferenceId) {
+        selectedReference = readCompetitorReferences(300).find(ref => ref.id === requestedReferenceId);
+        if (!selectedReference) throw new Error(`指定的竞品记录不存在：${requestedReferenceId}`);
+        topic = {
+          id: `manual-${requestedReferenceId}`,
+          kind: '人工指定参考',
+          trafficKeyword: selectedReference.searchTerm || insight.coreSearchTerm || '',
+          coreConcept: selectedReference.hotspot || selectedReference.title,
+          searchTerms: [...new Set([
+            selectedReference.searchTerm,
+            ...String(selectedReference.matchTerm || '').split(/\s*\/\s*|[，,；;]/),
+          ].filter(Boolean))],
+          bridge: `以人工指定笔记“${selectedReference.title}”的主题、结构和互动机制为母本；市场洞察只补充搜索意图与产品承接。`,
+          score: 100,
+        };
+        dailyLog(job, `第 1 步：使用人工指定参考；不再另抓热点覆盖母本｜${selectedReference.title}`);
+      } else {
+        dailyLog(job, '第 1 步：读取热点库存（3 天内且未用完则不刷新）');
+        let signals = loadTopicJson(TOPIC_SIGNALS_PATH, null);
+        let digest = loadTopicDigest();
+        let topicPick = pickTopicForRun(digest, { forceDigest: req.body?.forceDigest === true || req.body?.forceCollect === true });
+        if (req.body?.forceCollect === true || insightWasCreated || !signals || topicPick.needsRefresh) {
+          dailyLog(job, topicPick.needsRefresh ? `热点需要刷新：${topicPick.reason}` : '热点信号需要刷新');
+          await runTopicCollector();
+          signals = loadTopicJson(TOPIC_SIGNALS_PATH, null);
+          dailyLog(job, '洞察定向热点信号采集完成');
+        } else {
+          dailyLog(job, `热点复用：${topicPick.reason}`);
+        }
+        digest = loadTopicDigest();
+        topicPick = pickTopicForRun(digest, { forceDigest: req.body?.forceDigest === true || req.body?.forceCollect === true });
+        if (signals && !signals.error && topicPick.needsRefresh) {
+          try {
+            const rawDigest = await runClaudeAsync(buildTopicDigestPrompt(signals), 300000);
+            digest = parseTopicDigest(rawDigest);
+            digest.generatedAt = new Date().toISOString();
+            saveTopicDigest(digest);
+            dailyLog(job, '热点筛选与选题评分完成');
+          } catch (error) {
+            dailyLog(job, `选题重算失败，沿用最近结果：${error.message}`);
+          }
+        }
+        topicPick = pickTopicForRun(loadTopicDigest(), { forceDigest: false });
+        topic = topicPick.topic;
+        if (!topic) throw new Error('没有可用的热点选题');
+        const excludeReferenceIds = Array.isArray(req.body?.excludeReferenceIds) ? req.body.excludeReferenceIds : [];
+        const excludeReferenceUrls = Array.isArray(req.body?.excludeReferenceUrls) ? req.body.excludeReferenceUrls : [];
+        selectedReference = ensureCompetitorReferenceForTopic(topic, insight, { excludeReferenceIds, excludeReferenceUrls });
+      }
+      const contentInsight = sanitizeDailySeed(insight);
+      const contentTopic = sanitizeDailySeed(topic);
+      dailyLog(job, `已选中：${topic.coreConcept || topic.trafficKeyword || topic.id}`);
 
-      let ctx;
-      try { ctx = await fetchFeishuContext(); } catch { ctx = { iterComp: [], reference: [] }; }
-      const sellingPoint = '\u6bcf\u5929\u70c8\u523b\u6c14\u6ce1\u767d\u9152\uff1a10\u5ea6\u30010\u7cd60\u5361\u300120%\u539f\u69a8\u679c\u6c41\u3001\u6c14\u6ce1\u53e3\u611f';
-      const built = buildPrompt(ctx, topic.direction || topic.bridge || '', sellingPoint, topic.framework || 'B', null, null, null, refArticle, [], null, 'narrative', 'reference', topic);
-      dailyLog(job, '\u6b63\u5728\u751f\u6210\u5305\u542b\u70ed\u70b9\u8bcd\u548c\u641c\u7d22\u8bcd\u7684\u6587\u6848');
+      if (!selectedReference) throw new Error(`\u6307\u5b9a\u7684\u7ade\u54c1\u8bb0\u5f55\u4e0d\u5b58\u5728\uff1a${requestedReferenceId}`);
+      const engagementCover = isEngagementCoverReference(selectedReference);
+      dailyLog(job, `第 2 步：竞品笔记已登记并补齐正文/附件：${selectedReference.title || selectedReference.url}`);
+
+      dailyLog(job, '第 3 步：先提取单篇竞品的主题指纹，再按同一主题改写');
+      const referenceBlueprint = engagementCover
+        ? buildEngagementBlueprint(selectedReference)
+        : parseReferenceBlueprint(await runClaudeAsync(buildReferenceBlueprintPrompt(selectedReference), 180000));
+      const dailyPrompt = buildDailyReferencePrompt(selectedReference, contentTopic, contentInsight, referenceBlueprint);
       const compliance = '\n\n\u5408\u89c4\u8981\u6c42\uff1a0\u7cd60\u5361\u53ea\u80fd\u5ba2\u89c2\u9648\u8ff0\uff0c\u4e0d\u80fd\u5ef6\u4f38\u4e3a\u8eab\u4f53\u8d1f\u62c5\u8f7b\u3001\u51cf\u80a5\u3001\u5065\u5eb7\u6216\u65e0\u8d1f\u62c5\u3002\u4e0d\u5f97\u627f\u8bfa\u4e0d\u9189\u3001\u4e0d\u4e0a\u5934\u6216\u65e0\u523a\u6fc0\u3002';
-      const rawDraft = await runClaudeAsync(built.prompt + compliance, 420000);
-      const draft = parseDailyDraft(rawDraft);
-      const tags = ['#\u6bcf\u5929\u70c8\u523b\u6c14\u6ce1\u767d\u9152', topic.trafficKeyword, topic.coreConcept]
-        .filter(Boolean).map(x => String(x).startsWith('#') ? String(x) : `#${x}`).join(' ');
-      const written = writeOutputRecord({
+      const rawDraft = await runClaudeAsync(dailyPrompt + compliance, 420000);
+      let draft = parseDailyDraft(rawDraft);
+      const repairResult = await repairDailyDraftIfNeeded(draft, selectedReference, contentTopic, contentInsight, referenceBlueprint);
+      draft = repairResult.draft;
+      if (repairResult.repairedFrom?.length) dailyLog(job, `文案质检已自动修稿：${repairResult.repairedFrom.join('；')}`);
+      if (repairResult.issues?.length) dailyLog(job, `文案仍需人工复核：${repairResult.issues.join('；')}`);
+      const tags = buildDailyTags(selectedReference, contentTopic, contentInsight);
+      const outputFields = {
         '\u6807\u9898': draft.title, '\u6b63\u6587': draft.body, '\u8bdd\u9898': tags,
         '\u53d1\u5e03\u8ba1\u5212': '\u81ea\u52a8\u751f\u6210', '\u662f\u5426\u53d1\u5e03': '\u5426',
         '\u53d1\u5e03\u8d26\u53f7': '\u6bcf\u5929\u70c8\u523b / legacy',
         '\u53c2\u8003\u94fe\u63a5': selectedReference.url,
-      });
-      const recordId = extractRecordIdFromWrite(written) || findOutputRecordIdByTitle(draft.title);
+      };
+      const existingRecordId = findOutputRecordIdByReference(selectedReference.url);
+      const normalizedOutputFields = Object.fromEntries(
+        Object.entries(outputFields).map(([key, value]) => [OUTPUT_FIELDS[key] || key, value])
+      );
+      const written = existingRecordId
+        ? updateBaseRecord(OUTPUT_TABLE, existingRecordId, normalizedOutputFields, OUTPUT_BASE)
+        : writeOutputRecord(outputFields);
+      const recordId = existingRecordId || extractRecordIdFromWrite(written) || findOutputRecordIdByTitle(draft.title);
+      if (!recordId) throw new Error('\u53d1\u5e03\u8868\u5199\u5165\u540e\u672a\u62ff\u5230 recordId');
       dailyLog(job, `\u6587\u6848\u5df2\u56de\u586b\u53d1\u5e03\u8868${recordId ? `\uff08${recordId}\uff09` : ''}`);
+      if (insight.feishuRecordId) {
+        try { updateBaseRecord(MARKET_INSIGHT_TABLE, insight.feishuRecordId, { 状态: '已进入生产' }, OUTPUT_BASE); } catch {}
+      }
       const savedBody = readOutputRecordBody(recordId) || draft.body;
 
-      const expectedImageCount = selectedReference.attachments.length;
+      const expectedImageCount = engagementCover ? 1 : selectedReference.attachments.length;
       const refs = downloadCompetitorAttachments(selectedReference.id, expectedImageCount);
       if (refs.length !== expectedImageCount) throw new Error(`\u7ade\u54c1\u8868\u767b\u8bb0 ${expectedImageCount} \u5f20\u56fe\uff0c\u5b9e\u9645\u4e0b\u8f7d ${refs.length} \u5f20`);
       markCompetitorImageStatus(selectedReference.id, '\u5df2\u5efa\u961f\u5217');
@@ -2738,13 +3779,18 @@ app.post('/api/daily/run', (req, res) => {
       } catch (error) {
         dailyLog(job, `\u65e7 GPT \u961f\u5217\u6e05\u7406\u5931\u8d25\uff1a${error.message}`);
       }
-      const productReferenceIds = await getFeishuProductReferenceIds();
-      const overlayTextList = buildImageOverlayTexts(savedBody, refs.length);
-      dailyLog(job, `\u5df2\u4ece\u53d1\u5e03\u8868\u6b63\u6587\u5b57\u6bb5\u63d0\u53d6 ${overlayTextList.length} \u6761\u6c1b\u56f4\u56fe\u6587\u5b57`);
+      const productReferenceIds = engagementCover ? [] : await getFeishuProductReferenceIds();
+      const overlayTextList = engagementCover
+        ? buildEngagementCoverHooks(selectedReference, { title: draft.title, body: savedBody }, refs.length)
+        : buildImageOverlayTexts(savedBody, refs.length);
+      dailyLog(job, engagementCover
+        ? `已识别互动共鸣封面，只生成 1 张无产品互动图`
+        : `\u5df2\u4ece\u53d1\u5e03\u8868\u6b63\u6587\u5b57\u6bb5\u63d0\u53d6 ${overlayTextList.length} \u6761\u6c1b\u56f4\u56fe\u6587\u5b57`);
       const queue = await postLocalJson('http://127.0.0.1:5000/api/gpt-helper-queue', {
+        publish_record_id: recordId,
         scenes: refs.map(file => ({ path: file, record_id: selectedReference.id, name: path.basename(file) })),
         batch_size: expectedImageCount, gen_count: 1, match_mode: 'manual', product_record_ids: productReferenceIds,
-        scene_modes: Object.fromEntries(refs.map((_, i) => [String(i), 'auto'])),
+        scene_modes: Object.fromEntries(refs.map((_, i) => [String(i), inferQueueSceneMode(selectedReference, engagementCover)])),
         overlay_texts: Object.fromEntries(overlayTextList.map((text, i) => [String(i), text])),
         positive: '\u9010\u56fe\u5224\u65ad\u3002\u65e0\u4ea7\u54c1\u7684\u6c1b\u56f4\u56fe\uff1a\u751f\u6210\u76f8\u4f3c\u6c1b\u56f4\u65b0\u573a\u666f\uff0c\u6392\u5165\u672c\u7bc7 post \u6b63\u6587\u91d1\u53e5\u7247\u6bb5\u3002\u539f\u56fe\u5df2\u6709\u660e\u786e\u9152\u7c7b\u4ea7\u54c1\uff1a\u4ec5\u66ff\u6362\u8be5\u4ea7\u54c1\uff0c\u5e76\u4e25\u683c\u4f7f\u7528\u98de\u4e66\u4ea7\u54c1\u7d20\u6750\u8868\u7684\u74f6\u8eab\u4e0e\u6807\u7b7e\u7ec6\u8282\u56fe\u3002',
         negative: '\u6a21\u7cca\u3001\u53d8\u5f62\u3001\u9519\u8bef\u74f6\u6807\u3001\u591a\u4f59\u74f6\u5b50\u3001AI\u611f\u3001\u590d\u5236\u539f\u56fe\u6587\u5b57\u3001\u590d\u5236\u5546\u6807\u6216\u6c34\u5370\u3001\u76f4\u63a5\u7167\u642c\u539f\u56fe\u4eba\u7269\u548c\u88c5\u9970',
@@ -2753,16 +3799,19 @@ app.post('/api/daily/run', (req, res) => {
       const queueState = await getLocalJson('http://127.0.0.1:5000/api/gpt-queue-state');
       const queueItems = queueState.items || [];
       const mismatchedItems = queueItems.filter(item => item.scene_record_id !== selectedReference.id);
-      if (queueItems.length !== expectedImageCount || mismatchedItems.length) {
+      const unboundItems = queueItems.filter(item => (item.publish_record_id || item.publishRecordId || '') !== recordId);
+      if (queueItems.length !== expectedImageCount || mismatchedItems.length || unboundItems.length) {
         throw new Error('\u65b0 GPT \u961f\u5217\u6821\u9a8c\u5931\u8d25\uff1a\u53c2\u8003\u56fe\u4e0d\u662f\u5f53\u524d\u9009\u4e2d post');
       }
-      dailyLog(job, `\u5df2\u6309\u539f post \u9644\u4ef6\u6570\u521b\u5efa ${expectedImageCount} \u4e2a GPT \u751f\u56fe\u4efb\u52a1`);
+      dailyLog(job, engagementCover
+        ? `已按互动封面策略创建 1 个 GPT 生图任务`
+        : `\u5df2\u6309\u539f post \u9644\u4ef6\u6570\u521b\u5efa ${expectedImageCount} \u4e2a GPT \u751f\u56fe\u4efb\u52a1`);
       try {
-        await postLocalJson('http://127.0.0.1:8765/gpt_launch', { rotate: false }, 30000);
+        await postLocalJson('http://127.0.0.1:8766/gpt_launch', { rotate: false }, 30000);
         dailyLog(job, '\u5df2\u6253\u5f00 GPT Profile\uff0c\u7b49\u5f85\u6269\u5c55\u5904\u7406\u961f\u5217');
       } catch (error) { dailyLog(job, `GPT Profile \u6253\u5f00\u5931\u8d25\uff1a${error.message}`); }
 
-      job.result = { topic, reference: { id: selectedReference.id, title: selectedReference.title, url: selectedReference.url }, draft: { title: draft.title, tags }, recordId, imageTasks: expectedImageCount, stage: 'waiting_images' };
+      job.result = { topic, reference: { id: selectedReference.id, title: selectedReference.title, url: selectedReference.url, coreSubject: referenceBlueprint.coreSubject }, draft: { title: draft.title, tags }, recordId, imageTasks: expectedImageCount, stage: 'waiting_images' };
       dailyLog(job, `\u5df2\u8fdb\u5165\u751f\u56fe\u9636\u6bb5\uff0c\u5c06\u81ea\u52a8\u7b49\u5f85 ${expectedImageCount} \u5f20\u7ed3\u679c\u56fe`);
 
       let lastDone = -1;
@@ -2772,13 +3821,15 @@ app.post('/api/daily/run', (req, res) => {
         const state = await getLocalJson('http://127.0.0.1:5000/api/gpt-queue-state');
         const items = state.items || [];
         const completed = items.filter(item => ['done', 'complete'].includes(item.status)).length;
+        const failed = items.filter(item => item.status === 'failed');
+        if (failed.length) throw new Error(`GPT 换图任务失败：${failed.map(item => item.error || `第 ${Number(item.index || 0) + 1} 张`).join('；')}`);
         if (completed !== lastDone) {
           lastDone = completed; unchanged = 0;
           dailyLog(job, `GPT \u751f\u56fe\u8fdb\u5ea6\uff1a${completed}/${items.length || expectedImageCount}`);
         } else { unchanged += 1; }
         if (items.length === expectedImageCount && completed >= expectedImageCount) break;
-        if (unchanged >= 12 && completed === 0) {
-          throw new Error('GPT Profile \u9700\u8981\u5b8c\u6210\u4e00\u6b21\u767b\u5f55\uff1b\u961f\u5217\u5df2\u4fdd\u7559\uff0c\u767b\u5f55\u540e\u4f1a\u7ee7\u7eed');
+        if (unchanged >= 60 && completed === 0) {
+          throw new Error('GPT 队列 10 分钟没有生成结果；队列已保留，可在修复登录或额度后继续');
         }
       }
       const finalQueueState = await getLocalJson('http://127.0.0.1:5000/api/gpt-queue-state');
@@ -2788,11 +3839,20 @@ app.post('/api/daily/run', (req, res) => {
         .filter(Boolean);
       if (files.length < expectedImageCount) throw new Error(`GPT \u53ea\u4e0b\u8f7d\u5230 ${files.length} \u5f20\u56fe\uff0c\u5e94\u6709 ${expectedImageCount} \u5f20`);
       uploadBaseAttachments(recordId, OUTPUT_FIELDS.\u56fe\u7247, files);
+      const saved = readOutputRecordSnapshot(recordId);
+      if (!saved.title || !saved.body || !saved.reference || saved.images.length < expectedImageCount) {
+        throw new Error(`\u53d1\u5e03\u8868\u9a8c\u6536\u5931\u8d25\uff1a\u6807\u9898=${saved.title ? '\u6709' : '\u7a7a'}\uff0c\u6b63\u6587=${saved.body ? '\u6709' : '\u7a7a'}\uff0c\u53c2\u8003\u94fe\u63a5=${saved.reference ? '\u6709' : '\u7a7a'}\uff0c\u56fe\u7247=${saved.images.length}/${expectedImageCount}`);
+      }
       markCompetitorImageStatus(selectedReference.id, '\u5df2\u5b8c\u6210');
+      markTopicUsed(topic.id, { publishRecordId: recordId, referenceRecordId: selectedReference.id, referenceUrl: selectedReference.url });
+      markMarketInsightUsed(insight.id, { lastTopicId: topic.id, lastPublishRecordId: recordId });
+      if (insight.feishuRecordId) {
+        try { updateBaseRecord(MARKET_INSIGHT_TABLE, insight.feishuRecordId, { \u72b6\u6001: '\u5df2\u5b8c\u6210' }, OUTPUT_BASE); } catch {}
+      }
       dailyLog(job, `\u5df2\u4e0a\u4f20 ${files.length} \u5f20\u6210\u54c1\u56fe\u5230\u98de\u4e66\u9644\u4ef6\u5b57\u6bb5`);
       await Promise.allSettled([
-        postLocalJson('http://127.0.0.1:8765/cleanup_gpt_results', {}, 30000),
-        postLocalJson('http://127.0.0.1:8765/open_publish_page', {}, 30000),
+        postLocalJson('http://127.0.0.1:8766/cleanup_gpt_results', {}, 30000),
+        postLocalJson('http://127.0.0.1:8766/open_publish_page', {}, 30000),
       ]);
       try { fs.rmSync(path.dirname(refs[0]), { recursive: true, force: true }); } catch {}
       job.result.stage = 'ready_for_review';
@@ -2808,6 +3868,81 @@ app.get('/api/daily/poll/:id', (req, res) => {
   const job = dailyRunStore.get(req.params.id);
   if (!job) return res.json({ ok: false, error: '\u4efb\u52a1\u4e0d\u5b58\u5728' });
   res.json({ ok: job.ok, done: job.done, error: job.error, logs: job.logs, result: job.result });
+});
+
+app.post('/api/daily/finalize-images', async (req, res) => {
+  try {
+    const recordId = String(req.body?.recordId || '').trim();
+    const expectedImageCount = Math.max(1, Math.min(9, Number(req.body?.expectedImageCount || 1)));
+    if (!recordId) throw new Error('缺少发布表 recordId');
+    const finalQueueState = await getLocalJson('http://127.0.0.1:5000/api/gpt-queue-state');
+    const items = finalQueueState.items || [];
+    const failed = items.filter(item => item.status === 'failed');
+    if (failed.length) throw new Error(`GPT 队列仍有失败任务：${failed.map(item => item.error || item.status).join('；')}`);
+    const files = items
+      .slice(0, expectedImageCount)
+      .map(item => item.result_file || (Array.isArray(item.result_files) ? item.result_files[0] : ''))
+      .filter(Boolean);
+    if (files.length < expectedImageCount) {
+      throw new Error(`GPT 结果图不足：已有 ${files.length} 张，应有 ${expectedImageCount} 张。请先恢复 GPT 登录态并继续原队列。`);
+    }
+    uploadBaseAttachments(recordId, OUTPUT_FIELDS.\u56fe\u7247, files);
+    await Promise.allSettled([
+      postLocalJson('http://127.0.0.1:8766/cleanup_gpt_results', {}, 30000),
+      postLocalJson('http://127.0.0.1:8766/open_publish_page', {}, 30000),
+    ]);
+    res.json({ ok: true, recordId, imageCount: files.length, files });
+  } catch (error) {
+    res.json({ ok: false, error: error.message });
+  }
+});
+
+app.post('/api/daily/resume-gpt-images', async (req, res) => {
+  try {
+    const requestedRecordId = String(req.body?.recordId || '').trim();
+    const expectedImageCount = Math.max(1, Math.min(9, Number(req.body?.expectedImageCount || 1)));
+    let queueState = await getLocalJson('http://127.0.0.1:5000/api/gpt-queue-state');
+    const items = queueState.items || [];
+    const queueRecordId = items.map(item => item.publish_record_id || item.publishRecordId || '').find(Boolean) || '';
+    const recordId = requestedRecordId || queueRecordId;
+    if (!recordId) {
+      throw new Error('缺少发布表 recordId：新队列会自动记录；旧队列请手填一次发布表 recordId。');
+    }
+
+    if (items.some(item => item.status === 'failed')) {
+      await postLocalJson('http://127.0.0.1:5000/api/gpt-queue-state', { action: 'retry' }, 30000);
+    }
+    try {
+      await postLocalJson('http://127.0.0.1:8766/gpt_launch', { rotate: false }, 30000);
+    } catch (error) {
+      throw new Error(`GPT Profile 打开失败：${error.message}`);
+    }
+
+    for (let attempt = 0; attempt < 120; attempt++) {
+      await waitMs(10000);
+      queueState = await getLocalJson('http://127.0.0.1:5000/api/gpt-queue-state');
+      const currentItems = queueState.items || [];
+      const failed = currentItems.filter(item => item.status === 'failed');
+      if (failed.length) {
+        throw new Error(`GPT 队列仍有失败任务：${failed.map(item => item.error || item.status).join('；')}`);
+      }
+      const files = currentItems
+        .slice(0, expectedImageCount)
+        .map(item => item.result_file || (Array.isArray(item.result_files) ? item.result_files[0] : ''))
+        .filter(Boolean);
+      if (files.length >= expectedImageCount) {
+        uploadBaseAttachments(recordId, OUTPUT_FIELDS.\u56fe\u7247, files);
+        await Promise.allSettled([
+          postLocalJson('http://127.0.0.1:8766/cleanup_gpt_results', {}, 30000),
+          postLocalJson('http://127.0.0.1:8766/open_publish_page', {}, 30000),
+        ]);
+        return res.json({ ok: true, recordId, imageCount: files.length, files });
+      }
+    }
+    throw new Error(`GPT 结果图不足：请确认 GPT 已登录并让原队列继续跑。`);
+  } catch (error) {
+    res.json({ ok: false, error: error.message });
+  }
 });
 
 const batchStore = new Map();
@@ -3756,6 +4891,9 @@ app.delete('/api/ares/chat/:sessionId', (req, res) => {
 const XHS_BASE      = 'REDACTED';
 const XHS_TABLE     = 'tblGpK7czdgjFZbi';
 const XHS_TRIED_F   = path.join(os.homedir(), 'xhs_tried.json');
+const PUBLISH_BASE  = 'REDACTED';
+const COMMENT_PHOTO_TABLE = 'tblJbrnsxyfvgteW';
+const COMMENT_LEARNING_CACHE = path.join(__dirname, 'data', 'comment-learning-cache.json');
 const UV_BIN        = path.join(os.homedir(), '.local', 'bin', 'uv.exe');
 const XHS_CLI_DIR   = path.join(os.homedir(), 'xiaohongshu-cli');
 const XHS_LOGIN_SCRIPT = path.join(__dirname, 'scripts', 'xhs-login-qrcode.ps1');
@@ -3835,6 +4973,8 @@ function xhsFetchAllRecords() {
       '--field-id', 'fldPISrmKu', '--field-id', 'fldTKifb9m',
       '--field-id', 'fldcBaFZ4R', '--field-id', 'fldL90EX2O',
       '--field-id', 'fldsjl0bni',
+      '--field-id', 'fldkwhCXdq', '--field-id', 'fldrRTrjMW',
+      '--field-id', 'fldsiNypBW', '--field-id', 'fldsNoorh7',
       '--format', 'json', '--limit', '100', '--offset', String(offset)]);
     if (!r.ok) break;
     const d = r.data;
@@ -3844,6 +4984,10 @@ function xhsFetchAllRecords() {
     const titleI = flds.indexOf('笔记标题');
     const textI = flds.indexOf('评论文字');
     const imageI = flds.indexOf('评论图片');
+    const likesI = flds.indexOf('点赞数');
+    const collectsI = flds.indexOf('收藏数');
+    const commentsI = flds.indexOf('评论数');
+    const sharesI = flds.indexOf('分享数');
     for (let i = 0; i < ids.length; i++) {
       const row = rows[i] || [];
       const url = xhsExtractUrl(ui >= 0 ? row[ui] : '') || xhsExtractUrl(noteUi >= 0 ? row[noteUi] : '');
@@ -3853,6 +4997,10 @@ function xhsFetchAllRecords() {
         id: ids[i], url, title: titleI >= 0 ? String(row[titleI] || '') : '',
         commentText, commentCount: commentText ? commentText.split(/\r?\n/).filter(Boolean).length : 0,
         imageCount: images.length, hasData: !!commentText, tried: tried.has(ids[i]),
+        likes: Number(likesI >= 0 ? row[likesI] : 0) || 0,
+        collects: Number(collectsI >= 0 ? row[collectsI] : 0) || 0,
+        comments: Number(commentsI >= 0 ? row[commentsI] : 0) || 0,
+        shares: Number(sharesI >= 0 ? row[sharesI] : 0) || 0,
       });
     }
     if (!d.has_more) break;
@@ -3861,9 +5009,480 @@ function xhsFetchAllRecords() {
   return records;
 }
 
+function xhsFetchCommentPhotoPool(limit = 80) {
+  const photos = [];
+  let offset = 0;
+  while (photos.length < limit) {
+    const r = larkCli(['--as', 'user', 'base', '+record-list',
+      '--base-token', PUBLISH_BASE, '--table-id', COMMENT_PHOTO_TABLE,
+      '--field-id', 'fldXemvWcH', '--field-id', 'fldiKFkAkf',
+      '--format', 'json', '--limit', '100', '--offset', String(offset)]);
+    if (!r.ok) break;
+    const d = r.data || {};
+    const rows = d.data || [], ids = d.record_id_list || [], flds = d.fields || [];
+    const seqI = flds.indexOf('序号');
+    const photoI = flds.indexOf('照片');
+    for (let i = 0; i < ids.length && photos.length < limit; i++) {
+      const row = rows[i] || [];
+      const attachments = photoI >= 0 && Array.isArray(row[photoI]) ? row[photoI] : [];
+      if (attachments.length) photos.push({
+        id: ids[i],
+        seq: seqI >= 0 ? String(row[seqI] || '') : '',
+        count: attachments.length,
+      });
+    }
+    if (!d.has_more) break;
+    offset += 100;
+  }
+  return photos;
+}
+
+function xhsTempJsonArg(prefix, payload) {
+  const dir = path.join(__dirname, '.tmp');
+  fs.mkdirSync(dir, { recursive: true });
+  const name = `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.json`;
+  const full = path.join(dir, name);
+  fs.writeFileSync(full, JSON.stringify(payload), 'utf8');
+  return `@.tmp/${name}`;
+}
+function xhsFetchCommentQueue(limit = 80) {
+  const rowsOut = [];
+  let offset = 0;
+  const fieldsWanted = ['序号', '照片', '评论内容', '评论类型', '评论状态', '目标笔记链接', '目标评论', '发布账号', '关联发布记录', '计划时间', '执行时间', '执行结果', '生成来源'];
+  while (rowsOut.length < limit) {
+    const args = ['--as', 'user', 'base', '+record-list',
+      '--base-token', PUBLISH_BASE, '--table-id', COMMENT_PHOTO_TABLE,
+      '--format', 'json', '--limit', '100', '--offset', String(offset)];
+    for (const f of fieldsWanted) args.push('--field-id', f);
+    const r = larkCli(args);
+    if (!r.ok) throw new Error(r.error?.message || r.error || '读取评论队列失败');
+    const d = r.data || {};
+    const rows = d.data || [], ids = d.record_id_list || [], flds = d.fields || [];
+    const idx = name => flds.indexOf(name);
+    for (let i = 0; i < ids.length && rowsOut.length < limit; i++) {
+      const row = rows[i] || [];
+      const photos = idx('照片') >= 0 && Array.isArray(row[idx('照片')]) ? row[idx('照片')] : [];
+      rowsOut.push({
+        id: ids[i],
+        seq: idx('序号') >= 0 ? String(row[idx('序号')] || '') : '',
+        photoCount: photos.length,
+        photoNames: photos.map(p => p.name).filter(Boolean),
+        photos: photos.map(p => ({
+          fileToken: p.file_token || p.fileToken || '',
+          name: p.name || 'comment-image.jpg',
+        })).filter(p => p.fileToken),
+        content: idx('评论内容') >= 0 ? String(row[idx('评论内容')] || '') : '',
+        type: idx('评论类型') >= 0 ? (Array.isArray(row[idx('评论类型')]) ? row[idx('评论类型')][0] : row[idx('评论类型')]) || '' : '',
+        status: idx('评论状态') >= 0 ? (Array.isArray(row[idx('评论状态')]) ? row[idx('评论状态')][0] : row[idx('评论状态')]) || '' : '',
+        targetNoteUrl: idx('目标笔记链接') >= 0 ? String(row[idx('目标笔记链接')] || '') : '',
+        targetComment: idx('目标评论') >= 0 ? String(row[idx('目标评论')] || '') : '',
+        account: idx('发布账号') >= 0 ? String(row[idx('发布账号')] || '') : '',
+        publishRecord: idx('关联发布记录') >= 0 ? String(row[idx('关联发布记录')] || '') : '',
+        plannedAt: idx('计划时间') >= 0 ? String(row[idx('计划时间')] || '') : '',
+        executedAt: idx('执行时间') >= 0 ? String(row[idx('执行时间')] || '') : '',
+        result: idx('执行结果') >= 0 ? String(row[idx('执行结果')] || '') : '',
+        source: idx('生成来源') >= 0 ? String(row[idx('生成来源')] || '') : '',
+      });
+    }
+    if (!d.has_more) break;
+    offset += 100;
+  }
+  return rowsOut;
+}
+
+function xhsNoteIdFromUrl(value = '') {
+  const text = String(value || '');
+  return text.match(/xiaohongshu\.com\/(?:explore|discovery\/item)\/([0-9a-f]+)/i)?.[1]?.toLowerCase() || '';
+}
+
+function xhsPublishedTargets() {
+  const r = larkCli(['--as', 'user', 'base', '+record-list',
+    '--base-token', PUBLISH_BASE, '--table-id', 'tblagggirJGbcWIh',
+    '--field-id', 'fldNhY7hvG', '--field-id', 'fld1R5bywz',
+    '--format', 'json', '--limit', '200']);
+  const d = r.data || {}, fields = d.fields || [], rows = d.data || [], ids = d.record_id_list || [];
+  const statusI = fields.indexOf('是否发布'), linkI = fields.indexOf('发布链接');
+  return ids.map((id, index) => {
+    const row = rows[index] || [];
+    const status = statusI >= 0 ? row[statusI] : '';
+    const link = linkI >= 0 ? String(row[linkI] || '') : '';
+    return { id, published: Array.isArray(status) ? status.includes('是') : status === '是', link, noteId: xhsNoteIdFromUrl(link) };
+  }).filter(item => item.published && item.noteId);
+}
+
+function xhsVerifyPublishedTarget(recordId, url) {
+  const noteId = xhsNoteIdFromUrl(url);
+  if (!recordId || !noteId) return false;
+  return xhsPublishedTargets().some(item => item.id === recordId && item.noteId === noteId);
+}
+
+function xhsWriteCommentQueue(items = [], context = {}) {
+  const usableItems = (Array.isArray(items) ? items : [])
+    .map(item => ({
+      role: String(item.role || context.accountRole || '').trim(),
+      text: String(item.text || '').trim(),
+      intent: String(item.intent || '').trim(),
+      imageHint: String(item.imageHint || '').trim(),
+    }))
+    .filter(item => item.text);
+  if (!usableItems.length) return [];
+
+  const queue = xhsFetchCommentQueue(120);
+  const photoRows = queue.filter(row => row.photoCount > 0 && row.photos?.length);
+  if (!photoRows.length) throw new Error('“评论区照片”表里还没有可复用的照片');
+  const targetRows = queue.filter(row => row.photoCount > 0 && !row.content && !row.status).slice(0, usableItems.length);
+  while (targetRows.length < usableItems.length) {
+    const source = photoRows[targetRows.length % photoRows.length];
+    const cloneDir = path.join('.tmp', `comment-photo-${Date.now()}-${targetRows.length}`);
+    const fullDir = path.join(__dirname, cloneDir);
+    fs.mkdirSync(fullDir, { recursive: true });
+    try {
+      const localFiles = [];
+      for (let p = 0; p < source.photos.length; p++) {
+        const photo = source.photos[p];
+        const safeName = `${p + 1}-${String(photo.name || 'comment-image.jpg').replace(/[^\w.\-\u4e00-\u9fff]+/g, '_')}`;
+        const relativeFile = path.join(cloneDir, safeName);
+        larkCli(['--as', 'user', 'base', '+record-download-attachment',
+          '--base-token', PUBLISH_BASE, '--table-id', COMMENT_PHOTO_TABLE,
+          '--record-id', source.id, '--file-token', photo.fileToken,
+          '--output', relativeFile, '--overwrite', '--format', 'json']);
+        localFiles.push(relativeFile);
+      }
+      const created = larkCli(['--as', 'user', 'base', '+record-upsert',
+        '--base-token', PUBLISH_BASE, '--table-id', COMMENT_PHOTO_TABLE,
+        '--json', xhsTempJsonArg('comment-photo-clone', { '序号': `自动复用-${Date.now()}-${targetRows.length + 1}` }), '--format', 'json']);
+      const recordId = created.data?.record?.record_id || created.data?.record_id || created.record?.record_id;
+      if (!recordId) throw new Error('复制评论图片时未取得新记录 ID');
+      const uploadArgs = ['--as', 'user', 'base', '+record-upload-attachment',
+        '--base-token', PUBLISH_BASE, '--table-id', COMMENT_PHOTO_TABLE,
+        '--record-id', recordId, '--field-id', 'fldiKFkAkf', '--format', 'json'];
+      localFiles.forEach(file => uploadArgs.push('--file', file));
+      larkCli(uploadArgs);
+      targetRows.push({ id: recordId, seq: '', photoCount: localFiles.length, photoNames: localFiles.map(path.basename), photos: source.photos });
+    } finally {
+      fs.rmSync(fullDir, { recursive: true, force: true });
+    }
+  }
+
+  const written = [];
+  const allowedAccounts = (Array.isArray(context.accountRoles) ? context.accountRoles : [])
+    .map(value => String(value || '').trim()).filter(Boolean);
+  for (let i = 0; i < targetRows.length; i++) {
+    const item = usableItems[i];
+    const row = targetRows[i];
+    const patch = {
+      '评论内容': item.text,
+      '评论类型': context.mode === 'reply' ? '定向回复' : '造势评论',
+      '评论状态': context.status || '待执行',
+      '目标笔记链接': context.targetNoteUrl || '',
+      '目标评论': context.userComment || '',
+      '发布账号': allowedAccounts.length
+        ? (allowedAccounts.includes(item.role) ? item.role : allowedAccounts[i % allowedAccounts.length])
+        : (context.accountRole || item.role || ''),
+      '关联发布记录': context.publishRecord || '',
+      '生成来源': context.source || `Market Hub ${new Date().toISOString()}`,
+      '执行结果': item.intent || item.imageHint ? `意图：${item.intent || ''}${item.imageHint ? `；配图：${item.imageHint}` : ''}` : '',
+    };
+    const r = larkCli(['--as', 'user', 'base', '+record-upsert',
+      '--base-token', PUBLISH_BASE, '--table-id', COMMENT_PHOTO_TABLE,
+      '--record-id', row.id, '--json', xhsTempJsonArg('comment-queue', patch), '--format', 'json']);
+    if (!r.ok) throw new Error(r.error?.message || r.error || `写入评论队列失败：${row.id}`);
+    written.push({ ...row, content: item.text, type: patch['评论类型'], status: patch['评论状态'], account: patch['发布账号'], intent: item.intent, imageHint: item.imageHint });
+  }
+  return written;
+}
+function xhsSplitCommentLines(text = '', limit = 12) {
+  return String(text || '')
+    .split(/\r?\n+/)
+    .map(s => s.replace(/^\s*\d+[.、)]\s*/, '').trim())
+    .filter(s => s.length >= 8)
+    .slice(0, limit);
+}
+
+function xhsBuildCommentLearningCorpus() {
+  const records = xhsFetchAllRecords()
+    .filter(r => r.commentText && r.commentText.trim())
+    .sort((a, b) => {
+      const score = r => (r.commentCount || 0) * 6 + (r.imageCount || 0) * 5 + Math.log1p((r.likes || 0) + (r.collects || 0) + (r.comments || 0) * 4);
+      return score(b) - score(a);
+    })
+    .slice(0, 28);
+  const noteSamples = records.map((r, idx) => ({
+    rank: idx + 1,
+    id: r.id,
+    title: r.title || '',
+    url: r.url || '',
+    metrics: { likes: r.likes || 0, collects: r.collects || 0, comments: r.comments || 0, shares: r.shares || 0 },
+    commentImageCount: r.imageCount || 0,
+    comments: xhsSplitCommentLines(r.commentText, 10),
+  }));
+  const photoPool = xhsFetchCommentPhotoPool(80);
+  return {
+    generatedAt: new Date().toISOString(),
+    source: {
+      competitorRecords: noteSamples.length,
+      commentLines: noteSamples.reduce((sum, item) => sum + item.comments.length, 0),
+      competitorCommentImages: records.reduce((sum, item) => sum + (item.imageCount || 0), 0),
+      standaloneCommentPhotoRecords: photoPool.length,
+      standaloneCommentPhotos: photoPool.reduce((sum, item) => sum + (item.count || 0), 0),
+    },
+    noteSamples,
+    photoPool,
+  };
+}
+
+function xhsLoadCommentLearningCache() {
+  try { return JSON.parse(fs.readFileSync(COMMENT_LEARNING_CACHE, 'utf8')); }
+  catch { return null; }
+}
+
+function xhsSaveCommentLearningCache(cache) {
+  fs.mkdirSync(path.dirname(COMMENT_LEARNING_CACHE), { recursive: true });
+  fs.writeFileSync(COMMENT_LEARNING_CACHE, JSON.stringify(cache, null, 2), 'utf8');
+}
+
+function xhsBuildHeuristicCommentSummary(corpus) {
+  const comments = (corpus.noteSamples || []).flatMap(note => (note.comments || []).map(text => ({ text, title: note.title || '' })));
+  const pick = re => comments.filter(item => re.test(item.text)).slice(0, 8).map(item => `- ${item.text}`).join('\n') || '- 暂无明显样本';
+  return `## 评论区互动机制
+1. 求图/借图：用户用“礼貌拿图、借图、求图”表达低门槛互动，适合氛围图和文字封面。
+${pick(/拿图|借图|求图|分享.*图|图一|图\d/)}
+
+2. 求推荐/求评价：用户会问“好不好喝、有没有推荐、怎么买、口味怎么样”，适合品牌号轻承接。
+${pick(/推荐|推介|评价|怎么样|好喝|买|口味|喝过/)}
+
+3. 纠错/补充：用户会围绕颜色、做法、搭配、场景纠正细节，适合用运营号补充信息。
+${pick(/不是|正确|为什么|颜色|搭配|加点|兑|调/)}
+
+4. 真实困扰：用户会提到甜、胖、睡觉、酒量、苦、喝不惯等具体顾虑，适合短回复承接。
+${pick(/太甜|胖|睡|酒量|喝不惯|苦|浪费|难/)}
+
+5. 晒清单/晒图：长评论和带图评论通常承担“我也有/我买了/我怎么搭”的证明功能，后续可以作为评论图片学习源。
+
+## 可迁移到每天烈刻的评论打法
+- 自有笔记下先放 2-3 条低门槛接话：求口味、求图、问搭配、问“这个度数会不会冲”。
+- 第二层评论承接顾虑：甜不甜、白酒味重不重、适不适合在家小酌、怎么兑更稳。
+- 第三层用品牌事实轻露出：10度、气泡、真实果汁、海盐菠萝/青提风味；避免一上来硬讲参数。
+
+## 造势评论生成规则
+- 每条 12-45 字，像普通评论区接话。
+- 角色可分：求推荐的人、怕白酒味的人、在家小酌的人、想看图的人、轻微玩梗的人。
+- 有图时，评论可以围绕“这个图好有感觉/想拿来做壁纸/求同款搭配/求开瓶场景”。
+
+## 定向回复生成规则
+- 先接住原评论的一个具体词，再补一句信息，最后可轻问一句。
+- 对口味顾虑：回答“更像清爽气泡果酒方向，白酒冲感弱”，不要说疗效或绝对承诺。
+- 对购买/价格/链接：只给合规引导，不说包邮、库存、私信等无法确认的话。
+
+## 评论图片使用规则
+- 评论区照片表适合作为“用户晒图/场景证明”的风格参考。
+- 竞品评论图片要和评论文字一起看：订单截图、到货图、酒杯图、场景图的用途不同。
+- 评论图片后续换图时优先保留原图的互动功能：证明、求图、晒单、场景代入。
+
+## 禁止踩线
+- 不冒充真实消费者购买/饮用经历。
+- 不承诺助眠、减肥、健康收益。
+- 不用强销售口吻压迫用户。`;
+}
+
+function xhsFallbackCommentItems(mode = 'seed', userComment = '') {
+  const c = String(userComment || '');
+  if (mode === 'reply') {
+    if (/甜|腻|糖/.test(c)) return [
+      { role: '运营号', text: '怕甜的话可以先加冰，气泡感会把甜感压得更清爽一点', intent: '承接口味顾虑', imageHint: '' },
+      { role: '运营号', text: '这个点很真实，低度酒最怕腻，口味一定要收得干净才行', intent: '接住原评论', imageHint: '' },
+      { role: '运营号', text: '你平时更怕甜还是更怕白酒味？这两个方向其实差挺多的', intent: '引导追问', imageHint: '' },
+    ];
+    if (/白酒|冲|辣|上头|度数/.test(c)) return [
+      { role: '运营号', text: '怕白酒冲感的人确实会先犹豫，气泡和果香就是用来把入口放轻的', intent: '降低顾虑', imageHint: '' },
+      { role: '运营号', text: '这个问题问得很准，低度只是基础，入口顺不顺才是关键', intent: '承接问题', imageHint: '' },
+      { role: '运营号', text: '如果你平时不太碰白酒，建议先冰一下，小口试会更稳', intent: '场景建议', imageHint: '' },
+    ];
+    return [
+      { role: '运营号', text: '你这个说法好真实，评论区很多人其实都是卡在这个点上', intent: '接住情绪', imageHint: '' },
+      { role: '运营号', text: '对，这种东西最重要的是别有负担，轻轻喝一点就够了', intent: '品牌状态承接', imageHint: '' },
+      { role: '运营号', text: '想问问你更在意口味、度数，还是喝完之后的舒服度？', intent: '引导讨论', imageHint: '' },
+    ];
+  }
+  return [
+    { role: '素人号', text: '这个标题太懂我了，下班后真的只想喝点轻松的', intent: '开启共鸣', imageHint: '' },
+    { role: '怕白酒味的人', text: '想问这个会不会有白酒那种冲嗓子的感觉？', intent: '抛出核心顾虑', imageHint: '' },
+    { role: '求图号', text: '封面这个氛围好好，想礼貌拿图当聊天背景', intent: '拉互动', imageHint: '适合配评论区氛围图' },
+    { role: '场景号', text: '感觉适合冰箱里备一瓶，突然想小酌的时候拿出来', intent: '带出使用场景', imageHint: '' },
+    { role: '口味号', text: '海盐菠萝听起来会比普通果酒更清爽一点诶', intent: '轻露出卖点', imageHint: '' },
+    { role: '互动号', text: '你们一个人在家的时候会喝酒吗，还是只喝饮料？', intent: '引导讨论', imageHint: '' },
+    { role: '老粉口吻', text: '低度、有气泡、别太甜，这三个点真的很难同时做好', intent: '放大判断标准', imageHint: '' },
+    { role: '轻玩梗', text: '成年人冰箱里需要一点“今天先放过自己”的东西', intent: '造梦状态', imageHint: '' },
+  ];
+}
+
 app.get('/api/xhs/records', (req, res) => {
   try { res.json({ ok: true, records: xhsFetchAllRecords() }); }
   catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
+app.get('/api/xhs/comment-learning', (req, res) => {
+  try {
+    const corpus = xhsBuildCommentLearningCorpus();
+    const cache = xhsLoadCommentLearningCache();
+    res.json({ ok: true, corpus, cache });
+  } catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
+app.get('/api/xhs/comment-queue', (req, res) => {
+  try {
+    const limit = Math.max(1, Math.min(200, Number(req.query?.limit || 80)));
+    const queue = xhsFetchCommentQueue(limit);
+    res.json({ ok: true, queue, pending: queue.filter(row => row.content && !['已发送', '已跳过'].includes(row.status || '')).length });
+  } catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/xhs/comment-queue/status', (req, res) => {
+  try {
+    const { recordId = '', status = '', result = '' } = req.body || {};
+    const id = String(recordId || '').trim();
+    const nextStatus = String(status || '').trim();
+    if (!id || !nextStatus) return res.status(400).json({ ok: false, error: 'recordId 和 status 必填' });
+    const allowed = new Set(['待执行', '需人工确认', '已发送', '失败', '已跳过']);
+    if (!allowed.has(nextStatus)) return res.status(400).json({ ok: false, error: `不支持的评论状态：${nextStatus}` });
+    const patch = {
+      '评论状态': nextStatus,
+      '执行结果': String(result || '').slice(0, 1000),
+    };
+    if (nextStatus === '已发送') {
+      const now = new Date();
+      const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 19).replace('T', ' ');
+      patch['执行时间'] = local;
+    }
+    const r = larkCli(['--as', 'user', 'base', '+record-upsert',
+      '--base-token', PUBLISH_BASE, '--table-id', COMMENT_PHOTO_TABLE,
+      '--record-id', id, '--json', xhsTempJsonArg('comment-status', patch), '--format', 'json']);
+    if (!r.ok) throw new Error(r.error?.message || r.error || `更新评论状态失败：${id}`);
+    res.json({ ok: true, recordId: id, status: nextStatus });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/xhs/comment-learning/refresh', async (req, res) => {
+  try {
+    const corpus = xhsBuildCommentLearningCorpus();
+    if (!corpus.source.commentLines) return res.json({ ok: false, error: '还没有可学习的评论文字。先给竞品表补全评论文字/评论图片。' });
+    const brandFacts = [
+      fs.readFileSync(path.join(__dirname, 'brand-facts.md'), 'utf8'),
+      fs.readFileSync(path.join(__dirname, 'product-info.md'), 'utf8'),
+    ].join('\n\n').slice(0, 12000);
+    const prompt = `你是每天烈刻的评论运营研究员。请把下面这些已登记竞品笔记的评论区样本，压缩成一个可复用的“评论学习缓存”。
+
+任务：
+1. 总结评论区里最容易触发互动的 6-10 种机制：提问、求链接、晒图、跟风、争议、玩梗、真实困扰、购买意图等。
+2. 区分两类可用输出：
+   - 造势评论：品牌自有笔记下，由不同运营账号开启讨论或承接讨论。
+   - 定向回复：回复某个用户原评论，接住对方的话。
+3. 提炼评论图片的使用方向：哪些图适合晒订单/到货/场景/表情包/产品替代，哪些只适合学习氛围。
+4. 给后续生成器一份短规则，要求像真实评论区，不写长广告。
+
+品牌事实只用于判断能不能承接，不要编造体验、销量和功效：
+${brandFacts}
+
+评论样本 JSON：
+${JSON.stringify(corpus, null, 2).slice(0, 45000)}
+
+输出用 Markdown，分为：
+## 评论区互动机制
+## 可迁移到每天烈刻的评论打法
+## 造势评论生成规则
+## 定向回复生成规则
+## 评论图片使用规则
+## 禁止踩线`;
+    let summary = '';
+    let fallback = false;
+    let modelError = '';
+    try {
+      summary = await runClaudeAsync(prompt, 180000);
+    } catch (error) {
+      fallback = true;
+      modelError = error.message || String(error);
+      summary = xhsBuildHeuristicCommentSummary(corpus);
+    }
+    const cache = { generatedAt: new Date().toISOString(), source: corpus.source, summary, fallback, modelError };
+    xhsSaveCommentLearningCache(cache);
+    res.json({ ok: true, cache, corpus });
+  } catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/xhs/comment-plan', async (req, res) => {
+  try {
+    const { mode = 'seed', noteTitle = '', noteBody = '', userComment = '', accountRole = '', accountRoles = [], count = 5, targetNoteUrl = '', publishRecord = '', save = true } = req.body || {};
+    if (save !== false && (!String(targetNoteUrl).trim() || !String(publishRecord).trim())) {
+      return res.status(400).json({ ok: false, error: '造势评论只允许关联发布表中已发布的笔记：缺少发布记录 ID 或发布链接' });
+    }
+    if (save !== false && !xhsVerifyPublishedTarget(String(publishRecord).trim(), String(targetNoteUrl).trim())) {
+      return res.status(400).json({ ok: false, error: '评论目标与发布表中的已发布记录/发布链接不一致，已拒绝生成' });
+    }
+    const cache = xhsLoadCommentLearningCache();
+    const learning = cache?.summary || '暂无缓存，请先刷新评论学习。';
+    const brandFacts = [
+      fs.readFileSync(path.join(__dirname, 'brand-facts.md'), 'utf8'),
+      fs.readFileSync(path.join(__dirname, 'product-info.md'), 'utf8'),
+    ].join('\n\n').slice(0, 10000);
+    const prompt = `你是每天烈刻的小红书评论运营助手。基于评论学习缓存，生成可复制的评论候选。
+
+模式：${mode === 'reply' ? '定向回复别人评论' : '自有笔记下造势评论'}
+账号角色：${accountRole || '未指定，默认普通运营账号'}
+目标笔记标题：${noteTitle || '未提供'}
+目标笔记正文摘要：${String(noteBody || '').slice(0, 3000) || '未提供'}
+被回复评论：${String(userComment || '').slice(0, 800) || '无'}
+
+评论学习缓存：
+${learning.slice(0, 18000)}
+
+品牌事实：
+${brandFacts}
+
+要求：
+- 生成 ${Math.max(1, Math.min(12, Number(count) || 5))} 条。
+- 每条 12-60 字。
+- 像真实评论区里的接话、提问、补充、轻微玩梗或求图，不写硬广。
+- 不冒充真实购买体验；账号是运营号时可以用品牌/运营口吻。
+- 如果是定向回复，必须接住原评论里的一个具体词或情绪。
+
+输出严格 JSON：
+{"mode":"seed|reply","items":[{"role":"","text":"","intent":"","imageHint":""}],"notes":""}`;
+    const raw = await runClaudeAsync(prompt + `\n可用评论账号（role 必须从中选择）：${JSON.stringify(accountRoles.length ? accountRoles : [accountRole].filter(Boolean))}`, 180000);
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('评论计划未返回 JSON');
+    const parsed = JSON.parse(match[0]);
+    const queued = save === false ? [] : xhsWriteCommentQueue(parsed.items || [], { mode, targetNoteUrl, userComment, accountRole, accountRoles, publishRecord, source: 'Market Hub 评论生成 ' + new Date().toISOString() });
+    res.json({ ok: true, ...parsed, queued, queuedCount: queued.length, learningGeneratedAt: cache?.generatedAt || '' });
+  } catch (e) {
+    console.error('[xhs/comment-plan]', e.message);
+    const mode = req.body?.mode === 'reply' ? 'reply' : 'seed';
+    const fallbackItems = xhsFallbackCommentItems(mode, req.body?.userComment || '');
+    let queued = [];
+    try {
+      if (req.body?.save !== false) queued = xhsWriteCommentQueue(fallbackItems, {
+        mode,
+        targetNoteUrl: req.body?.targetNoteUrl || '',
+        userComment: req.body?.userComment || '',
+        accountRole: req.body?.accountRole || '',
+        accountRoles: req.body?.accountRoles || [],
+        publishRecord: req.body?.publishRecord || '',
+        source: 'Market Hub 评论 fallback ' + new Date().toISOString(),
+      });
+    } catch (writeError) {
+      return res.json({ ok: false, fallback: true, modelError: e.message, error: writeError.message, items: fallbackItems });
+    }
+    res.json({
+      ok: true,
+      fallback: true,
+      modelError: e.message,
+      mode,
+      items: fallbackItems,
+      queued,
+      queuedCount: queued.length,
+      notes: '模型暂不可用，已使用本地评论规则生成候选；人工确认后再使用。',
+      learningGeneratedAt: xhsLoadCommentLearningCache()?.generatedAt || '',
+    });
+  }
 });
 
 app.get('/api/xhs/status', (req, res) => {
@@ -3882,6 +5501,42 @@ app.get('/api/xhs/status', (req, res) => {
     }
     res.json({ ok: true, user: data.data?.user || data.data || null });
   } catch (e) { res.json({ ok: false, code: 'exception', error: e.message }); }
+});
+
+app.post('/api/xhs/enrich-competitor-images', (req, res) => {
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter(Boolean) : [];
+  const limit = Math.max(1, Math.min(100, Number(req.body?.limit || 30)));
+  const maxImages = Math.max(1, Math.min(9, Number(req.body?.maxImages || 9)));
+  const jobId = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const job = { done: false, logs: [], results: [] };
+  xhsJobStore.set(jobId, job);
+  res.json({ ok: true, jobId });
+
+  const script = path.join(__dirname, 'scripts', 'enrich_competitor_from_xhs.py');
+  const args = [script, '--limit', String(limit), '--max-images', String(maxImages), '--max-comments', '10'];
+  if (ids.length) args.push('--record-ids', ids.join(','));
+  const child = spawn('python', args, {
+    cwd: __dirname,
+    windowsHide: true,
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8', HTTPS_PROXY: process.env.HTTPS_PROXY || 'http://127.0.0.1:7890', HTTP_PROXY: process.env.HTTP_PROXY || 'http://127.0.0.1:7890' },
+  });
+  let stdout = '', stderr = '';
+  child.stdout.on('data', chunk => { stdout += chunk.toString('utf8'); });
+  child.stderr.on('data', chunk => { stderr += chunk.toString('utf8'); });
+  child.on('close', code => {
+    try {
+      const parsed = JSON.parse(stdout || '{}');
+      job.results = parsed.results || [];
+      job.logs.push(...job.results.map(item => item.ok
+        ? `✅ ${item.title || item.id}｜原图 ${item.images}｜有效评论 ${item.comments}｜评论图 ${item.comment_images}`
+        : `❌ ${item.id}｜${item.error || '补全失败'}`));
+      if (code !== 0 || parsed.ok === false) job.logs.push(`❌ ${parsed.error || stderr || `exit ${code}`}`);
+    } catch (error) {
+      job.logs.push(`❌ 补全结果解析失败：${error.message} ${stderr}`);
+    }
+    job.done = true;
+  });
+  child.on('error', error => { job.logs.push(`❌ 启动失败：${error.message}`); job.done = true; });
 });
 
 app.post('/api/xhs/login-qrcode', (req, res) => {
@@ -3909,15 +5564,17 @@ app.post('/api/xhs/import', (req, res) => {
       .map(v => String(v || '').trim())
       .filter(v => /^https?:\/\/(?:www\.)?(?:xiaohongshu\.com|xhslink\.com)\//i.test(v)))];
     if (!urls.length) return res.json({ ok: false, error: '请粘贴有效的小红书笔记链接' });
-    const existing = new Set(xhsFetchAllRecords().map(r => r.url).filter(Boolean));
+    const existingRecords = xhsFetchAllRecords();
+    const existing = new Map(existingRecords.filter(r => r.url).map(r => [r.url, r.id]));
     const fresh = urls.filter(url => !existing.has(url));
-    if (!fresh.length) return res.json({ ok: true, created: 0, duplicate: urls.length, ids: [] });
+    if (!fresh.length) return res.json({ ok: true, created: 0, duplicate: urls.length, ids: urls.map(url => existing.get(url)).filter(Boolean) });
     const created = larkCli(['--as', 'user', 'base', '+record-batch-create',
       '--base-token', XHS_BASE, '--table-id', XHS_TABLE,
       '--json', JSON.stringify({ fields: ['地址贴这里', '笔记地址'], rows: fresh.map(url => [url, url]) }),
       '--format', 'json']);
-    res.json({ ok: true, created: fresh.length, duplicate: urls.length - fresh.length,
-      ids: created.data?.record_id_list || [] });
+    const createdIds = created.data?.record_id_list || [];
+    const ids = [...createdIds, ...urls.filter(url => existing.has(url)).map(url => existing.get(url))];
+    res.json({ ok: true, created: fresh.length, duplicate: urls.length - fresh.length, ids });
   } catch (e) { res.json({ ok: false, error: e.message }); }
 });
 
@@ -3982,6 +5639,12 @@ app.post('/api/xhs/reply-suggestion', async (req, res) => {
     const { comment = '', noteTitle = '', noteUrl = '', context = '' } = req.body || {};
     const cleanComment = String(comment || '').trim().slice(0, 800);
     if (!cleanComment) return res.json({ ok: false, error: '请先选中一条评论或粘贴评论文本' });
+    const publishedTarget = xhsPublishedTargets().find(item => item.noteId === xhsNoteIdFromUrl(noteUrl));
+    if (!publishedTarget) return res.status(400).json({ ok: false, error: '这不是发布表中已登记发布链接的笔记，评论助手不会在这里生成回复' });
+    const learningCache = xhsLoadCommentLearningCache();
+    const commentLearning = learningCache?.summary
+      ? learningCache.summary.slice(0, 12000)
+      : '暂无评论学习缓存。生成时只按品牌事实和当前评论判断；建议先在 Market Hub 评论维护页刷新评论学习。';
     const prompt = `你是每天烈刻气泡白酒的小红书评论回复助手。请根据当前笔记语境，为“被选中的这条评论”生成可复制回复。
 
 安全边界：
@@ -3994,6 +5657,8 @@ app.post('/api/xhs/reply-suggestion', async (req, res) => {
 当前笔记标题：${noteTitle || '未知'}
 当前笔记链接：${noteUrl || '未知'}
 页面上下文：${context || '无'}
+评论学习缓存：
+${commentLearning}
 被选中的评论：${cleanComment}
 
 输出严格 JSON：
@@ -4012,7 +5677,16 @@ app.post('/api/xhs/reply-suggestion', async (req, res) => {
     });
   } catch (e) {
     console.error('[xhs/reply-suggestion]', e.message);
-    res.json({ ok: false, error: e.message });
+    const fallbackReplies = xhsFallbackCommentItems('reply', req.body?.comment || '').slice(0, 3);
+    res.json({
+      ok: true,
+      fallback: true,
+      modelError: e.message,
+      okToReply: true,
+      reason: '模型暂不可用，已使用本地评论规则生成候选。',
+      replies: fallbackReplies.map(item => ({ style: item.intent || item.role || '候选回复', text: item.text })),
+      copyHint: '模型暂不可用：先使用本地候选，人工确认后再复制发送。',
+    });
   }
 });
 
@@ -4129,3 +5803,8 @@ const httpServer = app.listen(PORT, () => {
   console.log(`  飞书群:    ${CFG.feishu.groupId}`);
 });
 httpServer.setTimeout(0); // 禁用 socket 超时，由 runClaudeAsync 的应用层超时控制
+
+
+
+
+

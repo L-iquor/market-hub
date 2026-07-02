@@ -225,12 +225,13 @@ body > div[id^="tab-"][style*="height:calc(100vh - 128px)"] { height:calc(100vh 
 /* ── 撰写台布局 ── */
 .layout {
   display: grid; grid-template-columns: var(--sidebar-w, 320px) 4px 1fr;
-  gap: 0; height: calc(100vh - 169px);
+  gap: 0; height: calc(100vh - 169px); min-height:0;
 }
 .sidebar {
   background: var(--bg2); border-right: none;
   padding: 24px 20px; overflow-y: scroll;
   display: flex; flex-direction: column; gap: 20px;
+  min-height:0; max-height:calc(100vh - 169px); scrollbar-gutter:stable;
 }
 .sidebar::-webkit-scrollbar { width:8px; }
 .sidebar::-webkit-scrollbar-track { background:var(--bg3); }
@@ -848,6 +849,7 @@ label { font-size:13px; color:var(--muted); }
 <div class="tab-nav">
   <button class="tab-btn tab-home active" data-tab="guide" onclick="switchTab('guide')">首页说明</button>
   <button class="tab-btn tab-write" data-tab="write" onclick="switchTab('write')">内容生产</button>
+  <button class="tab-btn tab-data" data-tab="insights" onclick="switchTab('insights')">市场洞察</button>
   <button class="tab-btn tab-data" data-tab="topics" onclick="switchTab('topics')">今日选题</button>
   <button class="tab-btn tab-data" data-tab="matrix" onclick="switchTab('matrix')">测试矩阵</button>
   <button class="tab-btn tab-data" data-tab="comments" onclick="switchTab('comments')">评论维护</button>
@@ -867,9 +869,11 @@ label { font-size:13px; color:var(--muted); }
       <div class="home-action-card">
         <h3>今天最常用的入口</h3>
         <button class="btn btn-primary" id="dailyRunHomeBtn" onclick="dailyRun()">跑今日主流程</button>
-        <button class="btn btn-primary" onclick="switchTab('write')">去内容生产</button>
+        <div style="display:grid;gap:6px;margin-top:10px">
+          <input id="manualReferenceUrl" placeholder="贴一篇小红书链接，按它做一篇" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink)">
+          <button class="btn" id="manualReferenceRunBtn" onclick="dailyRunManualReference()">按这篇母本生成</button>
+        </div>
         <button class="btn" onclick="switchTab('comments')">去评论维护</button>
-        <button class="btn" onclick="switchTab('research')">去竞品分析台</button>
         <div id="dailyRunStatus" style="margin-top:10px;font-size:11px;color:var(--muted);line-height:1.6;white-space:pre-wrap"></div>
       </div>
     </div>
@@ -1113,7 +1117,61 @@ label { font-size:13px; color:var(--muted); }
   </div>
 </div>
 
-<!-- ══ Tab 1: 撰写台 ══ -->
+<!-- ══ Tab: 市场洞察 ══ -->
+<div id="tab-insights" style="display:none">
+  <div class="topics-shell">
+    <div class="topics-head">
+      <div>
+        <div class="topics-title">市场洞察 · 第 0 步</div>
+        <div class="topics-sub">先确定用户会搜索什么、为什么搜、处于哪一步，再让热点采集围绕这条需求工作。</div>
+      </div>
+      <div class="topics-controls">
+        <span id="insightsUpdated" style="font-size:11px;color:var(--muted)">尚未生成</span>
+        <button class="btn btn-sm" onclick="previewInsightPrompt(false)">看依据 / 提示词</button>
+        <button class="btn btn-primary btn-sm" id="insightsRefreshBtn" onclick="refreshInsights(true)">重新采集并洞察</button>
+        <a class="btn btn-sm" href="https://my.feishu.cn/base/REDACTED?table=tbl6uTJb7IGWWzVg" target="_blank" rel="noreferrer">打开飞书登记表</a>
+      </div>
+    </div>
+    <div class="card" style="margin:0 0 14px;padding:14px;border-radius:14px;background:rgba(255,250,240,.82);border:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+        <div>
+          <div style="font-weight:700;color:var(--text)">搜索词反推洞察</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">你只要给一个可能会被搜的词、品类或场景。系统反推用户为什么搜、会怎么继续搜、卡在哪个决策阶段，再生成造梦 brief。</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="previewInsightPrompt(false)">预览本轮提示词</button>
+          <button class="btn btn-primary btn-sm" onclick="refreshInsights(true)">按这个词生成洞察</button>
+        </div>
+      </div>
+      <textarea id="insightManualBehavior" class="prompt-textarea" style="margin-top:10px;min-height:92px" placeholder="例：气泡白酒 / 下班后想喝一点 / 适合女生在家小酌的酒 / 不像白酒的白酒。可以只填一个词，系统会自己反推搜索路径。"></textarea>
+      <div id="insightPromptPreview" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">
+          <div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:6px">本轮真实信号摘要</div>
+            <pre id="insightSignalBox" style="white-space:pre-wrap;max-height:260px;overflow:auto;background:rgba(255,255,255,.72);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:11px"></pre>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:6px">完整市场洞察提示词</div>
+            <textarea id="insightPromptBox" class="prompt-textarea" style="min-height:260px;font-family:monospace;font-size:11px"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="topics-flow">
+      <div class="topics-flow-step"><b>1. 搜索行为</b><span>读取搜索联想、热门/最新笔记和真实问题表达。</span></div>
+      <div class="topics-flow-step"><b>2. 决策阶段</b><span>判断本篇负责停留、代入、理解、信任或购买。</span></div>
+      <div class="topics-flow-step"><b>3. 产品承接</b><span>只选择一个主要产品事实接住用户问题。</span></div>
+      <div class="topics-flow-step"><b>4. 驱动热点</b><span>被采用的核心词和长尾词自动成为热点采集种子。</span></div>
+    </div>
+    <div id="insightsSelected" class="topic-selected" style="display:none;margin-bottom:14px"></div>
+    <div id="insightsError" style="display:none;margin-bottom:12px;padding:10px 12px;border:1px solid rgba(248,113,113,.45);background:rgba(248,113,113,.1);color:var(--red);font-size:12px;border-radius:6px"></div>
+    <div class="topics-grid" id="insightsGrid">
+      <div class="topic-empty">点击“重新采集并洞察”，系统会先分析真实搜索行为，再给出可采用的市场洞察。</div>
+    </div>
+  </div>
+</div><!-- /tab-insights -->
+
+<!-- ══ Tab 1: 今日选题 ══ -->
 <div id="tab-topics" style="display:none">
   <div class="topics-shell">
     <div class="topics-head">
@@ -1129,6 +1187,14 @@ label { font-size:13px; color:var(--muted); }
         <button class="btn btn-primary btn-sm" id="topicsCollectBtn" onclick="refreshTopics(true)">重新采集信号</button>
       </div>
     </div>
+    <section class="topic-selected" id="topicsInsightGate" style="display:block;margin-bottom:14px">
+      <div class="topic-selected-title">第 0 步 · 市场洞察</div>
+      <div class="topic-selected-meta" id="topicsInsightSummary">尚未采用市场洞察；热点重新采集前应先完成这一步。</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn btn-primary btn-sm" onclick="switchTab('insights')">查看 / 重新生成市场洞察</button>
+        <a class="btn btn-sm" href="https://my.feishu.cn/base/REDACTED?table=tbl6uTJb7IGWWzVg" target="_blank" rel="noreferrer">打开飞书洞察登记表</a>
+      </div>
+    </section>
     <div class="page-subnav" aria-label="今日选题板块导航">
       <button class="page-subnav-btn" onclick="scrollPageSection('tab-topics','topicsMethod')"><b>选题方法</b><span>采集、筛选、更新规则</span></button>
       <button class="page-subnav-btn" onclick="scrollPageSection('tab-topics','topicsConfigPanel')"><b>采集配置</b><span>种子词和信号来源</span></button>
@@ -1187,7 +1253,7 @@ label { font-size:13px; color:var(--muted); }
         <div class="hub-sub">这里维护人工看到的好案例：粘贴链接后自动入库，补全标题、正文、图片、话题和有效评论。</div>
       </div>
     </div>
-    <div class="comment-workflow-grid" style="grid-template-columns:minmax(260px,420px)">
+    <div class="comment-workflow-grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
       <div class="comment-workflow-card actionable" onclick="openXhsCommentMaintenance()">
         <div>
           <div class="comment-step">MARKET HUB</div>
@@ -1195,6 +1261,56 @@ label { font-size:13px; color:var(--muted); }
           <p>粘贴精品笔记链接，自动补全飞书竞品表字段，供后续文案、换图和评论学习复用。</p>
         </div>
         <footer>进入人工灵感入库台</footer>
+      </div>
+      <div class="comment-workflow-card actionable" onclick="xhsRefreshCommentLearning()">
+        <div>
+          <div class="comment-step">COMMENT LEARNING</div>
+          <h3>刷新评论学习</h3>
+          <p>读取竞品表的评论文字/评论图片，以及发布 Base 的评论区照片，生成本地评论打法缓存。</p>
+        </div>
+        <footer>不新建表，只刷新缓存</footer>
+      </div>
+      <div class="comment-workflow-card actionable" onclick="xhsGenerateSeedComments()">
+        <div>
+          <div class="comment-step">SEED COMMENTS</div>
+          <h3>生成造势评论</h3>
+          <p>给自有笔记生成多账号可复制评论，用来开启讨论、承接问题、放大互动。</p>
+        </div>
+        <footer>先生成候选，不自动发送</footer>
+      </div>
+      <div class="comment-workflow-card actionable" onclick="xhsGenerateReplyComments()">
+        <div>
+          <div class="comment-step">REPLY</div>
+          <h3>生成定向回复</h3>
+          <p>粘贴某条用户评论，基于学习缓存生成可复制回复；插件侧负责在小红书页面读取选中评论。</p>
+        </div>
+        <footer>回复别人评论</footer>
+      </div>
+    </div>
+    <div class="hub-card" style="margin-top:18px">
+      <div style="display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:12px">
+        <div>
+          <div class="section-label">评论学习 / 生成测试</div>
+          <div id="commentLearningMeta" style="font-size:12px;color:var(--muted);margin-top:4px">尚未读取。先点「刷新评论学习」或「查看学习源」。</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn btn-sm" onclick="xhsLoadCommentLearning()">查看学习源</button><button class="btn btn-sm" onclick="xhsLoadCommentQueue()">查看评论队列</button>
+          <button class="btn btn-primary btn-sm" onclick="xhsRefreshCommentLearning()">刷新评论学习</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(240px,.9fr) minmax(280px,1.1fr);gap:12px">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input id="commentPlanTitle" placeholder="目标笔记标题 / 自有笔记标题" style="padding:10px 12px;border:1px solid var(--border2);border-radius:10px;background:var(--bg);color:var(--text)">
+          <input id="commentPlanTargetUrl" placeholder="目标小红书笔记链接；发布后可自动回填" style="padding:10px 12px;border:1px solid var(--border2);border-radius:10px;background:var(--bg);color:var(--text)">
+          <textarea id="commentPlanBody" placeholder="目标笔记正文摘要，可直接从发布表正文粘贴" style="min-height:88px;padding:10px 12px;border:1px solid var(--border2);border-radius:10px;background:var(--bg);color:var(--text);resize:vertical"></textarea>
+          <textarea id="commentPlanUserComment" placeholder="定向回复时粘贴用户原评论；造势评论可留空" style="min-height:68px;padding:10px 12px;border:1px solid var(--border2);border-radius:10px;background:var(--bg);color:var(--text);resize:vertical"></textarea>
+          <input id="commentPlanRole" placeholder="账号角色，例如：素人号 / 品牌号 / 老粉口吻" style="padding:10px 12px;border:1px solid var(--border2);border-radius:10px;background:var(--bg);color:var(--text)">
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary btn-sm" onclick="xhsGenerateSeedComments()">生成造势评论</button>
+            <button class="btn btn-sm" onclick="xhsGenerateReplyComments()">生成定向回复</button>
+          </div>
+        </div>
+        <pre id="commentLearningOutput" style="margin:0;min-height:260px;max-height:460px;overflow:auto;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--bg);white-space:pre-wrap;color:var(--text);font:12px/1.75 inherit">评论学习输出会显示在这里。</pre>
       </div>
     </div>
   </div>
@@ -1363,7 +1479,7 @@ label { font-size:13px; color:var(--muted); }
       </div>
 
       <!-- 语气风格 -->
-      <div>
+      <div style="display:none">
         <div class="section-label">语气风格</div>
         <div style="display:flex;gap:6px">
           <button id="toneNarrative" class="chip active" onclick="setTone('narrative')" style="font-size:11px">叙事</button>
@@ -2078,6 +2194,7 @@ label { font-size:13px; color:var(--muted); }
               <th style="padding:5px 4px;color:var(--muted);font-weight:500;width:20px"><input type="checkbox" id="xhsCheckAll" onchange="xhsToggleAll(this.checked)"></th>
               <th style="padding:5px 4px;text-align:left;color:var(--muted);font-weight:500">#</th>
               <th style="padding:7px 6px;text-align:left;color:var(--muted);font-weight:500">笔记 / 链接</th>
+              <th style="padding:7px 6px;color:var(--muted);font-weight:500;width:112px">赞 / 藏 / 评 / 转</th>
               <th style="padding:7px 6px;color:var(--muted);font-weight:500;width:82px">评论样本</th>
               <th style="padding:5px 4px;color:var(--muted);font-weight:500;width:70px">状态</th>
               <th style="padding:5px 4px;color:var(--muted);font-weight:500;width:116px">操作</th>
@@ -4332,6 +4449,113 @@ async function submitRefAdd() {
   }
 }
 
+// ─── 市场洞察 ─────────────────────────────────────────────────────
+let marketInsights = [];
+let selectedInsightId = '';
+
+function renderInsights(data) {
+  marketInsights = data.insights || [];
+  selectedInsightId = data.selectedId || '';
+  const manualBox = document.getElementById('insightManualBehavior');
+  if (manualBox && !manualBox.value.trim()) manualBox.value = data.manualBehavior || '';
+  const updated = document.getElementById('insightsUpdated');
+  if (updated) updated.textContent = data.generatedAt
+    ? `更新于 ${new Date(data.generatedAt).toLocaleString('zh-CN', { hour12:false })}`
+    : '尚未生成';
+  const selected = marketInsights.find(item => item.id === selectedInsightId);
+  const topicSummary = document.getElementById('topicsInsightSummary');
+  if (topicSummary) {
+    topicSummary.textContent = selected
+      ? `本次采用：${selected.name}｜核心搜索词：${selected.coreSearchTerm}｜长尾词：${(selected.longTailTerms || []).join('、')}`
+      : '尚未采用市场洞察；热点重新采集前应先完成这一步。';
+  }
+  const selectedBox = document.getElementById('insightsSelected');
+  if (selectedBox) {
+    selectedBox.style.display = selected ? 'block' : 'none';
+    selectedBox.innerHTML = selected ? `<div class="topic-selected-title">本次采用：${escHtml(selected.name)}</div>
+      <div class="topic-selected-meta">核心搜索词：${escHtml(selected.coreSearchTerm)} · 决策阶段：${escHtml(selected.decisionStage)} · 已登记飞书</div>` : '';
+  }
+  const grid = document.getElementById('insightsGrid');
+  if (!grid) return;
+  if (!marketInsights.length) {
+    grid.innerHTML = '<div class="topic-empty">还没有市场洞察。先采集真实搜索行为，再生成候选。</div>';
+    return;
+  }
+  grid.innerHTML = marketInsights.map((item, index) => `<article class="topic-card">
+    <div class="topic-card-head"><span class="topic-kind">${escHtml(item.decisionStage || '代入')}阶段</span><span class="topic-score">洞察分 ${item.score || 0}</span></div>
+    <div class="topic-card-body">
+      <div class="topic-concept">${escHtml(item.name || item.coreSearchTerm)}</div>
+      <div class="topic-traffic">核心搜索词：${escHtml(item.coreSearchTerm || '')}</div>
+      <div class="topic-bridge"><b>用户问题：</b>${escHtml(item.userProblem || '')}</div>
+      ${item.searchIntent ? `<div class="topic-bridge"><b>搜索意图：</b>${escHtml(item.searchIntent)}</div>` : ''}
+      ${item.desiredState ? `<div class="topic-bridge"><b>想进入的状态：</b>${escHtml(item.desiredState)}</div>` : ''}
+      <div class="topic-meta">${(item.longTailTerms || []).map(term => `<span>${escHtml(term)}</span>`).join('')}</div>
+      ${(item.dreamMoments || []).length ? `<div class="topic-evidence" style="margin-top:8px"><div class="topic-evidence-title"><b>造梦三时刻：</b></div><div class="topic-evidence-meta">${item.dreamMoments.map((v, i) => `${i + 1}. ${escHtml(v)}`).join('<br>')}</div></div>` : ''}
+      <div class="topic-evidence"><div class="topic-evidence-title"><b>内容任务：</b>${escHtml(item.contentTask || '')}</div>
+      <div class="topic-evidence-meta" style="margin-top:6px"><b>产品承接：</b>${escHtml(item.productBridge || '')}</div></div>
+    </div>
+    <div class="topic-card-actions"><span style="font-size:10px;color:var(--muted);align-self:center">${escHtml(item.scene || '')}</span>
+      <button class="btn btn-primary btn-sm" ${item.id === selectedInsightId ? 'disabled' : ''} onclick="selectInsight(${index})">${item.id === selectedInsightId ? '已采用' : '采用并驱动热点'}</button></div>
+  </article>`).join('');
+}
+
+async function loadInsights() {
+  const data = await fetch('/api/insights').then(r => r.json());
+  if (data.ok) renderInsights(data);
+}
+
+async function refreshInsights(forceCollect = true) {
+  const btn = document.getElementById('insightsRefreshBtn');
+  const error = document.getElementById('insightsError');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>分析搜索行为中…'; }
+  if (error) error.style.display = 'none';
+  try {
+    const manualBehavior = document.getElementById('insightManualBehavior')?.value || '';
+    const data = await fetch('/api/insights/refresh', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({ forceCollect, manualBehavior }) }).then(r => r.json());
+    if (!data.ok) throw new Error(data.error || '市场洞察生成失败');
+    renderInsights(data);
+    showToast(`已生成 ${data.insights?.length || 0} 条市场洞察`, 'ok');
+  } catch (e) {
+    if (error) { error.style.display = 'block'; error.textContent = e.message; }
+    showToast('市场洞察生成失败', 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '重新采集并洞察'; }
+  }
+}
+
+async function previewInsightPrompt(forceCollect = false) {
+  const panel = document.getElementById('insightPromptPreview');
+  const promptBox = document.getElementById('insightPromptBox');
+  const signalBox = document.getElementById('insightSignalBox');
+  if (panel) panel.style.display = 'block';
+  if (promptBox) promptBox.value = '加载中…';
+  if (signalBox) signalBox.textContent = '加载中…';
+  try {
+    const manualBehavior = document.getElementById('insightManualBehavior')?.value || '';
+    const data = await fetch('/api/insights/preview-prompt', {
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({ forceCollect, manualBehavior }),
+    }).then(r => r.json());
+    if (!data.ok) throw new Error(data.error || '预览失败');
+    if (promptBox) promptBox.value = data.prompt || '';
+    if (signalBox) signalBox.textContent = JSON.stringify(data.signals || {}, null, 2);
+  } catch (e) {
+    if (promptBox) promptBox.value = e.message;
+    if (signalBox) signalBox.textContent = '';
+    showToast('洞察提示词预览失败', 'err');
+  }
+}
+
+async function selectInsight(index) {
+  const insight = marketInsights[index];
+  if (!insight) return;
+  const data = await fetch('/api/insights/select', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({ id:insight.id }) }).then(r => r.json());
+  if (!data.ok) return showToast(data.error || '采用失败', 'err');
+  renderInsights(data);
+  showToast('洞察已登记飞书，并成为热点采集种子', 'ok');
+}
+
 // ─── 今日选题 ─────────────────────────────────────────────────────
 let topicRecommendations = [];
 let topicConfig = null;
@@ -4369,7 +4593,10 @@ function renderTopics(data) {
   const errors = data.signalErrors || [];
   if (error) {
     error.style.display = errors.length ? 'block' : 'none';
-    error.textContent = errors.length ? `部分信号未取到：${errors.join('；')}` : '';
+    const friendlyErrors = [...new Set(errors)].map(item => item === 'xhs_search_verification_required'
+      ? '小红书搜索触发验证，本轮已立即停止继续搜索，并沿用上次成功库存；处理验证后再点“重新采集信号”'
+      : item);
+    error.textContent = friendlyErrors.length ? `部分信号未取到：${friendlyErrors.join('；')}` : '';
   }
   const grid = document.getElementById('topicsGrid');
   if (!grid) return;
@@ -4544,7 +4771,7 @@ function syncDailyRunButtonLabels(disabled) {
   });
 }
 
-async function dailyRun() {
+async function dailyRun(referenceId = '') {
   if (dailyRunTimer) clearInterval(dailyRunTimer);
   dailySetButtons(true);
   syncDailyRunButtonLabels(true);
@@ -4555,7 +4782,7 @@ async function dailyRun() {
     const r = await fetch('/api/daily/run', {
       method:'POST',
       headers:{'content-type':'application/json'},
-      body:JSON.stringify({ limit:30 })
+      body:JSON.stringify({ limit:30, forceInsight:false, forceCollect:false, referenceId })
     }).then(x => x.json());
     if (!r.ok) throw new Error(r.error || '启动失败');
     dailyRunJobId = r.jobId;
@@ -4566,6 +4793,7 @@ async function dailyRun() {
         const tail = (p.logs || []).slice(-12).join('\n');
         dailySetStatus(tail || '运行中…', !!p.error);
         if (p.done) {
+          if (p.result?.recordId) localStorage.setItem('dailyLastPublishRecordId', p.result.recordId);
           clearInterval(dailyRunTimer);
           dailyRunTimer = null;
           dailySetButtons(false);
@@ -4595,6 +4823,60 @@ async function dailyRun() {
     syncDailyRunButtonLabels(false);
     dailySetStatus('启动失败：' + e.message, true);
     showToast('今日主流程启动失败', 'err');
+  }
+}
+
+async function dailyRunManualReference() {
+  const input = document.getElementById('manualReferenceUrl');
+  const btn = document.getElementById('manualReferenceRunBtn');
+  const url = (input?.value || '').trim();
+  if (!url) {
+    dailySetStatus('请先粘贴一篇小红书笔记链接。', true);
+    return;
+  }
+  if (btn) btn.disabled = true;
+  dailySetButtons(true);
+  dailySetStatus('正在登记人工母本并抓取正文/图片/评论…');
+  try {
+    const r = await fetch('/api/daily/intake-reference', {
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({ url, source:'人工指定母本', purpose:'人工灵感入库 / 可直接仿写' })
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error || '母本登记失败');
+    dailySetStatus(`母本已登记：${r.reference?.title || r.reference?.id}\n图片 ${r.reference?.attachmentCount || 0} 张。开始生成发布草稿…`);
+    await dailyRun(r.reference.id);
+  } catch (e) {
+    dailySetButtons(false);
+    dailySetStatus('人工母本流程失败：' + e.message, true);
+    showToast('人工母本流程失败', 'err');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function dailyResumeImages() {
+  const savedRecordId = localStorage.getItem('dailyLastPublishRecordId') || '';
+  const recordId = prompt('发布表 recordId（新队列可留空；旧队列请填一次）', savedRecordId) || '';
+  if (recordId.trim()) localStorage.setItem('dailyLastPublishRecordId', recordId.trim());
+  dailySetStatus('正在恢复 GPT 原队列，收图后会上传飞书并打开发布页…');
+  const btn = document.getElementById('dailyResumeImagesBtn');
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch('/api/daily/resume-gpt-images', {
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({ recordId:recordId.trim(), expectedImageCount:1 })
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error || '恢复失败');
+    dailySetStatus(`已上传 ${r.imageCount} 张图到飞书附件，并打开发布页。`);
+    showToast('已恢复收图并打开发布页', 'ok');
+    if (typeof xhsLoad === 'function') xhsLoad().catch(()=>{});
+  } catch (e) {
+    dailySetStatus('恢复收图失败：' + e.message, true);
+    showToast('恢复收图失败', 'err');
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -4651,7 +4933,7 @@ function clearSelectedTopic() {
 }
 
 // ─── Tab 切换 ─────────────────────────────────────────────────────
-const ALL_TABS = ['guide', 'matrix', 'topics', 'write', 'comments', 'assets', 'system', 'materials', 'batch', 'references', 'research', 'templates', 'comparison', 'title-lib', 'prompt-base'];
+const ALL_TABS = ['guide', 'matrix', 'insights', 'topics', 'write', 'comments', 'assets', 'system', 'materials', 'batch', 'references', 'research', 'templates', 'comparison', 'title-lib', 'prompt-base'];
 const NAV_PARENT = {
   batch: 'write',
   materials: 'assets',
@@ -4671,7 +4953,8 @@ function switchTab(tab) {
     btn.classList.toggle('active', btn.dataset.tab === activeNav);
   });
   if (tab === 'write') { loadReferences(); loadContextStats(); }
-  if (tab === 'topics') loadTopics();
+  if (tab === 'insights') loadInsights();
+  if (tab === 'topics') { loadInsights(); loadTopics(); }
   if (tab === 'materials') loadMaterials();
   if (tab === 'references') loadReferences();
   if (tab === 'batch') {
@@ -4881,10 +5164,12 @@ function xhsRenderTable() {
         ${rec.url ? `<a href="${xhsEsc(rec.url)}" target="_blank" style="display:block;margin-top:3px;color:var(--dim);text-decoration:none;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${xhsEsc(rec.url.replace(/https?:\/\//,''))}</a>` : ''}
         ${rec.triedHint ? `<div style="margin-top:3px;color:var(--red);font-size:9px;line-height:1.45">${xhsEsc(rec.triedHint)}</div>` : ''}
       </td>
+      <td style="padding:5px 4px;text-align:center;color:var(--muted);font-size:9px">${rec.likes || 0} / ${rec.collects || 0}<br>${rec.comments || 0} / ${rec.shares || 0}</td>
       <td style="padding:5px 4px;text-align:center;color:var(--muted)">${rec.commentCount || 0} 条${rec.imageCount ? `<br><span style="font-size:9px">${rec.imageCount} 图</span>` : ''}</td>
       <td style="padding:5px 4px">${xhsStatusBadge(rec)}</td>
       <td style="padding:5px 4px;white-space:nowrap">
         ${rec.hasData ? `<button class="btn btn-sm" style="font-size:10px;padding:3px 7px" onclick="xhsOpenStudy('${rec.id}')">学习</button>` : `<button class="btn btn-sm" style="font-size:10px;padding:3px 7px" onclick="xhsScrapeOne('${rec.id}')">抓取</button>`}
+        ${rec.hasData ? `<button class="btn btn-sm" style="font-size:10px;padding:3px 7px;margin-left:4px;border-color:var(--gold);color:var(--gold2)" onclick="dailyRun('${rec.id}')">按此笔记生成</button>` : ''}
         ${rec.url ? `<button class="btn btn-sm" style="font-size:10px;padding:3px 7px;margin-left:4px" onclick="xhsOpenVerify('${xhsEsc(rec.url)}')">打开</button>` : ''}
       </td>
     </tr>`).join('');
@@ -4972,9 +5257,9 @@ async function xhsStartScrape(ids, opts = {}) {
   if (opts.appendLog) logEl.textContent += '\n' + line;
   else logEl.textContent = line;
 
-  const r = await fetch('/api/xhs/scrape', {
+  const r = await fetch('/api/xhs/enrich-competitor-images', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ids }),
+    body: JSON.stringify({ ids, maxImages: 9 }),
   }).then(x => x.json());
 
   if (!r.ok) { document.getElementById('xhsLog').textContent += '启动失败: ' + r.error; return false; }
@@ -5991,12 +6276,10 @@ async function xhsImportAndScrape() {
     await xhsLoad();
     if (r.ids.length) {
       document.getElementById('xhsLogWrap').style.display = 'block';
-      document.getElementById('xhsLog').textContent = `人工灵感入库：${r.ids.length} 条新记录\n`;
+      document.getElementById('xhsLog').textContent = `人工灵感入库：${r.ids.length} 条新记录；同步补全互动数据和 10 组有效评论图文\n`;
       btn.textContent = '正在补素材…';
       await xhsEnrichSpecificRecords(r.ids, 9);
-      btn.textContent = '正在抓评论…';
-      await xhsStartScrape(r.ids, { appendLog: true });
-      status.textContent = '入库完成：已补全图文素材，并写入有图且超过 15 字的有效评论。';
+      status.textContent = '入库完成：已补全标题、正文、原图、完整话题、赞藏评转，以及最多 10 组有图且超过 15 字的有效评论。可在列表点击“按此笔记生成”。';
     }
   } catch (e) { status.textContent = '建档失败：' + e.message; }
   finally { btn.disabled = false; btn.textContent = '＋ 建档并补全素材'; }
@@ -6030,6 +6313,82 @@ async function xhsAnalyzeCurrent() {
     out.textContent = r.analysis;
   } catch (e) { out.textContent = '提炼失败：' + e.message; }
   finally { btn.disabled = false; btn.textContent = '✦ 生成回复建议'; }
+}
+
+async function xhsLoadCommentLearning() {
+  const out = document.getElementById('commentLearningOutput');
+  const meta = document.getElementById('commentLearningMeta');
+  if (!out || !meta) return;
+  out.textContent = '正在读取评论学习源…';
+  try {
+    const r = await fetch('/api/xhs/comment-learning').then(x => x.json());
+    if (!r.ok) throw new Error(r.error || '读取失败');
+    const s = r.corpus?.source || {};
+    meta.textContent = `学习源：竞品笔记 ${s.competitorRecords || 0} 条，评论 ${s.commentLines || 0} 条，竞品评论图 ${s.competitorCommentImages || 0} 张，评论区照片表 ${s.standaloneCommentPhotos || 0} 张。缓存：${r.cache?.generatedAt || '未刷新'}`;
+    out.textContent = r.cache?.summary
+      ? r.cache.summary
+      : JSON.stringify(r.corpus?.source || {}, null, 2) + '\n\n还没有学习摘要，点「刷新评论学习」。';
+  } catch (e) {
+    out.textContent = '读取评论学习失败：' + e.message;
+    meta.textContent = '评论学习源读取失败';
+  }
+}
+
+async function xhsRefreshCommentLearning() {
+  const out = document.getElementById('commentLearningOutput');
+  const meta = document.getElementById('commentLearningMeta');
+  if (!out || !meta) { switchTab('comments'); setTimeout(xhsRefreshCommentLearning, 80); return; }
+  out.textContent = '正在从竞品表评论文字/评论图片 + 评论区照片表生成评论学习缓存…';
+  meta.textContent = '刷新中，完成后会显示摘要。';
+  try {
+    const r = await fetch('/api/xhs/comment-learning/refresh', { method:'POST', headers:{'content-type':'application/json'}, body:'{}' }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error || '刷新失败');
+    const s = r.cache?.source || {};
+    meta.textContent = `已刷新：竞品笔记 ${s.competitorRecords || 0} 条，评论 ${s.commentLines || 0} 条，评论图 ${s.competitorCommentImages || 0} + ${s.standaloneCommentPhotos || 0} 张。`;
+    out.textContent = r.cache?.summary || '已刷新，但摘要为空。';
+  } catch (e) {
+    out.textContent = '刷新评论学习失败：' + e.message;
+    meta.textContent = '刷新失败';
+  }
+}
+
+async function xhsGenerateCommentPlan(mode) {
+  const out = document.getElementById('commentLearningOutput');
+  const title = document.getElementById('commentPlanTitle')?.value || '';
+  const body = document.getElementById('commentPlanBody')?.value || '';
+  const userComment = document.getElementById('commentPlanUserComment')?.value || '';
+  const role = document.getElementById('commentPlanRole')?.value || '';
+  const targetNoteUrl = document.getElementById('commentPlanTargetUrl')?.value || '';
+  if (!out) return;
+  if (mode === 'reply' && !userComment.trim()) {
+    out.textContent = '生成定向回复前，请先粘贴用户原评论。';
+    return;
+  }
+  out.textContent = mode === 'reply' ? '正在生成定向回复…' : '正在生成造势评论…';
+  try {
+    const r = await fetch('/api/xhs/comment-plan', {
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body: JSON.stringify({ mode, noteTitle:title, noteBody:body, userComment, accountRole:role, targetNoteUrl, count: mode === 'reply' ? 3 : 8, save: true }),
+    }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error || '生成失败');
+    const lines = (r.items || []).map((item, idx) =>
+      `${idx + 1}. ${item.text || ''}\n   意图：${item.intent || ''}${item.role ? `\n   角色：${item.role}` : ''}${item.imageHint ? `\n   配图：${item.imageHint}` : ''}`
+    );
+    out.textContent = `${mode === 'reply' ? '定向回复候选' : '造势评论候选'}\n缓存时间：${r.learningGeneratedAt || '未刷新'}\n\n${lines.join('\n\n')}\n\n${r.notes || ''}`;
+  } catch (e) {
+    out.textContent = '生成评论失败：' + e.message;
+  }
+}
+
+function xhsGenerateSeedComments() {
+  switchTab('comments');
+  setTimeout(() => xhsGenerateCommentPlan('seed'), 60);
+}
+
+function xhsGenerateReplyComments() {
+  switchTab('comments');
+  setTimeout(() => xhsGenerateCommentPlan('reply'), 60);
 }
 
 function updatePublishImageSourceUi() {
@@ -6162,7 +6521,7 @@ async function getCurrentPublishAccountLabel() {
   try {
     const select = document.getElementById('publishAccountSelect');
     if (select && select.value) return select.value;
-    const p = await fetch('http://localhost:8765/profile').then(x => x.json());
+    const p = await fetch('http://localhost:8766/profile').then(x => x.json());
     if (!p?.ok) return '';
     return [p.account_name, p.profile_slug].filter(Boolean).join(' / ');
   } catch {
@@ -6219,7 +6578,7 @@ async function loadPublishAccounts() {
   const select = document.getElementById('publishAccountSelect');
   if (!select) return;
   try {
-    const data = await fetch('http://localhost:8765/accounts').then(r => r.json());
+    const data = await fetch('http://localhost:8766/accounts').then(r => r.json());
     const accounts = Array.isArray(data.accounts) ? data.accounts : [];
     const currentAcc = accounts.find(acc => acc.current) || null;
     const current = currentAcc ? [currentAcc.name || currentAcc.account_name, currentAcc.slug || currentAcc.profile_slug].filter(Boolean).join(' / ') : await getCurrentPublishAccountLabel();
@@ -6243,12 +6602,12 @@ async function loadPublishAccounts() {
 async function cleanupLocalGeneratedFiles() {
   await Promise.allSettled([
     fetch('/api/clear-cache', { method: 'POST' }),
-    fetch('http://localhost:8765/cleanup_gpt_results', { method: 'POST' }),
+    fetch('http://localhost:8766/cleanup_gpt_results', { method: 'POST' }),
   ]);
 }
 
 async function rotateGptProfileAndWait() {
-  const res = await fetch('http://localhost:8765/gpt_launch', {
+  const res = await fetch('http://localhost:8766/gpt_launch', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ rotate: true }),
@@ -6265,7 +6624,7 @@ async function saveGptImagesToPublishAndOpen() {
   if (!body) { showToast('正文不能为空', 'err'); return; }
   status.textContent = '正在从 ChatGPT 下载生成图…';
   try {
-    let gpt = await fetch('http://localhost:8765/gpt_collect_images', {
+    let gpt = await fetch('http://localhost:8766/gpt_collect_images', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ limit: 9 }),
@@ -6273,7 +6632,7 @@ async function saveGptImagesToPublishAndOpen() {
     if (!gpt.ok) {
       status.textContent = '当前 GPT 账号不可用，正在自动换号重开…';
       await rotateGptProfileAndWait();
-      gpt = await fetch('http://localhost:8765/gpt_collect_images', {
+      gpt = await fetch('http://localhost:8766/gpt_collect_images', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ limit: 9 }),
@@ -6284,7 +6643,7 @@ async function saveGptImagesToPublishAndOpen() {
     if (!imagePaths.length) {
       status.textContent = '当前 GPT 结果图为空，正在自动换号重试…';
       await rotateGptProfileAndWait();
-      const retry = await fetch('http://localhost:8765/gpt_collect_images', {
+      const retry = await fetch('http://localhost:8766/gpt_collect_images', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ limit: 9 }),
@@ -6305,7 +6664,7 @@ async function saveGptImagesToPublishAndOpen() {
     if (!saved.ok) throw new Error(saved.error || '写入发布表失败');
 
     try {
-      await fetch('http://localhost:8765/open_publish_page', { method: 'POST' });
+      await fetch('http://localhost:8766/open_publish_page', { method: 'POST' });
     } catch {}
 
     publishImageSource = 'local';
@@ -6346,3 +6705,4 @@ async function saveToPublish() {
 </script>
 </body>
 </html>
+
