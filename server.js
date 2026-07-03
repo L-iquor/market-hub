@@ -884,7 +884,7 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
 可用物件承载：${Array.isArray(topicSignal.objectCarriers) ? topicSignal.objectCarriers.join(' / ') : '(杯子、桌面、冰箱灯、杯壁水汽、聊天记录、便利店小票等)'}
 
 布局规则：
-1. 核心搜索词进入标题或前 120 字。
+1. 标题先负责点击欲望和参考母本的标题机制；核心搜索词优先进入前 120 字正文，只有自然时才进入标题。
 2. 至少两个长尾词进入正文，写成自然语境里的问句、判断句或自我解释。
 3. 标签保留品牌词和核心搜索根，但标签不能替代正文埋词。
 4. 若参考文是氛围/互动/生活切片，搜索词必须服从参考文主题和情绪推进。
@@ -903,8 +903,8 @@ function buildPrompt(ctx, direction, sellingPoint, framework, subTemplate = null
   const referenceSearchSynthesisBlock = refArticle && topicSignal ? `## 参考笔记 + 决策路径合成（第一执行步骤）
 1. 先提取参考文的真正主题、核心矛盾、段落功能、情绪推进、产品露出比例。
 2. 再判断本次搜索词对应用户决策路径里的哪一步：停留、代入、理解、信任或购买。
-3. 用“用户为什么搜这个词”改造标题和开头；用“她想进入的状态”改造正文的画面；用“她需要相信什么”安排产品事实。
-4. 核心搜索根进入标题或前 120 字；至少两个长尾词进入后文，但必须像参考文叙述者自己的想法。
+3. 用“用户为什么搜这个词”改造开头和正文里的选择动机；标题优先保留参考母本的点击机制。
+4. 核心搜索根进入前 120 字正文；至少两个长尾词进入后文，但必须像参考文叙述者自己的想法。
 5. 参考文主题必须可被读者识别，搜索词必须可被平台检索，产品事实必须自然出现。三者同时成立才算完成。
 ` : '';
 
@@ -1296,7 +1296,7 @@ ${topicSignal?.coreConcept || topicSignal?.trafficKeyword ? `搜索/热点：${t
 1. 先提炼用户为什么停下来、哪个场景击中她、她需要相信什么。
 2. 再选择一个内容入口：问题、场景、互动封面、产品推荐、评测/对比、教程。
 3. 用一个具体物件承载状态，例如杯子、桌面、冰箱灯、杯壁水汽、聊天记录、便利店小票。
-4. 搜索词自然进入标题、开头或正文判断句；不要另起 SEO 段落。
+4. 搜索词自然进入开头或正文判断句；标题只在自然时携带搜索词，不承担硬埋词任务。
 5. 输出时只给成稿，不解释方法。`;
 
   const leanModules = [
@@ -2890,17 +2890,42 @@ function buildImageOverlayTexts(body, count) {
     .split(/(?<=[。！？!?…])\s*|[；;]/)
     .map(s => s.trim())
     .filter(Boolean);
-  const candidates = [];
-  for (const sentence of sentenceParts) {
-    const compact = sentence.replace(/[，,]\s*/g, '，').trim();
-    if (compact.length < 10 || compact.length > 58) continue;
-    if (salesWords.test(compact) || riskyWords.test(compact)) continue;
-    candidates.push(compact);
+  const sentenceCandidates = [];
+  for (let i = 0; i < sentenceParts.length; i++) {
+    const one = sentenceParts[i].replace(/[，,]\s*/g, '，').trim();
+    const next = (sentenceParts[i + 1] || '').replace(/[，,]\s*/g, '，').trim();
+    if (one) sentenceCandidates.push(one);
+    if (next) {
+      const pair = `${one}${next}`;
+      if (pair.length <= 86 && /不是|而是|原来|真正|我知道|总有|允许自己|找回来/.test(pair)) {
+        sentenceCandidates.push(pair);
+      }
+    }
   }
+  const literaryWords = /原来|真正|不是|而是|我知道|总有|允许自己|慢一点|属于自己|找回来|一步一步|平静|生活|自由|远方|风景|答案|留下来|灯亮|安静|认真|记得|明白|有一天/;
+  const structureWords = /不是.*而是|原来.*不是|有一天.*依然|总有.*自己|不是.*自由|而是.*找回来/;
+  const mundaneWords = /租约|存款|未来计划|回复消息|赶进度|工作刚稳定|白天|晚上回到家|第二天醒来|待完成|换工作|搬家/;
+  const candidates = sentenceCandidates
+    .map(text => text.trim())
+    .filter(text => text.length >= 10 && text.length <= 86)
+    .filter(text => !salesWords.test(text) && !riskyWords.test(text))
+    .map((text, index) => ({
+      text,
+      index,
+      score:
+        (structureWords.test(text) ? 24 : 0)
+        + (literaryWords.test(text) ? 12 : 0)
+        + (/[，,]/.test(text) ? 4 : 0)
+        + (text.length >= 18 && text.length <= 56 ? 5 : 0)
+        - (mundaneWords.test(text) ? 10 : 0)
+    }))
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map(item => item.text);
   const paragraphs = String(body || '')
     .split(/\n\s*\n+/)
     .map(p => p.replace(/\s+/g, ' ').trim())
-    .filter(p => p.length >= 22 && p.length <= 80 && !salesWords.test(p) && !riskyWords.test(p));
+    .filter(p => p.length >= 22 && p.length <= 80 && literaryWords.test(p) && !salesWords.test(p) && !riskyWords.test(p));
   const fallback = candidates.length ? candidates : paragraphs;
   const safeFallbacks = [
     '今晚只想把自己慢慢放回来。',
@@ -2913,7 +2938,7 @@ function buildImageOverlayTexts(body, count) {
   }
   return Array.from({ length: count }, (_, i) => {
     const source = fallback[i % Math.max(1, fallback.length)] || safeFallbacks[i % safeFallbacks.length];
-    return source.slice(0, 58);
+    return source.slice(0, 86);
   });
 }
 
@@ -3234,7 +3259,7 @@ ${(insight?.dreamMoments || []).map((v, i) => `${i + 1}. ${v}`).join('\n')}
 固定必带话题词：气泡白酒 / 每天烈刻气泡白酒
 
 布局顺序：
-1. 标题必须优先承接核心搜索词或它的自然变体；标题像用户会搜/会点的句子，不像品牌口号。
+1. 标题必须优先复现参考标题的点击机制和情绪钩子；搜索词不硬塞进标题，除非它本身就是最自然的点击句。
 2. 正文前 120 字必须自然出现核心搜索词；不能硬塞，必须是叙述者真实处境里的问句、判断句或选择句。
 3. 长尾词不要求逐字生硬堆砌；允许嵌入长句中形成可被搜索切中的连续片段。比如长尾词“夫人”可以存在于“丈夫人很好”这种连续文本片段里，但不能为了埋词破坏语义。
 4. 至少 2 个长尾词要分散进入正文中段/结尾/评论引导，不集中堆在一段。
@@ -3250,10 +3275,10 @@ ${loadBrandFacts().slice(0, 2200)}
 3. 市场洞察只负责提供搜索意图和造梦材料：把“用户为什么搜、想进入什么状态、三个具体时刻”融进原文已有主题。不要把它改成旧的 Market Hub 饮酒测评模板。
 4. 产品只在原文出现物件、饮用动作或消费选择的位置进入；产品露出比例跟随原文。若原文没有产品中心段，品牌只允许作为一个生活物件出现一次。
    参考文里的竞品品牌、酒名、口味、颜色、包装和购买数量全部只是占位符，成稿不得保留；只能换成“可使用的少量产品事实”里真实存在的每天烈刻信息。
-5. 搜索词必须被改写成符合叙述者处境的自然语句；不能为了埋词把地点、人物、事件改成聚会、火锅、测评或第一口体验。核心词进入标题或前 120 字，至少两个长尾词进入后文；长尾词可以作为连续字词片段自然藏在一句话里。
+5. 搜索词必须被改写成符合叙述者处境的自然语句；不能为了埋词把地点、人物、事件改成聚会、火锅、测评或第一口体验。核心词进入前 120 字正文，至少两个长尾词进入后文；长尾词可以作为连续字词片段自然藏在一句话里。
 6. 正文只使用一个主产品事实，最多一个辅助事实。不得把资料平均铺满。
 7. 正文至少保留两段可直接放进氛围图片的文字：每段 45-120 字，写人生处境、选择或情绪转折，不写口感、参数、购买和劝酒。
-8. 标题保留参考标题的点击机制，同时包含搜索意图，控制在 20 个汉字左右；除搜索词外，不得连续复用参考标题 6 个以上相同字词。正文末尾附未成年人及孕妇禁酒提示。
+8. 标题保留参考标题的点击机制，控制在 20 个汉字左右；标题负责停留和点击，搜索意图主要交给正文前 120 字与标签承接。不得连续复用参考标题 6 个以上相同字词。正文末尾附未成年人及孕妇禁酒提示。
 9. 输出前自检：若正文的主语换成任意酒仍成立、或主题变成“什么时候喝/好不好喝”，说明已经跑偏，必须重写后再输出。
 10. 直接输出成品，不解释方法，不输出优化方向、推断依据或写作分析。
 
@@ -3329,7 +3354,7 @@ ${draft.title || ''}
 ${draft.body || ''}
 
 修稿要求：
-1. 标题写完整，保留点击点，核心搜索词进入标题或前 120 字。
+1. 标题写完整，保留点击点；核心搜索词优先进入前 120 字正文，标题不为埋词牺牲点击感。
 2. 至少两个长尾词自然进入正文，像真实搜索或自问，不像堆词。
 3. 酒只能作为生活物件、小仪式、场景道具出现；不写靠酒解决情绪、健康、睡眠或身体问题。
 4. 氛围图可取的句子要短、安静、完整；正文里至少保留 2 句适合放在图上的短句。
