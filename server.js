@@ -328,7 +328,7 @@ function larkCli(args, opts = {}) {
     : { HTTPS_PROXY: 'http://127.0.0.1:7890', HTTP_PROXY: 'http://127.0.0.1:7890' };
   const result = spawnSync('lark-cli', args, {
     encoding: 'utf8',
-    timeout: 30000,
+    timeout: opts.timeout || 120000,
     shell: true,
     cwd: opts.cwd || __dirname,
     env: { ...process.env, ...proxyEnv, NO_PROXY: process.env.NO_PROXY || 'localhost,127.0.0.1', PATH: process.env.PATH },
@@ -2919,6 +2919,7 @@ function buildImageOverlayTexts(body, count) {
 
 function isEngagementCoverReference(reference) {
   const text = [reference?.title, reference?.body, reference?.tags, reference?.purpose, reference?.angle].join(' ');
+  if (/人工指定母本|巴黎|品牌调性|造梦|氛围|文字封面参考|生活方式|旅行|随笔|美学/.test(text)) return false;
   return /想囤点|求推荐|有没有|友友|评论|心情|崩溃|难喝|喝点酒|小酌喝什么|推荐吗|问一下/.test(text);
 }
 
@@ -3177,6 +3178,21 @@ function buildDailyReferencePrompt(reference, topic, insight, blueprint) {
     ...(topic?.searchTerms || []),
     topic?.trafficKeyword,
   ].filter(Boolean).map(String))];
+  const multiProductRule = /酒单|回购|严选|测评|评测|合集|清单|推荐|九宫格|多款|多瓶|top|TOP|榜单|横评/i.test([
+    reference?.title,
+    reference?.category,
+    reference?.purpose,
+    reference?.angle,
+    reference?.body,
+  ].map(v => String(v || '')).join(' ')) ? `
+
+## 多产品/酒单测评硬规则
+这篇参考属于多产品、酒单、合集、严选、回购或测评类时，只允许替换“第一款产品 / 第一个推荐位 / 左上角或首个出现的产品位”。
+- 文案结构可以保留多产品清单感，但每天烈刻只能占第一个产品位。
+- 其它产品位不得被改成每天烈刻，也不得虚构每天烈刻的其它 SKU、其它口味或其它排名。
+- 正文只围绕第一款替换位解释每天烈刻为什么适合作为本清单里的第一个选择；其它位置最多写成泛化陪衬，不写竞品品牌名。
+- 图片换图也只替换第一款产品，其它产品、格子、排版和背景逻辑保持原参考图的多产品测评感。` : '';
+
   return `你只完成一次“单篇参考笔记改写”。不要调用或复用 Market Hub 的旧框架、旧范文、固定种草结构、火锅聚会开场或产品测评套路。
 
 ## 最高优先级：参考笔记主题指纹
@@ -3187,6 +3203,7 @@ function buildDailyReferencePrompt(reference, topic, insight, blueprint) {
 叙述声音：${blueprint?.voice || ''}
 氛围图文字机制：${blueprint?.imageTextMechanism || ''}
 原文产品露出：${blueprint?.productExposure || ''}
+${multiProductRule}
 
 成稿必须仍在谈这个主题和矛盾。市场洞察、搜索词与产品只能进入原文已有的叙事位置，不能另起一个饮酒故事。
 
@@ -3214,14 +3231,14 @@ ${(insight?.dreamMoments || []).map((v, i) => `${i + 1}. ${v}`).join('\n')}
 ## 搜索布局
 核心搜索词：${searchTerms[0] || ''}
 长尾词：${searchTerms.slice(1).join(' / ')}
-固定品牌词：每天烈刻气泡白酒
+固定必带话题词：气泡白酒 / 每天烈刻气泡白酒
 
 布局顺序：
 1. 标题必须优先承接核心搜索词或它的自然变体；标题像用户会搜/会点的句子，不像品牌口号。
 2. 正文前 120 字必须自然出现核心搜索词；不能硬塞，必须是叙述者真实处境里的问句、判断句或选择句。
 3. 长尾词不要求逐字生硬堆砌；允许嵌入长句中形成可被搜索切中的连续片段。比如长尾词“夫人”可以存在于“丈夫人很好”这种连续文本片段里，但不能为了埋词破坏语义。
 4. 至少 2 个长尾词要分散进入正文中段/结尾/评论引导，不集中堆在一段。
-5. 话题标签承担收录补充：优先 1 个核心词、2-3 个长尾词、1-2 个品类词、1 个品牌词；不用泛泛的 #生活 #分享。
+5. 话题标签承担收录补充：必须包含 #气泡白酒 和 #每天烈刻气泡白酒；再补 1 个核心词、2-3 个长尾词、1-2 个品类词。不用泛泛的 #生活 #分享。
 6. 如果参考文是品牌调性/造梦/巴黎式母本，搜索词只作为“可被搜到的暗线”，不得压过母本的审美、情绪和标题机制。
 
 ## 可使用的少量产品事实（最多取两条）
@@ -3339,20 +3356,25 @@ async function repairDailyDraftIfNeeded(draft, reference, topic, insight, bluepr
 }
 
 function buildDailyTags(reference, topic, insight) {
+  const mandatory = ['气泡白酒', '每天烈刻气泡白酒'];
   const raw = [
+    ...mandatory,
     ...(String(reference?.tags || '').match(/#[^#\s\[\]]+/g) || []),
     insight?.coreSearchTerm,
     ...(insight?.longTailTerms || []),
     topic?.trafficKeyword,
     topic?.coreConcept,
     ...(topic?.searchTerms || []),
-    '每天烈刻气泡白酒',
-    '气泡白酒',
   ];
   const cleaned = raw.map(value => String(value || '').replace(/^#/, '').replace(/\[话题\]$/g, '').trim())
     .filter(value => value.length >= 2 && value.length <= 24)
     .filter(value => !/0负担|无负担|解腻|刮油|不上头|不醉|健康喝酒|330ml|500ml|750ml/.test(value));
-  return [...new Set(cleaned)].slice(0, 10).map(value => `#${value}`).join(' ');
+  const unique = [...new Set(cleaned)];
+  const ordered = [
+    ...mandatory,
+    ...unique.filter(value => !mandatory.includes(value)),
+  ];
+  return [...new Set(ordered)].slice(0, 10).map(value => `#${value}`).join(' ');
 }
 
 function sanitizeDailySeedText(value) {
@@ -3431,8 +3453,19 @@ function runCompetitorEnricher(recordId) {
   return row;
 }
 
+function extractXhsNoteIdFromUrl(url) {
+  const text = String(url || '');
+  return text.match(/(?:explore|discovery\/item)\/([0-9a-f]{20,32})/i)?.[1] || '';
+}
+
+function normalizeReferenceUrl(value) {
+  const raw = String(value || '').trim().split('?')[0].replace(/\/$/, '');
+  const noteId = extractXhsNoteIdFromUrl(raw);
+  return noteId ? `xhs:${noteId}` : raw;
+}
+
 function findCompetitorRecordIdByUrl(url) {
-  const target = String(url || '').split('?')[0];
+  const target = normalizeReferenceUrl(url);
   if (!target) return '';
   const out = larkCli([
     'base', '+record-list', '--base-token', CFG.feishu.baseToken,
@@ -3448,13 +3481,9 @@ function findCompetitorRecordIdByUrl(url) {
   const noteIndex = fields.indexOf(COMPETITOR_FIELDS.noteUrl);
   const index = rows.findIndex(row => {
     const candidate = extractUrlFromCell(row[noteIndex]) || extractUrlFromCell(row[sourceIndex]);
-    return candidate && candidate.split('?')[0] === target;
+    return candidate && normalizeReferenceUrl(candidate) === target;
   });
   return index >= 0 ? ids[index] : '';
-}
-
-function normalizeReferenceUrl(value) {
-  return String(value || '').trim().split('?')[0].replace(/\/$/, '');
 }
 
 function ensureCompetitorReferenceForTopic(topic, insight, options = {}) {
@@ -3528,9 +3557,32 @@ function registerManualCompetitorReference(url, meta = {}) {
     recordId = extractRecordIdFromWrite(created) || findCompetitorRecordIdByUrl(cleanUrl);
   }
   if (!recordId) throw new Error('登记竞品表后没有拿到 record_id');
+  let ref = readCompetitorReferences(300).find(item => item.id === recordId);
+  const existingTitle = String(ref?.title || '').trim();
+  const existingBodyLength = String(ref?.body || '').replace(/\s+/g, '').length;
+  const existingAttachmentCount = Array.isArray(ref?.attachments) ? ref.attachments.length : 0;
+  if (existingTitle && existingBodyLength >= 40 && existingAttachmentCount >= 1) {
+    try {
+      updateBaseRecord(COMPETITOR_TABLE_ID, recordId, {
+        热点来源: meta.source || ref.hotspot || '人工指定母本',
+        搜索词: meta.searchTerm || ref.searchTerm || '',
+        匹配词: meta.matchTerm || ref.matchTerm || '',
+        参考用途: meta.purpose || ref.purpose || '人工灵感入库 / 可直接仿写',
+      }, CFG.feishu.baseToken);
+      ref = readCompetitorReferences(300).find(item => item.id === recordId) || ref;
+    } catch {}
+    return ref;
+  }
   runCompetitorEnricher(recordId);
-  const ref = readCompetitorReferences(300).find(item => item.id === recordId);
+  ref = readCompetitorReferences(300).find(item => item.id === recordId);
   if (!ref) throw new Error(`竞品记录已登记但读取失败：${recordId}`);
+  const title = String(ref.title || '').trim();
+  const bodyLength = String(ref.body || '').replace(/\s+/g, '').length;
+  const attachmentCount = Array.isArray(ref.attachments) ? ref.attachments.length : 0;
+  if (!title || bodyLength < 40 || attachmentCount < 1) {
+    try { markCompetitorImageStatus(recordId, `入库不完整：标题=${title ? '有' : '空'}，正文=${bodyLength}字，图片=${attachmentCount}张`); } catch {}
+    throw new Error(`母本入库不完整：标题=${title ? '有' : '空'}，正文=${bodyLength}字，图片=${attachmentCount}张。不能只登记空链接。`);
+  }
   return ref;
 }
 
@@ -3543,11 +3595,17 @@ function inferQueueSceneMode(reference, engagementCover = false) {
     reference?.angle,
     reference?.body,
   ].map(v => String(v || '')).join(' ');
-  if (/酒单|回购|推荐|测评|评测|合集|好物|产品|瓶|罐|包装|开箱|种草|品酒|葡萄酒|起泡酒|甜酒|莫斯卡托|果酒/i.test(text)) {
+  if (/酒单|回购|严选|测评|评测|合集|清单|榜单|横评|九宫格|多款|多瓶|TOP|top/i.test(text)) {
     return 'product_replace';
   }
-  if (/氛围|文字图|情绪|造梦|巴黎|生活方式|街景|风景|截图|金句/i.test(text)) {
+  if (/巴黎|品牌调性|人工指定母本/i.test(text) && /巴黎水|perrier|易拉罐|罐|瓶|产品/i.test(text)) {
+    return 'auto';
+  }
+  if (/造梦|氛围|文字图|情绪|生活方式|街景|风景|截图|金句/i.test(text)) {
     return 'atmosphere';
+  }
+  if (/产品|瓶|罐|包装|开箱|种草|品酒|葡萄酒|起泡酒|甜酒|莫斯卡托|果酒/i.test(text)) {
+    return 'product_replace';
   }
   return 'auto';
 }
@@ -3748,6 +3806,13 @@ app.post('/api/daily/run', (req, res) => {
       if (repairResult.repairedFrom?.length) dailyLog(job, `文案质检已自动修稿：${repairResult.repairedFrom.join('；')}`);
       if (repairResult.issues?.length) dailyLog(job, `文案仍需人工复核：${repairResult.issues.join('；')}`);
       const tags = buildDailyTags(selectedReference, contentTopic, contentInsight);
+      job.result = {
+        topic,
+        reference: { id: selectedReference.id, title: selectedReference.title, url: selectedReference.url, coreSubject: referenceBlueprint.coreSubject },
+        draft: { title: draft.title, body: draft.body, tags },
+        stage: 'draft_generated',
+      };
+      dailyLog(job, `文案已生成并通过初步质检：${draft.title}`);
       const outputFields = {
         '\u6807\u9898': draft.title, '\u6b63\u6587': draft.body, '\u8bdd\u9898': tags,
         '\u53d1\u5e03\u8ba1\u5212': '\u81ea\u52a8\u751f\u6210', '\u662f\u5426\u53d1\u5e03': '\u5426',
