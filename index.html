@@ -4539,7 +4539,12 @@ async function previewInsightPrompt(forceCollect = false) {
     }).then(r => r.json());
     if (!data.ok) throw new Error(data.error || '预览失败');
     if (promptBox) promptBox.value = data.prompt || '';
-    if (signalBox) signalBox.textContent = JSON.stringify(data.signals || {}, null, 2);
+    if (signalBox) signalBox.textContent = JSON.stringify({
+      seedPrompt: data.seedPrompt || '',
+      seedPlan: data.seedPlan || null,
+      validation: data.validation || [],
+      signals: data.signals || {},
+    }, null, 2);
   } catch (e) {
     if (promptBox) promptBox.value = e.message;
     if (signalBox) signalBox.textContent = '';
@@ -6399,7 +6404,12 @@ function updatePublishImageSourceUi() {
 }
 
 async function setPublishImageSource(source) {
-  publishImageSource = source === 'feishu' ? 'feishu' : 'local';
+  const nextSource = source === 'feishu' ? 'feishu' : 'local';
+  if (publishImageSource !== nextSource) {
+    selectedPublishImages.clear();
+    updatePublishImageCount();
+  }
+  publishImageSource = nextSource;
   updatePublishImageSourceUi();
   await loadPublishImagePool();
 }
@@ -6667,11 +6677,11 @@ async function saveGptImagesToPublishAndOpen() {
       await fetch('http://localhost:8766/open_publish_page', { method: 'POST' });
     } catch {}
 
-    publishImageSource = 'local';
     selectedPublishImages.clear();
-    imagePaths.forEach(p => selectedPublishImages.add(p));
-    await loadPublishImagePool();
     await cleanupLocalGeneratedFiles();
+    publishImageSource = 'local';
+    updatePublishImageCount();
+    await loadPublishImagePool();
     status.textContent = `✓ 已下载GPT图并保存到发布表（${saved.imageCount || imagePaths.length}张），发布页已打开`;
     showToast(`✓ GPT结果图已写入发布表：${saved.imageCount || imagePaths.length}张`, 'ok');
   } catch (e) {
@@ -6695,6 +6705,9 @@ async function saveToPublish() {
     }).then(x => x.json());
     if (!r.ok) throw new Error(r.error);
     await cleanupLocalGeneratedFiles();
+    selectedPublishImages.clear();
+    updatePublishImageCount();
+    await loadPublishImagePool();
     status.textContent = `✓ 已保存到发布表${r.imageCount ? `（含${r.imageCount}张图）` : ''}`;
     showToast(`✓ 已保存到小红书发布表${r.imageCount ? `，图片${r.imageCount}张` : ''}`, 'ok');
   } catch(e) {

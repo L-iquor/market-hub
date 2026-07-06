@@ -27,3 +27,12 @@ _test.txt
 
 # Chrome 浏览器数据（小红书自动化用，不上传）
 .chrome/
+
+# Runtime scratch/cache/state
+.tmp/
+__pycache__/
+xhs-image-cache/
+.current-daily-job
+.market-insight-fields.json
+image-pool-config.json
+market-insights.json

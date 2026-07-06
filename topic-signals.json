@@ -1,1535 +1,1205 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-06-28T22:02:44",
+  "generatedAt": "2026-07-06T06:28:01",
   "skills": {
     "xiaohongshu-ops": {
-      "ok": false,
-      "samples": 0
+      "ok": true,
+      "samples": 20
     },
     "xhs-content-plan": {
       "ok": true,
-      "samples": 60
+      "samples": 5
     },
     "inkroam-topic-expert": {
       "ok": true,
       "samples": 80
     }
   },
+  "config": {
+    "cacheHours": 12.0,
+    "seeds": [
+      "下班回家想喝点酒喝什么",
+      "适合下班回家喝的酒",
+      "下班后想喝点酒",
+      "下班回家简单喝点酒",
+      "下班回家喝点小酒"
+    ],
+    "sources": {
+      "homeFeed": true,
+      "keywordSearch": true,
+      "topicSearch": true,
+      "crossPlatform": true,
+      "savedResearchFallback": true
+    }
+  },
   "seeds": [
-    "低度酒",
-    "果酒推荐",
-    "女生喝什么酒",
-    "烧烤喝什么",
-    "微醺"
+    "下班回家想喝点酒喝什么",
+    "适合下班回家喝的酒",
+    "下班后想喝点酒",
+    "下班回家简单喝点酒",
+    "下班回家喝点小酒"
   ],
-  "homeFeed": [],
+  "homeFeed": [
+    {
+      "id": "6a479ce0000000000f005c62",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "健身两年的水平约等于10岁的我自己",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 1,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 55000,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/5325f14d104f4d267c31bb64dbd72d57/1040g0083225jos26n200492vlhvle5rg6kjva7g!nc_n_webp_prv_1",
+      "author": "陈小雨菲菲",
+      "url": "https://www.xiaohongshu.com/explore/6a479ce0000000000f005c62?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a4664eb000000001702dcf4",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "整个韩国才找出五个，云南一个村就够了！",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 45000,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/41ba0073fa1a362d7c2bbd34dd27ce28/spectrum/1040g0k03224due1r72005p0fvemqa0s1gcjupco!nc_n_webp_prv_1",
+      "author": "椰子老师教唱歌",
+      "url": "https://www.xiaohongshu.com/explore/6a4664eb000000001702dcf4?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a49d3f700000000070272b9",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "你是说你养了一屋子的海棠文学晋江文学吗",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 17000,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/1155fdaf9d500339de1304b420fa318f/110/0/01ea49d3784261120010000000019f30621844_0.jpg!nc_n_webp_prv_1",
+      "author": "飞翔的猪",
+      "url": "https://www.xiaohongshu.com/explore/6a49d3f700000000070272b9?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a43e3df000000000f0048b6",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "纯好奇 优秀的你们私底下会做什么提升自我",
+      "desc": "",
+      "type": "normal",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 13000,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/54ef61ac2f1d6c5ad7b0a7e05905b5f9/1040g0083221vj906mu005nvhpse08fi2877vvig!nc_n_webp_prv_1",
+      "author": "戈甜甜",
+      "url": "https://www.xiaohongshu.com/explore/6a43e3df000000000f0048b6?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a450c350000000015026787",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "太痛苦了 ",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 12000,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/e905c4e3ce584746ae3f4af412d07b7e/1040g00832233updi7k6g5p5omcel7nklv4jgcno!nc_n_webp_prv_1",
+      "author": "Thule",
+      "url": "https://www.xiaohongshu.com/explore/6a450c350000000015026787?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a3ddd4b00000000110070ed",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "一时间想到了很多例子",
+      "desc": "",
+      "type": "normal",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 11000,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/83c2325f35c6faa0e7bbff9924796b39/1040g2sg321s3e7njn4705os3c817qvlqh3t2k20!nc_n_webp_prv_1",
+      "author": "helloworld",
+      "url": "https://www.xiaohongshu.com/explore/6a3ddd4b00000000110070ed?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a49192f000000000f005b7a",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "当女友在外面坚强独立了一天，晚上回到家后",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 8943,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/b814d593d2ffceecf65464d32f9d7fbc/1040g00832272fsucn2005od068h8c39dkspvb50!nc_n_webp_prv_1",
+      "author": "蕉绿小姐不焦虑",
+      "url": "https://www.xiaohongshu.com/explore/6a49192f000000000f005b7a?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a3c7a08000000001503fc0b",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "这首歌叫《权御天下》，你又叫孙权",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 7825,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/342e0920d278b5d5f297c6a4202a50b2/1040g008321qo3e0hnu604a4hsuisin30s9e0j2g!nc_n_webp_prv_1",
+      "author": "关于冰封的蜻蜓",
+      "url": "https://www.xiaohongshu.com/explore/6a3c7a08000000001503fc0b?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a468326000000000f028ea4",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "papi酱新视频ai曲超搞笑 好适合做梗曲",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 4805,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/9a8d1b1b1b52bd5d739fb8001d03334f/1040g0083224hl223n0005np16aa0984p9hd63t8!nc_n_webp_prv_1",
+      "author": "沐天顺",
+      "url": "https://www.xiaohongshu.com/explore/6a468326000000000f028ea4?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a48d406000000000702e1b1",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "当时看这里真的被吓到了",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 3138,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/24e4e3b4615b0473be266c01d30d6356/1040g0083226pa7kdnk0g49uvebeaghuuj0qr2uo!nc_n_webp_prv_1",
+      "author": "以炭为命",
+      "url": "https://www.xiaohongshu.com/explore/6a48d406000000000702e1b1?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a41454c00000000070273cd",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "好感度不够就这样 ",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 2676,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/51a6eb5287cb04814605423d553c91b6/1040g2sg321vdu64una704a012egvjv30c84o6e8!nc_n_webp_prv_1",
+      "author": "细心小王",
+      "url": "https://www.xiaohongshu.com/explore/6a41454c00000000070273cd?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a490f2e000000002101a29a",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "有某种东西涌入了… ",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 2382,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/fe2f4ee4fd789f7b4842eac9ae28870f/1040g2sg3226rmlkvnag05peiq67h3sg8qadol08!nc_n_webp_prv_1",
+      "author": "w.七",
+      "url": "https://www.xiaohongshu.com/explore/6a490f2e000000002101a29a?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a47378b0000000007011c86",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "他把数字直接删掉了lysk",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 1857,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/1089ef3f6916833d1c1881eb475af884/1040g2sg32257miq27ee05oo7k0i3ojpup0lr0uo!nc_n_webp_prv_1",
+      "author": "Valuri.",
+      "url": "https://www.xiaohongshu.com/explore/6a47378b0000000007011c86?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a4a3ea100000000210230bd",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "竖屏视频拍不好？因为你还在用横屏思维",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 1813,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/9cc713fe94654d6757be67310a24c862/1040g2sg3228674k67akg5olpnl7msro0ggc45qo!nc_n_webp_prv_1",
+      "author": "海南船长",
+      "url": "https://www.xiaohongshu.com/explore/6a4a3ea100000000210230bd?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a47c53f000000000f015ffb",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "法拉利感妆跟练 ",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 1740,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/54b2276e8cac1f7a0ff9d88af5eb25c6/1040g2sg3225ouvesmuk05o2iuaj0bmmquat0r0o!nc_n_webp_prv_1",
+      "author": "🌈白发梨der",
+      "url": "https://www.xiaohongshu.com/explore/6a47c53f000000000f015ffb?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a48a684000000001700bac8",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "人在走运之前的征兆 ",
+      "desc": "",
+      "type": "normal",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 1674,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/6cd2a225b7233ec1381df205f747bbe7/notes_pre_post/1040g3k03226kg57e7k605p6dm0cioh3e68uch8o!nc_n_webp_prv_1",
+      "author": "花落方知惜",
+      "url": "https://www.xiaohongshu.com/explore/6a48a684000000001700bac8?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a3d2ecd0000000008027357",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "codex ",
+      "desc": "",
+      "type": "normal",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 1633,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/81f7ec2e285851874feefe1f1e352b87/notes_pre_post/1040g3k0321re1s947e005n0m5ii1kijbbdgfjj8!nc_n_webp_prv_1",
+      "author": "藕尼酱",
+      "url": "https://www.xiaohongshu.com/explore/6a3d2ecd0000000008027357?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a4a048a0000000008003f71",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "蜜雪冰城做的啤酒谁更好喝？",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 4,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 1598,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/e5ae3d569cdbb65a6606492242e60153/spectrum/1040g34o3227usp7f70105psdutl395dkfvvd1io!nc_n_webp_prv_1",
+      "author": "一百八一杯",
+      "url": "https://www.xiaohongshu.com/explore/6a4a048a0000000008003f71?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a48789400000000210212f5",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "vivo应用商店又见土狼🐺 😅😅😅",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 1342,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/20711e8ed5af709e2fd172a860a02879/1040g2sg3226esjtg7kkg401elcu6m8e2p17d4s8!nc_n_webp_prv_1",
+      "author": "🚗爱秦海里畅游的小狸花",
+      "url": "https://www.xiaohongshu.com/explore/6a48789400000000210212f5?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    },
+    {
+      "id": "6a3fc646000000001700a5eb",
+      "xsec_token": "REDACTED",
+      "xsec_source": "xiaohongshu_home",
+      "title": "intj 逻辑性那么强，那他最缺的天赋是什么",
+      "desc": "",
+      "type": "normal",
+      "tags": [],
+      "relevance": 0,
+      "keyword": "",
+      "source": "xiaohongshu_home",
+      "likes": 1198,
+      "collects": 0,
+      "comments": 0,
+      "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/bb1dfed982ea26d80816efbf54a1a240/spectrum/1040g34o321tv67u6ms105o5u2nv08k9eok4rv68!nc_n_webp_prv_1",
+      "author": "灯下闲棋",
+      "url": "https://www.xiaohongshu.com/explore/6a3fc646000000001700a5eb?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
+    }
+  ],
   "searchNotes": [
     {
-      "id": "682db0030000000022026dd8",
-      "title": "🔥教你做出顶级酒吧才能喝到的茶酒鸡尾酒",
-      "keyword": "海盐菠萝",
-      "source": "xhs_saved_research",
-      "likes": 54688,
-      "collects": 51678,
-      "comments": 852,
+      "id": "669dbfc40000000005007f44",
+      "xsec_token": "REDACTED",
+      "xsec_source": "pc_popular",
+      "title": "玫瑰车厘子冰酒♥️大数据帮我推给爱喝酒的宝",
+      "desc": "",
+      "type": "normal",
+      "tags": [],
+      "relevance": 2,
+      "keyword": "下班回家想喝点酒喝什么",
+      "source": "xhs_popular",
+      "likes": 10392,
+      "collects": 4154,
+      "comments": 348,
       "cover": "",
-      "author": "居家调酒饮品指南"
+      "author": "SHAREDNOTES分享笔记",
+      "url": "https://www.xiaohongshu.com/explore/669dbfc40000000005007f44?xsec_token=REDACTED&xsec_source=pc_popular"
     },
     {
-      "id": "67a5ccd0000000001703b726",
-      "title": "60r，好喝疯了",
-      "keyword": "青提酒",
-      "source": "xhs_saved_research",
-      "likes": 30733,
-      "collects": 12821,
-      "comments": 628,
+      "id": "5eb516940000000001007406",
+      "xsec_token": "REDACTED",
+      "xsec_source": "pc_popular",
+      "title": "醉爱🥃微醺 | 人生最好的状态恰如微醺",
+      "desc": "",
+      "type": "normal",
+      "tags": [],
+      "relevance": 2,
+      "keyword": "下班回家想喝点酒喝什么",
+      "source": "xhs_popular",
+      "likes": 7303,
+      "collects": 3867,
+      "comments": 104,
       "cover": "",
-      "author": "Epiphany"
+      "author": "白鸟",
+      "url": "https://www.xiaohongshu.com/explore/5eb516940000000001007406?xsec_token=REDACTED&xsec_source=pc_popular"
     },
     {
-      "id": "672319f3000000003c01f122",
-      "title": "我发现了快速掉称的秘密……",
-      "keyword": "烧烤喝什么",
-      "source": "xhs_saved_research",
-      "likes": 23827,
-      "collects": 12644,
-      "comments": 899,
+      "id": "6a49ec01000000001603f737",
+      "xsec_token": "REDACTED",
+      "xsec_source": "pc_popular",
+      "title": "一个无助的打酒大哥",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 2,
+      "keyword": "下班回家想喝点酒喝什么",
+      "source": "xhs_popular",
+      "likes": 7842,
+      "collects": 1181,
+      "comments": 1099,
       "cover": "",
-      "author": "荒野大镖客"
+      "author": "茵宝茵",
+      "url": "https://www.xiaohongshu.com/explore/6a49ec01000000001603f737?xsec_token=REDACTED&xsec_source=pc_popular"
     },
     {
-      "id": "69f4667a000000001f0009ed",
-      "title": "我个人认为小象最伟大的单品。",
-      "keyword": "海盐菠萝",
-      "source": "xhs_saved_research",
-      "likes": 8053,
-      "collects": 5029,
-      "comments": 665,
+      "id": "6836e0e4000000002101a113",
+      "xsec_token": "REDACTED",
+      "xsec_source": "pc_popular",
+      "title": "下班 就是为了喝酒",
+      "desc": "",
+      "type": "video",
+      "tags": [],
+      "relevance": 2,
+      "keyword": "下班回家想喝点酒喝什么",
+      "source": "xhs_popular",
+      "likes": 5598,
+      "collects": 790,
+      "comments": 225,
       "cover": "",
-      "author": "香菇贡丸重度依赖"
+      "author": "shineeee",
+      "url": "https://www.xiaohongshu.com/explore/6836e0e4000000002101a113?xsec_token=REDACTED&xsec_source=pc_popular"
     },
     {
-      "id": "69b189b70000000016009704",
-      "title": "在韩国便利店喝到最好喝的",
-      "keyword": "低度酒",
-      "source": "xhs_saved_research",
-      "likes": 7813,
-      "collects": 1091,
-      "comments": 2790,
+      "id": "69dcbeed000000002102d13b",
+      "xsec_token": "REDACTED",
+      "xsec_source": "pc_popular",
+      "title": "吧台饮酒规则怪谈",
+      "desc": "",
+      "type": "normal",
+      "tags": [],
+      "relevance": 2,
+      "keyword": "下班回家想喝点酒喝什么",
+      "source": "xhs_popular",
+      "likes": 5218,
+      "collects": 788,
+      "comments": 295,
       "cover": "",
-      "author": "TaroFlavor"
-    },
-    {
-      "id": "69b189b70000000016009704",
-      "title": "在韩国便利店喝到最好喝的",
-      "keyword": "果酒",
-      "source": "xhs_saved_research",
-      "likes": 7813,
-      "collects": 1091,
-      "comments": 2790,
-      "cover": "",
-      "author": "TaroFlavor"
-    },
-    {
-      "id": "68fadf7d00000000030383cd",
-      "title": "5min做固体蒙汗药推荐给不吃冰棍又想爽一下",
-      "keyword": "海盐菠萝",
-      "source": "xhs_saved_research",
-      "likes": 5490,
-      "collects": 5472,
-      "comments": 282,
-      "cover": "",
-      "author": "比比安桑"
-    },
-    {
-      "id": "6a34b3a800000000080028be",
-      "title": "居家微醺🍹青提冰啤",
-      "keyword": "青提酒",
-      "source": "xhs_saved_research",
-      "likes": 2359,
-      "collects": 1973,
-      "comments": 87,
-      "cover": "",
-      "author": "再来两颗花生米🥜"
-    },
-    {
-      "id": "67bd825d0000000009017044",
-      "title": "大餐补救｜减脂期吃烧烤后怎么补救",
-      "keyword": "烧烤喝什么",
-      "source": "xhs_saved_research",
-      "likes": 4670,
-      "collects": 2493,
-      "comments": 185,
-      "cover": "",
-      "author": "开开开吃"
-    },
-    {
-      "id": "6683b3d0000000001e013054",
-      "title": "为什么没人说山姆的这款酒这么好喝啊！！！",
-      "keyword": "青提酒",
-      "source": "xhs_saved_research",
-      "likes": 2700,
-      "collects": 1013,
-      "comments": 152,
-      "cover": "",
-      "author": "Gapz"
-    },
-    {
-      "id": "65eedc7b0000000014005ef6",
-      "title": "巨清爽好喝的海盐菠萝冰茶🍍春游来一杯绝了",
-      "keyword": "海盐菠萝",
-      "source": "xhs_saved_research",
-      "likes": 3040,
-      "collects": 2148,
-      "comments": 69,
-      "cover": "",
-      "author": "皮蛋的快乐星球"
-    },
-    {
-      "id": "6a14502b0000000008003ff5",
-      "title": "上海…夜晚就该浪费在这种好地方🍸·˚",
-      "keyword": "微醺",
-      "source": "xhs_saved_research",
-      "likes": 2564,
-      "collects": 1216,
-      "comments": 124,
-      "cover": "",
-      "author": "小熊奶桃yeah"
-    },
-    {
-      "id": "6a0dd038000000003502f78c",
-      "title": "ADHD微醺时效率奇高",
-      "keyword": "微醺",
-      "source": "xhs_saved_research",
-      "likes": 3086,
-      "collects": 1551,
-      "comments": 477,
-      "cover": "",
-      "author": "随便778"
-    },
-    {
-      "id": "68c57b68000000001b02300b",
-      "title": "海盐菠萝金酒｜酸甜清爽 一口爆汁解腻",
-      "keyword": "海盐菠萝",
-      "source": "xhs_saved_research",
-      "likes": 5296,
-      "collects": 919,
-      "comments": 200,
-      "cover": "",
-      "author": "密斯特冰"
-    },
-    {
-      "id": "69c23c67000000001d01f225",
-      "title": "酒鬼严选（穷人版）",
-      "keyword": "青提酒",
-      "source": "xhs_saved_research",
-      "likes": 2834,
-      "collects": 2066,
-      "comments": 80,
-      "cover": "",
-      "author": "趴菜升级中"
-    },
-    {
-      "id": "6a159316000000003603168f",
-      "title": "盒马必买的酒直接给到一个夯",
-      "keyword": "低度酒",
-      "source": "xhs_saved_research",
-      "likes": 1219,
-      "collects": 668,
-      "comments": 85,
-      "cover": "",
-      "author": "N_N"
-    },
-    {
-      "id": "69033846000000000700bc55",
-      "title": "谁来解释一下这个现象…",
-      "keyword": "低度酒",
-      "source": "xhs_saved_research",
-      "likes": 2922,
-      "collects": 696,
-      "comments": 192,
-      "cover": "",
-      "author": "毛毛少吃亿点"
-    },
-    {
-      "id": "6a119132000000003601a650",
-      "title": "国内哪里可以买到豆蔻水啊",
-      "keyword": "夏天喝什么",
-      "source": "xhs_saved_research",
-      "likes": 2428,
-      "collects": 1315,
-      "comments": 273,
-      "cover": "",
-      "author": "睡神小八"
-    },
-    {
-      "id": "6a0420ce0000000035025db7",
-      "title": "有什么酒在不难喝又最快到达微醺状态呢？",
-      "keyword": "微醺",
-      "source": "xhs_saved_research",
-      "likes": 1129,
-      "collects": 716,
-      "comments": 1208,
-      "cover": "",
-      "author": "饮以为豪"
-    },
-    {
-      "id": "6a1ae062000000000702374f",
-      "title": "泡了两个月的青提酒这样是坏了吗",
-      "keyword": "青提酒",
-      "source": "xhs_saved_research",
-      "likes": 2024,
-      "collects": 1323,
-      "comments": 371,
-      "cover": "",
-      "author": "yoyo"
-    },
-    {
-      "id": "688c997e0000000023036a33",
-      "title": "酒鬼可以喝一辈子的5支",
-      "keyword": "青提酒",
-      "source": "xhs_saved_research",
-      "likes": 2144,
-      "collects": 1417,
-      "comments": 25,
-      "cover": "",
-      "author": "橙pocky"
-    },
-    {
-      "id": "6a195f00000000003603260d",
-      "title": "请所有的酒鬼都不要错过711新上的伏特加‼️",
-      "keyword": "果酒",
-      "source": "xhs_saved_research",
-      "likes": 628,
-      "collects": 190,
-      "comments": 87,
-      "cover": "",
-      "author": "暖暖吖暖吖"
-    },
-    {
-      "id": "6a3200d6000000001003eb18",
-      "title": "一口降温🍃醉清风✨清新温柔的夏日微醺",
-      "keyword": "微醺",
-      "source": "xhs_saved_research",
-      "likes": 2844,
-      "collects": 844,
-      "comments": 15,
-      "cover": "",
-      "author": "焦糖可乐"
-    },
-    {
-      "id": "6a0c5b170000000007011144",
-      "title": "无印你往里面加了什么…………",
-      "keyword": "夏天喝什么",
-      "source": "xhs_saved_research",
-      "likes": 1371,
-      "collects": 436,
-      "comments": 83,
-      "cover": "",
-      "author": "小熊饱饱"
-    },
-    {
-      "id": "69de3871000000001f006eae",
-      "title": "小象超市精酿从夯到拉🍻",
-      "keyword": "低度酒",
-      "source": "xhs_saved_research",
-      "likes": 722,
-      "collects": 358,
-      "comments": 53,
-      "cover": "",
-      "author": "隔壁小王📷"
-    },
-    {
-      "id": "69f2f380000000001f006b8f",
-      "title": "有没有冰冰凉凉好喝的饮料不长胖晚上喝也行",
-      "keyword": "夏天喝什么",
-      "source": "xhs_saved_research",
-      "likes": 1423,
-      "collects": 728,
-      "comments": 262,
-      "cover": "",
-      "author": "最爱火锅吖"
-    },
-    {
-      "id": "69f2f380000000001f006b8f",
-      "title": "有没有冰冰凉凉好喝的饮料不长胖晚上喝也行",
-      "keyword": "烧烤喝什么",
-      "source": "xhs_saved_research",
-      "likes": 1423,
-      "collects": 728,
-      "comments": 262,
-      "cover": "",
-      "author": "最爱火锅吖"
-    },
-    {
-      "id": "69aa8d610000000015020ed9",
-      "title": "😜做出了咖啡馆坠伟大的单品！｜海盐凤梨姜黄",
-      "keyword": "海盐菠萝",
-      "source": "xhs_saved_research",
-      "likes": 831,
-      "collects": 767,
-      "comments": 8,
-      "cover": "",
-      "author": "水洗小可爱"
-    },
-    {
-      "id": "6947d04e000000001f00591f",
-      "title": "🇰🇷ins上爆火的🍇葡萄嗨棒被我找到了",
-      "keyword": "果酒",
-      "source": "xhs_saved_research",
-      "likes": 607,
-      "collects": 444,
-      "comments": 25,
-      "cover": "",
-      "author": "我爱吃肠粉"
-    },
-    {
-      "id": "6a378b78000000000e021800",
-      "title": "等了这么久，我们终于量产🍊yuzu sake啦！",
-      "keyword": "果酒",
-      "source": "xhs_saved_research",
-      "likes": 405,
-      "collects": 191,
-      "comments": 87,
-      "cover": "",
-      "author": "獭祭Dassai Blue"
-    },
-    {
-      "id": "661f371e000000000302320a",
-      "title": "有这手艺我反正是不去奶茶店了！",
-      "keyword": "海盐菠萝",
-      "source": "xhs_saved_research",
-      "likes": 787,
-      "collects": 640,
-      "comments": 3,
-      "cover": "",
-      "author": "bigbabol"
-    },
-    {
-      "id": "69f624ff000000003701cda0",
-      "title": "一个可以反复用的大餐前止损减肥公式",
-      "keyword": "烧烤喝什么",
-      "source": "xhs_saved_research",
-      "likes": 936,
-      "collects": 725,
-      "comments": 34,
-      "cover": "",
-      "author": "暴走的丸"
-    },
-    {
-      "id": "6a366c59000000000803e8b8",
-      "title": "广东人夏天买的最频繁的饮料是什么",
-      "keyword": "夏天喝什么",
-      "source": "xhs_saved_research",
-      "likes": 277,
-      "collects": 89,
-      "comments": 664,
-      "cover": "",
-      "author": "Xiaoxiao"
-    },
-    {
-      "id": "6a2d3750000000001603d1c1",
-      "title": "小象超市买到的这个酒必须给到一个夯",
-      "keyword": "果酒",
-      "source": "xhs_saved_research",
-      "likes": 679,
-      "collects": 245,
-      "comments": 31,
-      "cover": "",
-      "author": "N_N"
-    },
-    {
-      "id": "69f998000000000037035778",
-      "title": "不爱喝白水💧存一些能日常喝的有味道的水",
-      "keyword": "夏天喝什么",
-      "source": "xhs_saved_research",
-      "likes": 850,
-      "collects": 423,
-      "comments": 204,
-      "cover": "",
-      "author": "星星醒醒"
-    },
-    {
-      "id": "69dc559c00000000210395e9",
-      "title": "舍得自在酒，踩中风口却没抓住年轻人",
-      "keyword": "低度酒",
-      "source": "xhs_saved_research",
-      "likes": 989,
-      "collects": 282,
-      "comments": 273,
-      "cover": "",
-      "author": "日茶夜酒"
-    },
-    {
-      "id": "65ff9eb000000000120369aa",
-      "title": "酸甜一杯 清新好喝｜海盐菠萝朗姆",
-      "keyword": "海盐菠萝",
-      "source": "xhs_saved_research",
-      "likes": 604,
-      "collects": 589,
-      "comments": 14,
-      "cover": "",
-      "author": "Denly"
-    },
-    {
-      "id": "6a0cfd98000000003503bafe",
-      "title": "自制菠萝果泥啤",
-      "keyword": "海盐菠萝",
-      "source": "xhs_saved_research",
-      "likes": 582,
-      "collects": 224,
-      "comments": 74,
-      "cover": "",
-      "author": "火力大仙"
-    },
-    {
-      "id": "69ff0b91000000001a036c4c",
-      "title": "711 四款果味伏特加全测评✨附口味排名",
-      "keyword": "微醺",
-      "source": "xhs_saved_research",
-      "likes": 141,
-      "collects": 60,
-      "comments": 38,
-      "cover": "",
-      "author": "温森特"
-    },
-    {
-      "id": "6936b2a1000000001b023401",
-      "title": "一个万能的大餐补救包瘦法",
-      "keyword": "烧烤喝什么",
-      "source": "xhs_saved_research",
-      "likes": 753,
-      "collects": 595,
-      "comments": 18,
-      "cover": "",
-      "author": "暴走的丸"
-    },
-    {
-      "id": "69e0ea3f000000001b003490",
-      "title": "精准拿捏🤡🫴🏽微醺到上头 蒙汗药的6个段位",
-      "keyword": "微醺",
-      "source": "xhs_saved_research",
-      "likes": 687,
-      "collects": 358,
-      "comments": 41,
-      "cover": "",
-      "author": "罗克西画画不喝酒"
-    },
-    {
-      "id": "6a180ca70000000008003724",
-      "title": "这个喝法到底是谁想出来的。。",
-      "keyword": "青提酒",
-      "source": "xhs_saved_research",
-      "likes": 763,
-      "collects": 435,
-      "comments": 35,
-      "cover": "",
-      "author": "猪猪在努力吃"
-    },
-    {
-      "id": "69b2c5c7000000001b01ee8d",
-      "title": "低度白酒天花板，有点东西",
-      "keyword": "低度酒",
-      "source": "xhs_saved_research",
-      "likes": 718,
-      "collects": 197,
-      "comments": 102,
-      "cover": "",
-      "author": "家里有猫叫小虎"
-    },
-    {
-      "id": "6a1ac4820000000008027a2b",
-      "title": "周末居家的微醺时刻🍾",
-      "keyword": "微醺",
-      "source": "xhs_saved_research",
-      "likes": 804,
-      "collects": 194,
-      "comments": 57,
-      "cover": "",
-      "author": "是阿茶"
-    },
-    {
-      "id": "686b6586000000002400de31",
-      "title": "݁𝓞𝐤𝐤𝐢𝐬𝐬 ⟡.~/夏日微醺小甜酒选它",
-      "keyword": "果酒",
-      "source": "xhs_saved_research",
-      "likes": 664,
-      "collects": 175,
-      "comments": 90,
-      "cover": "",
-      "author": "小葵物语"
-    },
-    {
-      "id": "698f3903000000000a02a5df",
-      "title": "这辈子第一次喝到这么浓郁的法国梨酒我滴天",
-      "keyword": "果酒",
-      "source": "xhs_saved_research",
-      "likes": 301,
-      "collects": 275,
-      "comments": 21,
-      "cover": "",
-      "author": "炸脆走遍温泉乡"
-    },
-    {
-      "id": "6977505d000000000a02d119",
-      "title": "大餐补救｜排卵期吃烧烤后怎么补救",
-      "keyword": "烧烤喝什么",
-      "source": "xhs_saved_research",
-      "likes": 616,
-      "collects": 250,
-      "comments": 1,
-      "cover": "",
-      "author": "老太养生计划"
-    },
-    {
-      "id": "6606350300000000120323a6",
-      "title": "青提冻荔枝！！太好喝了我c！！太好喝了！！",
-      "keyword": "青提酒",
-      "source": "xhs_saved_research",
-      "likes": 563,
-      "collects": 237,
-      "comments": 8,
-      "cover": "",
-      "author": "绝对黑皮诺"
-    },
-    {
-      "id": "6a28bcdc0000000021009769",
-      "title": "茶百道新品佛手柑系列测评，两款都喝了实话",
-      "keyword": "夏天喝什么",
-      "source": "xhs_saved_research",
-      "likes": 368,
-      "collects": 90,
-      "comments": 110,
-      "cover": "",
-      "author": "酸辣微甜不吃咸"
-    },
-    {
-      "id": "69fa0e12000000001b022ef1",
-      "title": "夏天除了白开水到底还能喝点什么",
-      "keyword": "夏天喝什么",
-      "source": "xhs_saved_research",
-      "likes": 129,
-      "collects": 62,
-      "comments": 287,
-      "cover": "",
-      "author": "等待"
-    },
-    {
-      "id": "69fdce28000000003501c61c",
-      "title": "【自制饮料】适合久坐画画人的健康款",
-      "keyword": "夏天喝什么",
-      "source": "xhs_saved_research",
-      "likes": 390,
-      "collects": 229,
-      "comments": 52,
-      "cover": "",
-      "author": "长生狸"
-    },
-    {
-      "id": "66a0fc33000000000a004020",
-      "title": "听我的🥹15pro放大拍真的一绝。。",
-      "keyword": "青提酒",
-      "source": "xhs_saved_research",
-      "likes": 466,
-      "collects": 139,
-      "comments": 38,
-      "cover": "",
-      "author": "鹿哩哈呀"
-    },
-    {
-      "id": "6a140aa0000000000702d3ba",
-      "title": "吉林 氛围感烧烤店 喝到了朝日奶盖Oᴗoಣ🍾",
-      "keyword": "烧烤喝什么",
-      "source": "xhs_saved_research",
-      "likes": 165,
-      "collects": 79,
-      "comments": 16,
-      "cover": "",
-      "author": "不会飞的气球🎈"
-    },
-    {
-      "id": "69f894da000000001a037ad7",
-      "title": "适合想微醺又嗜甜的女生喝的酒，广子别来！",
-      "keyword": "果酒",
-      "source": "xhs_saved_research",
-      "likes": 202,
-      "collects": 153,
-      "comments": 94,
-      "cover": "",
-      "author": "🌸荔枝软糖🍬"
-    },
-    {
-      "id": "69f894da000000001a037ad7",
-      "title": "适合想微醺又嗜甜的女生喝的酒，广子别来！",
-      "keyword": "微醺",
-      "source": "xhs_saved_research",
-      "likes": 202,
-      "collects": 153,
-      "comments": 94,
-      "cover": "",
-      "author": "🌸荔枝软糖🍬"
-    },
-    {
-      "id": "68259fe60000000020028616",
-      "title": "烧烤+酒精=酒蒙子的疯狂星期四~",
-      "keyword": "烧烤喝什么",
-      "source": "xhs_saved_research",
-      "likes": 356,
-      "collects": 98,
-      "comments": 9,
-      "cover": "",
-      "author": "蒙多不多"
-    },
-    {
-      "id": "69fee86c000000003601b070",
-      "title": "随手瞎调巨好喝｜🌱🍃🍸罗勒青提醉观音",
-      "keyword": "青提酒",
-      "source": "xhs_saved_research",
-      "likes": 219,
-      "collects": 170,
-      "comments": 5,
-      "cover": "",
-      "author": "Ponpon"
-    },
-    {
-      "id": "6a3f86e400000000150246ba",
-      "title": "*一口盛夏的鲜爽🍃青提茉莉冰茶🌿✨",
-      "keyword": "夏天喝什么",
-      "source": "xhs_saved_research",
-      "likes": 275,
-      "collects": 145,
-      "comments": 11,
-      "cover": "",
-      "author": "LU"
-    },
-    {
-      "id": "69a816e0000000002801e117",
-      "title": "好喝但不会回购但会推荐给女生",
-      "keyword": "果酒",
-      "source": "xhs_saved_research",
-      "likes": 194,
-      "collects": 61,
-      "comments": 41,
-      "cover": "",
-      "author": "皮的童"
-    },
-    {
-      "id": "6a40cf02000000001101ee3f",
-      "title": "初茉第二期果酒品鉴官招募开启✨",
-      "keyword": "果酒",
-      "source": "xhs_saved_research",
-      "likes": 84,
-      "collects": 70,
-      "comments": 122,
-      "cover": "",
-      "author": "CHUMO初茉"
+      "author": "池边醉屁",
+      "url": "https://www.xiaohongshu.com/explore/69dcbeed000000002102d13b?xsec_token=REDACTED&xsec_source=pc_popular"
     }
   ],
   "hotQueries": [
-    "适合女生在家小酌的酒",
-    "青提茉莉酒泡多久",
-    "青提朗姆酒调酒",
-    "moscato白葡萄酒价格",
-    "菠萝话梅酒泡多久可以喝",
-    "青提茉莉酒比例",
-    "青提伏特加",
-    "青提酒的功效和作用禁忌",
-    "青提酒调酒",
-    "好喝但容易醉的酒",
-    "调的酒一般多少度",
-    "迷你小酒推荐",
-    "第一次喝酒推荐什么酒",
-    "低度酒是多少度",
-    "低度酒调酒",
-    "低度的酒有哪些",
-    "烧烤和什么喝的配",
-    "吃烧烤喝什么合适",
-    "烤串喝什么饮料解油腻",
-    "吃好烧烤后喝什么",
-    "晚上烧烤后吃什么补救",
-    "吃烤肉适合喝什么饮料",
-    "吃烧烤点什么喝的",
-    "配烧烤喝什么",
-    "好喝的果酒排名",
-    "果酒排行榜前十名",
-    "李嘉格卖的酒哪个好喝",
-    "适合女生喝的微醺果酒",
-    "最好喝的果酒排名",
-    "小甜水酒",
-    "女士果酒",
-    "微醺是什么感受",
-    "微醺的松弛感文案",
-    "微醺一个人",
-    "微醺闫妮",
-    "女生微醺松弛文案",
-    "微醺学习法喝什么酒",
-    "一瓶微醺相当于什么酒量",
-    "女生喝酒后微醺的样子",
-    "菠萝老盐水怎么做"
+    "晚上下班回家自己喝点酒吃饭",
+    "适合下班回家喝的酒",
+    "下班后想喝点酒",
+    "下班回家简单喝点酒",
+    "下班后只想喝点酒怎么办",
+    "女生晚上回家自己喝点酒",
+    "下班回家喝点小酒",
+    "下班回家喝点酒什么感觉"
   ],
   "topics": [
     {
-      "keyword": "微醺",
-      "name": "微醺",
-      "views": 3189906151,
-      "link": "https://www.xiaohongshu.com/page/topics/5c18f67730e2cf0001d781f8?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "下班喝点小酒",
+      "views": 30835,
+      "link": "https://www.xiaohongshu.com/page/topics/6215a89b9e25890001af9569?naviHidden=yes"
     },
     {
-      "keyword": "果酒推荐",
-      "name": "果酒推荐",
-      "views": 27393576,
-      "link": "https://www.xiaohongshu.com/page/topics/5e7db24b29491a0001216129?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "下班回家喝点小酒",
+      "views": 5343,
+      "link": "https://www.xiaohongshu.com/page/topics/67bc340d01d4000000000004?naviHidden=yes"
     },
     {
-      "keyword": "低度酒",
-      "name": "低度酒",
-      "views": 18889421,
-      "link": "https://www.xiaohongshu.com/page/topics/5dbd45b1d8d7a50001155a40?naviHidden=yes"
+      "keyword": "下班后微醺小酌",
+      "name": "下班后微醺小酌",
+      "views": 1550,
+      "link": "https://www.xiaohongshu.com/page/topics/68888a3c017e000000000001?naviHidden=yes"
     },
     {
-      "keyword": "微醺",
-      "name": "女士微醺酒",
-      "views": 679974,
-      "link": "https://www.xiaohongshu.com/page/topics/628ee3106c735a00016901d7?naviHidden=yes"
+      "keyword": "下班微醺喝什么酒",
+      "name": "适合下班喝的微醺酒",
+      "views": 872,
+      "link": "https://www.xiaohongshu.com/page/topics/6864ce980183000000000001?naviHidden=yes"
     },
     {
-      "keyword": "微醺",
-      "name": "氛围感微醺公式",
-      "views": 447964,
-      "link": "https://www.xiaohongshu.com/page/topics/67f7c7890043000000000002?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "下班喝杯小酒",
+      "views": 866,
+      "link": "https://www.xiaohongshu.com/page/topics/68ebb7170240000000000002?naviHidden=yes"
     },
     {
-      "keyword": "微醺",
-      "name": "微醺预约通道开启",
-      "views": 424654,
-      "link": "https://www.xiaohongshu.com/page/topics/67ff97670126000000000005?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "下班后喝点小酒",
+      "views": 727,
+      "link": "https://www.xiaohongshu.com/page/topics/66aa6ea647242700012a818d?naviHidden=yes"
     },
     {
-      "keyword": "微醺",
-      "name": "微醺加班大法",
-      "views": 262551,
-      "link": "https://www.xiaohongshu.com/page/topics/673347d27fcad600016cdf89?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "下班了喝点小酒快乐一下",
+      "views": 317,
+      "link": "https://www.xiaohongshu.com/page/topics/6870b452013f000000000001?naviHidden=yes"
     },
     {
-      "keyword": "微醺",
-      "name": "情人节微醺",
-      "views": 198042,
-      "link": "https://www.xiaohongshu.com/page/topics/62dd5d9a5894950001ba9235?naviHidden=yes"
+      "keyword": "下班微醺喝什么酒",
+      "name": "下班喝一杯微醺酒",
+      "views": 284,
+      "link": "https://www.xiaohongshu.com/page/topics/66fd590189aab00001fa32bb?naviHidden=yes"
     },
     {
-      "keyword": "女生喝什么酒",
-      "name": "适合女生聚会喝的酒",
-      "views": 124357,
-      "link": "https://www.xiaohongshu.com/page/topics/5c6256327d46b40001a3d0d2?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "下班的快乐之喝点小酒",
+      "views": 232,
+      "link": "https://www.xiaohongshu.com/page/topics/69e575ee0037000000000001?naviHidden=yes"
     },
     {
-      "keyword": "女生喝什么酒",
-      "name": "女生也能喝的酒",
-      "views": 61140,
-      "link": "https://www.xiaohongshu.com/page/topics/5d477ac9979f23000155a657?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "下班去喝杯小酒",
+      "views": 225,
+      "link": "https://www.xiaohongshu.com/page/topics/69caabd3001c000000000001?naviHidden=yes"
     },
     {
-      "keyword": "烧烤喝什么",
-      "name": "烧烤撸串喝冷啤",
-      "views": 53660,
-      "link": "https://www.xiaohongshu.com/page/topics/632878136fde6a000127a086?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "下班喝点小酒去去班味儿",
+      "views": 190,
+      "link": "https://www.xiaohongshu.com/page/topics/667ffe4f38aabf00017d53a2?naviHidden=yes"
     },
     {
-      "keyword": "烧烤喝什么",
-      "name": "吃烧烤上火喝什么",
-      "views": 38907,
-      "link": "https://www.xiaohongshu.com/page/topics/651502b85e0ffa0001573d86?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "工作下班喝点小酒放松",
+      "views": 64,
+      "link": "https://www.xiaohongshu.com/page/topics/6283cafa0aa20d00011b843b?naviHidden=yes"
     },
     {
-      "keyword": "女生喝什么酒",
-      "name": "女生喝什么酒",
-      "views": 32712,
-      "link": "https://www.xiaohongshu.com/page/topics/635737ec20f20b000177b9fb?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "下班喝小酒",
+      "views": 49,
+      "link": "https://www.xiaohongshu.com/page/topics/653bd53eb5ede10001ffdb17?naviHidden=yes"
     },
     {
-      "keyword": "烧烤喝什么",
-      "name": "喝酒撸串啤酒夜宵烧烤",
-      "views": 28920,
-      "link": "https://www.xiaohongshu.com/page/topics/667d6fd15b4fc700013594eb?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "下班喝点儿整了个小酒单",
+      "views": 39,
+      "link": "https://www.xiaohongshu.com/page/topics/688f8547017e000000000001?naviHidden=yes"
     },
     {
-      "keyword": "果酒推荐",
-      "name": "果酒推荐微醺酒",
-      "views": 23197,
-      "link": "https://www.xiaohongshu.com/page/topics/67e537dc0193000000000001?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "下班喝杯小酒抽个小烟",
+      "views": 39,
+      "link": "https://www.xiaohongshu.com/page/topics/650eef5a5e0ffa000157186a?naviHidden=yes"
     },
     {
-      "keyword": "果酒推荐",
-      "name": "适合女生喝的果酒推荐",
-      "views": 22948,
-      "link": "https://www.xiaohongshu.com/page/topics/6229cc9c8ab7a00001e60a8e?naviHidden=yes"
+      "keyword": "下班后微醺小酌",
+      "name": "下班后小酌一下城市微醺地图",
+      "views": 38,
+      "link": "https://www.xiaohongshu.com/page/topics/68dc89a30244000000000001?naviHidden=yes"
     },
     {
-      "keyword": "烧烤喝什么",
-      "name": "喝啤酒吃烧烤ai教程",
-      "views": 22846,
-      "link": "https://www.xiaohongshu.com/page/topics/69160b3d023b000000000002?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "下班喝点小酒结束疲劳的一天",
+      "views": 11,
+      "link": "https://www.xiaohongshu.com/page/topics/69ce4c150064000000000001?naviHidden=yes"
     },
     {
-      "keyword": "烧烤喝什么",
-      "name": "喝啤酒吃烧烤人生没烦恼",
-      "views": 20303,
-      "link": "https://www.xiaohongshu.com/page/topics/648477c645b0850001364779?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "和小姐妹下班喝个小酒",
+      "views": 8,
+      "link": "https://www.xiaohongshu.com/page/topics/67658aac110b8e00015a1c9d?naviHidden=yes"
     },
     {
-      "keyword": "女生喝什么酒",
-      "name": "适合女生喝的酒断舍离极简生活",
-      "views": 20013,
-      "link": "https://www.xiaohongshu.com/page/topics/66b8d1a6de487500014df9b8?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "下班喝喝小酒放松心情",
+      "views": 7,
+      "link": "https://www.xiaohongshu.com/page/topics/64a4eaa0fe73f700018f52fe?naviHidden=yes"
     },
     {
-      "keyword": "微醺",
-      "name": "微醺速写",
-      "views": 18719,
-      "link": "https://www.xiaohongshu.com/page/topics/67d23dd60045000000000001?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "就是在下班后可以独自喝点小酒",
+      "views": 4,
+      "link": "https://www.xiaohongshu.com/page/topics/6862a7000126000000000003?naviHidden=yes"
     },
     {
-      "keyword": "低度酒",
-      "name": "茅台低度酒",
-      "views": 10145,
-      "link": "https://www.xiaohongshu.com/page/topics/66bf2004a3f0ef0001320ac0?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "打工人下班喝点小酒",
+      "views": 0,
+      "link": "https://www.xiaohongshu.com/page/topics/67ff9d0f017e000000000002?naviHidden=yes"
     },
     {
-      "keyword": "微醺",
-      "name": "年轻人微醺新姿势",
-      "views": 9888,
-      "link": "https://www.xiaohongshu.com/page/topics/6910adfb01d1000000000001?naviHidden=yes"
-    },
-    {
-      "keyword": "女生喝什么酒",
-      "name": "适合女生喝的酒微",
-      "views": 8882,
-      "link": "https://www.xiaohongshu.com/page/topics/62f7cee9a182e500017c61f7?naviHidden=yes"
-    },
-    {
-      "keyword": "女生喝什么酒",
-      "name": "适合女生喝的睡前酒",
-      "views": 6547,
-      "link": "https://www.xiaohongshu.com/page/topics/6295d39aa328c900019eb3b8?naviHidden=yes"
-    },
-    {
-      "keyword": "微醺",
-      "name": "微醺雪莉",
-      "views": 4948,
-      "link": "https://www.xiaohongshu.com/page/topics/639988870d2c7700013b0120?naviHidden=yes"
-    },
-    {
-      "keyword": "烧烤喝什么",
-      "name": "烧烤喝什么好",
-      "views": 4924,
-      "link": "https://www.xiaohongshu.com/page/topics/6012860d4d340b0001c2216b?naviHidden=yes"
-    },
-    {
-      "keyword": "女生喝什么酒",
-      "name": "c适合女生喝的微醺小酒",
-      "views": 4627,
-      "link": "https://www.xiaohongshu.com/page/topics/676add50bd33d7000172a3d3?naviHidden=yes"
-    },
-    {
-      "keyword": "微醺",
-      "name": "半熟男女微醺打卡",
-      "views": 4472,
-      "link": "https://www.xiaohongshu.com/page/topics/67062935ac4f9b00012806f6?naviHidden=yes"
-    },
-    {
-      "keyword": "微醺",
-      "name": "微醺假日shi",
-      "views": 3692,
-      "link": "https://www.xiaohongshu.com/page/topics/68a044760183000000000001?naviHidden=yes"
-    },
-    {
-      "keyword": "低度酒",
-      "name": "低度酒也快乐",
-      "views": 3469,
-      "link": "https://www.xiaohongshu.com/page/topics/683e6ae10181000000000001?naviHidden=yes"
-    },
-    {
-      "keyword": "烧烤喝什么",
-      "name": "沙任吃任喝泰式烧烤",
-      "views": 2600,
-      "link": "https://www.xiaohongshu.com/page/topics/66929737f582b60001939325?naviHidden=yes"
-    },
-    {
-      "keyword": "低度酒",
-      "name": "女生低度酒推荐",
-      "views": 2132,
-      "link": "https://www.xiaohongshu.com/page/topics/6846aac0017e000000000001?naviHidden=yes"
-    },
-    {
-      "keyword": "烧烤喝什么",
-      "name": "白天喝茶晚上烧烤",
-      "views": 2064,
-      "link": "https://www.xiaohongshu.com/page/topics/6872a0f40138000000000001?naviHidden=yes"
-    },
-    {
-      "keyword": "微醺",
-      "name": "轻饮微醺超惬意",
-      "views": 2042,
-      "link": "https://www.xiaohongshu.com/page/topics/6a0834e80017000000000002?naviHidden=yes"
-    },
-    {
-      "keyword": "低度酒",
-      "name": "低度酒推",
-      "views": 1775,
-      "link": "https://www.xiaohongshu.com/page/topics/625e9c852a9b2100019f6eda?naviHidden=yes"
-    },
-    {
-      "keyword": "女生喝什么酒",
-      "name": "适合女生喝的酒丨",
-      "views": 1555,
-      "link": "https://www.xiaohongshu.com/page/topics/620d6928e4bcdd0001174c81?naviHidden=yes"
-    },
-    {
-      "keyword": "果酒推荐",
-      "name": "国产果酒推荐",
-      "views": 1429,
-      "link": "https://www.xiaohongshu.com/page/topics/68a53231006f000000000001?naviHidden=yes"
-    },
-    {
-      "keyword": "果酒推荐",
-      "name": "果酒酵母推荐",
-      "views": 1363,
-      "link": "https://www.xiaohongshu.com/page/topics/67b9331401d4000000000002?naviHidden=yes"
-    },
-    {
-      "keyword": "果酒推荐",
-      "name": "年轻果酒推荐",
-      "views": 1297,
-      "link": "https://www.xiaohongshu.com/page/topics/695e14ea025e000000000001?naviHidden=yes"
-    },
-    {
-      "keyword": "微醺",
-      "name": "微醺时光里的欢笑与歌",
-      "views": 1280,
-      "link": "https://www.xiaohongshu.com/page/topics/68a41faa006d000000000003?naviHidden=yes"
+      "keyword": "下班喝的小酒",
+      "name": "下班后约上姐妹来喝小酒",
+      "views": 0,
+      "link": "https://www.xiaohongshu.com/page/topics/684550f00126000000000002?naviHidden=yes"
     }
   ],
   "crossPlatform": [
     {
-      "title": "白玉兰口碑",
+      "title": "巴西VS挪威",
       "platform": "微博",
       "rank": 1,
-      "heat": "185万",
+      "heat": "410万",
       "url": ""
     },
     {
-      "title": "国乒男单资格赛全军覆没",
+      "title": "巴西点球不进",
       "platform": "微博",
       "rank": 2,
-      "heat": "101万",
+      "heat": "78万",
       "url": ""
     },
     {
-      "title": "国产高性能碳纤维再迎产能重大突破",
+      "title": "数说中国经济6月成绩单",
       "platform": "微博",
       "rank": 3,
-      "heat": "91万",
+      "heat": "64万",
       "url": ""
     },
     {
-      "title": "女子被骗500万丈夫自杀骗子获刑",
+      "title": "哈兰德梅开二度",
       "platform": "微博",
       "rank": 4,
-      "heat": "85万",
+      "heat": "36万",
       "url": ""
     },
     {
-      "title": "原来衣着打扮会影响对自己的感知",
+      "title": "孙颖莎晋级美国大满贯决赛",
       "platform": "微博",
       "rank": 5,
-      "heat": "83万",
+      "heat": "29万",
       "url": ""
     },
     {
-      "title": "伊朗队队长怒斥国际足联",
+      "title": "有线耳机此生从此分明了",
       "platform": "微博",
       "rank": 6,
-      "heat": "70万",
+      "heat": "24万",
       "url": ""
     },
     {
-      "title": "3000块街舞课狗狗学了2900",
+      "title": "哈兰德头球破门",
       "platform": "微博",
       "rank": 7,
-      "heat": "63万",
+      "heat": "15万",
       "url": ""
     },
     {
-      "title": "秦彻穿了围裙",
+      "title": "19块的外卖用玻璃罐装",
       "platform": "微博",
       "rank": 8,
-      "heat": "59万",
+      "heat": "14万",
       "url": ""
     },
     {
-      "title": "灿如繁星定档节奏",
+      "title": "巴西半场0比0挪威",
       "platform": "微博",
       "rank": 9,
-      "heat": "55万",
+      "heat": "10万",
       "url": ""
     },
     {
-      "title": "豆包和DeepSeek的博弈",
+      "title": "孙颖莎4比1王艺迪",
       "platform": "微博",
       "rank": 10,
-      "heat": "51万",
+      "heat": "7万",
       "url": ""
     },
     {
-      "title": "卢昱晓误触",
+      "title": "佛得角队在机场被疯狂包围",
       "platform": "微博",
       "rank": 11,
-      "heat": "51万",
+      "heat": "7万",
       "url": ""
     },
     {
-      "title": "向佐向佑聊天记录",
+      "title": "张新成演唱会翻唱率",
       "platform": "微博",
       "rank": 12,
-      "heat": "50万",
+      "heat": "7万",
       "url": ""
     },
     {
-      "title": "韩国队无缘晋级 2026 年世界杯淘汰赛，小组赛出局最大的问题是什么？谁该负责？",
+      "title": "印度政府正调查塔塔电子大规模数据泄露事件， 涉及苹果、特斯拉，这种泄露影响有多大？暴露了哪些安全隐患？",
       "platform": "知乎",
       "rank": 1,
-      "heat": "1205 万热度",
+      "heat": "350 万热度",
       "url": ""
     },
     {
-      "title": "世界杯 32 强对阵出炉，巴西 vs 日本、法国 vs 瑞典、葡萄牙 vs 克罗地亚，你看好哪些球队晋级？",
+      "title": "女朋友宣称能吃出河里野生鱼和池塘里鱼的味道差别，她是在骗我吗？",
       "platform": "知乎",
       "rank": 2,
-      "heat": "1066 万热度",
+      "heat": "309 万热度",
       "url": ""
     },
     {
-      "title": "200 万粉丝网红诋毁袁隆平成果引发中国食品报发声，反映了哪些问题？这种造谣者背后有怎样的利益链条？",
+      "title": "印度工厂泄露 iPhone18Pro 机密，这如何影响苹果在印度的布局？",
       "platform": "知乎",
       "rank": 3,
-      "heat": "961 万热度",
+      "heat": "236 万热度",
       "url": ""
     },
     {
-      "title": "人大博士肄业宅家六年靠父母供养，曾确诊焦虑症，为什么会出现这种情况？反映了哪些问题？",
+      "title": "FIFA 决定美国核心主力巴洛贡红牌停赛处罚暂缓一年执行，如何评价这一决定？",
       "platform": "知乎",
       "rank": 4,
-      "heat": "883 万热度",
+      "heat": "162 万热度",
       "url": ""
     },
     {
-      "title": "央视曝光手机测评黑幕，厂商与博主联手造假，特调机三层作弊，真实体验与宣传天差地别，哪些信息值得关注？",
+      "title": "一辆华为问界 M9 于隧道内起火，起火原因不明，但现场没有明显碰撞痕迹，具体原因可能是怎样的？",
       "platform": "知乎",
       "rank": 5,
-      "heat": "679 万热度",
+      "heat": "162 万热度",
       "url": ""
     },
     {
-      "title": "世界杯小组赛结束，亚足联仅日本澳大利亚进入 32 强，远不及扩军前给亚足联的世界杯名额，对此你怎么看？",
+      "title": "番茄新书流量下滑 48.4%，起点付费读者暴跌 10 万，网文是在衰退吗？",
       "platform": "知乎",
       "rank": 6,
-      "heat": "464 万热度",
+      "heat": "142 万热度",
       "url": ""
     },
     {
-      "title": "苹果和美光关于存储涨价的口水战，你认为谁说的更有道理？",
+      "title": "寒门女孩高考 699 分报考清华却被网暴，劝学生别沉迷手机为何引来几十万点赞的负面评论？",
       "platform": "知乎",
       "rank": 7,
-      "heat": "458 万热度",
+      "heat": "138 万热度",
       "url": ""
     },
     {
-      "title": "200 万粉丝博主诋毁袁隆平「三系杂交技术」被封禁，什么是三系杂交技术？该博主应承担哪些责任？",
+      "title": "如何看待法国一超市爆发空调「抢购大战」，大门被撞烂、多人躺地互殴，仅 10 人抢到空调？",
       "platform": "知乎",
       "rank": 8,
-      "heat": "416 万热度",
+      "heat": "124 万热度",
       "url": ""
     },
     {
-      "title": "美国海军陆战队接收首批「无雷达」F-35，没有雷达在现代战争中意味着什么？",
+      "title": "同样是这届黑马，为什么都说佛得角比巴拉圭输得体面？巴拉圭是典型的南美足球风格吗？",
       "platform": "知乎",
       "rank": 9,
-      "heat": "384 万热度",
+      "heat": "117 万热度",
       "url": ""
     },
     {
-      "title": "美军连续第二天空袭伊朗，特朗普威胁伊朗或将不复存在，局势会再度持续升温吗？美方此轮袭击想达成哪些目标？",
+      "title": "国内的房地产开发商为什么都不看重隔音？",
       "platform": "知乎",
       "rank": 10,
-      "heat": "327 万热度",
+      "heat": "110 万热度",
       "url": ""
     },
     {
-      "title": "如何看待 2026 年 6 月 26 日《给阿嬷的情书》马来西亚首周票房超 1338 万人民币夺冠？",
+      "title": "王力宏演唱会摔倒面部、耳朵受伤，缝了 39 针，工作室回应是威亚操作不当，如何避免类似事故再发生？",
       "platform": "知乎",
       "rank": 11,
-      "heat": "200 万热度",
+      "heat": "108 万热度",
       "url": ""
     },
     {
-      "title": "WTT 美国大满贯，黄友政 0-3 不敌陈颢桦，连续 3 站止步资格赛，如何评价黄友政的发挥？他存在哪些问题？",
+      "title": "LV 在中国密集维权，从茉莉奶白到鸭血粉丝、平价餐吧，目的何在？商标保护范围是不是太宽了？",
       "platform": "知乎",
       "rank": 12,
-      "heat": "196 万热度",
+      "heat": "106 万热度",
       "url": ""
     },
     {
-      "title": "细节之中抓作风",
+      "title": "不断创造无愧于时代和人民的新业绩",
       "platform": "百度",
       "rank": 1,
       "heat": "790.4万",
       "url": ""
     },
     {
-      "title": "人民日报：伊朗队昂着头告别世界杯",
+      "title": "四川绵竹半小时3次地震",
       "platform": "百度",
       "rank": 2,
-      "heat": "780.8万",
+      "heat": "780.9万",
       "url": ""
     },
     {
-      "title": "中国避暑神器在欧洲卖爆了",
+      "title": "哈兰德梅开二度 挪威淘汰巴西",
       "platform": "百度",
       "rank": 3,
-      "heat": "771.4万",
+      "heat": "771.5万",
       "url": ""
     },
     {
-      "title": "未来5年 充电供热供暖将有大变化",
+      "title": "中国制造如何为欧洲降温",
       "platform": "百度",
       "rank": 4,
       "heat": "761.8万",
       "url": ""
     },
     {
-      "title": "曝韩国球员目睹出局时正吃饭",
+      "title": "TCL回应国家一级文物上有其广告",
       "platform": "百度",
       "rank": 5,
-      "heat": "752.4万",
+      "heat": "752.0万",
       "url": ""
     },
     {
-      "title": "老人放羊失踪39天 仅数十只羊被找回",
+      "title": "C罗：美加墨是我最后一届世界杯",
       "platform": "百度",
       "rank": 6,
-      "heat": "742.7万",
+      "heat": "742.6万",
       "url": ""
     },
     {
-      "title": "国乒男单资格赛全员出局",
+      "title": "人大通报：未发现蒋方舟学术不端",
       "platform": "百度",
       "rank": 7,
-      "heat": "732.9万",
+      "heat": "733.2万",
       "url": ""
     },
     {
-      "title": "小学生叠纸青蛙跳2.52米 创世界纪录",
+      "title": "挪威门将立功 巴西点球被扑",
       "platform": "百度",
       "rank": 8,
-      "heat": "723.2万",
+      "heat": "723.3万",
       "url": ""
     },
     {
-      "title": "全网“最幸福”专业找到了",
+      "title": "暂停蒋方舟导师研究生招生资格1年",
       "platform": "百度",
       "rank": 9,
-      "heat": "713.6万",
+      "heat": "713.7万",
       "url": ""
     },
     {
-      "title": "70后农村大妈跳街舞爆火",
+      "title": "废品遇上鬼秤一笔差价上万元",
       "platform": "百度",
       "rank": 10,
-      "heat": "704.5万",
+      "heat": "704.3万",
       "url": ""
     },
     {
-      "title": "世界杯淘汰赛首战来袭",
+      "title": "C罗笑谈阿根廷人都不喜欢自己",
       "platform": "百度",
       "rank": 11,
-      "heat": "694.3万",
+      "heat": "694.9万",
       "url": ""
     },
     {
-      "title": "农业谣言岂能如此“变态”",
+      "title": "广州辟谣征集解禁摩托意见",
       "platform": "百度",
       "rank": 12,
-      "heat": "684.8万",
+      "heat": "685.1万",
+      "url": ""
+    },
+    {
+      "title": "耗时上百小时！把经典漫画《父与子》手绘做成动画！",
+      "platform": "哔哩哔哩",
+      "rank": 1,
+      "heat": "261.2万",
+      "url": ""
+    },
+    {
+      "title": "《他简直是超人》",
+      "platform": "哔哩哔哩",
+      "rank": 2,
+      "heat": "759.3万",
+      "url": ""
+    },
+    {
+      "title": "华为Mate 80 Pro性能分析：进步巨大！",
+      "platform": "哔哩哔哩",
+      "rank": 3,
+      "heat": "236.5万",
+      "url": ""
+    },
+    {
+      "title": "谁一周后的播放量高，谁就是流量王！！！【流量王01红队】",
+      "platform": "哔哩哔哩",
+      "rank": 4,
+      "heat": "231.2万",
+      "url": ""
+    },
+    {
+      "title": "好生气啊！！太没有品味了！！怎么会有人喜欢xxx啊！！",
+      "platform": "哔哩哔哩",
+      "rank": 5,
+      "heat": "412.1万",
+      "url": ""
+    },
+    {
+      "title": "《绝区零》二周年 「嗯呢快乐！」",
+      "platform": "哔哩哔哩",
+      "rank": 6,
+      "heat": "103.8万",
+      "url": ""
+    },
+    {
+      "title": "谁一周后的播放量高，谁就是流量王！！！【流量王01蓝队】",
+      "platform": "哔哩哔哩",
+      "rank": 7,
+      "heat": "179.7万",
+      "url": ""
+    },
+    {
+      "title": "大 周 礼 时 代(5)",
+      "platform": "哔哩哔哩",
+      "rank": 8,
+      "heat": "366.8万",
+      "url": ""
+    },
+    {
+      "title": "沉浸式体验古井清理全过程",
+      "platform": "哔哩哔哩",
+      "rank": 9,
+      "heat": "158.4万",
+      "url": ""
+    },
+    {
+      "title": "我用旧报纸做了个门帘怎么样兄弟们",
+      "platform": "哔哩哔哩",
+      "rank": 10,
+      "heat": "353.5万",
+      "url": ""
+    },
+    {
+      "title": "4扑梅西，2过劳塔罗，外国网友是怎么看佛得角vs阿根廷的，沃齐尼亚涨粉2000万",
+      "platform": "哔哩哔哩",
+      "rank": 11,
+      "heat": "298.9万",
+      "url": ""
+    },
+    {
+      "title": "《崩坏：星穹铁道》4.4版本PV：「鸣笛于归寂之时」",
+      "platform": "哔哩哔哩",
+      "rank": 12,
+      "heat": "225.9万",
+      "url": ""
+    },
+    {
+      "title": "青春没有售价，从重庆打出租车直达拉萨 #重庆黄色法拉利 #李要得 #318川藏线 #重庆打出租车到西藏 #西藏邀您来避暑",
+      "platform": "抖音",
+      "rank": 1,
+      "heat": "224714822次播放",
+      "url": ""
+    },
+    {
+      "title": "饭店的暑假工，客人换饮料！",
+      "platform": "抖音",
+      "rank": 2,
+      "heat": "53589362次播放",
+      "url": ""
+    },
+    {
+      "title": "拍视频宣传西藏文旅资源，最高可获奖金50万，快@你的好朋友，暑假一起出发西藏~ #西藏邀您来避暑 #一眼西藏一生不忘 #这个夏天总要来一次西藏吧",
+      "platform": "抖音",
+      "rank": 3,
+      "heat": "35274517次播放",
+      "url": ""
+    },
+    {
+      "title": "传承千年的岭南风味 马蹄糕 #新农人计划2026 #乡村守护人 #传统美食 #抖音精选 #马蹄糕",
+      "platform": "抖音",
+      "rank": 4,
+      "heat": "20954233次播放",
+      "url": ""
+    },
+    {
+      "title": "饭店的暑假工，包房丢东西！（新号：@周小闹（胡闹） ）",
+      "platform": "抖音",
+      "rank": 5,
+      "heat": "18784990次播放",
+      "url": ""
+    },
+    {
+      "title": "猫也会一孕傻三年，一定要看到最后！ #三花猫 #猫",
+      "platform": "抖音",
+      "rank": 6,
+      "heat": "18771822次播放",
+      "url": ""
+    },
+    {
+      "title": "在鱼缸饲养一只2mm大小的青蟹，它吃一顿饭就有“膏”了？ #水族 #鱼缸 #青蟹 #养殖 #螃蟹",
+      "platform": "抖音",
+      "rank": 7,
+      "heat": "18142408次播放",
+      "url": ""
+    },
+    {
+      "title": "苗家无银不成礼——苗族银饰#非遗守护人 #抖音非遗计划 #抖音精选",
+      "platform": "抖音",
+      "rank": 8,
+      "heat": "17466121次播放",
+      "url": ""
+    },
+    {
+      "title": "嘉宾来了！ 有他好果子吃！ #乐品乐茶冷泡茶",
+      "platform": "抖音",
+      "rank": 9,
+      "heat": "16852977次播放",
+      "url": ""
+    },
+    {
+      "title": "两个人能一条心 可比真金白银贵多了#纯爱#真实事件改编#ai创作浪潮计划",
+      "platform": "抖音",
+      "rank": 10,
+      "heat": "16328918次播放",
+      "url": ""
+    },
+    {
+      "title": "3年了 终于有了属于自己的洗碗机\n#会做家务的女孩 #生活小妙招",
+      "platform": "抖音",
+      "rank": 11,
+      "heat": "15082458次播放",
+      "url": ""
+    },
+    {
+      "title": "当回家路上遇到一家五金店#情侣日常",
+      "platform": "抖音",
+      "rank": 12,
+      "heat": "13999994次播放",
+      "url": ""
+    },
+    {
+      "title": "越南腐乳!TES耻辱出局",
+      "platform": "百度贴吧",
+      "rank": 1,
+      "heat": "167.6W实时讨论",
+      "url": ""
+    },
+    {
+      "title": "电驴违规上高架,后车倒霉追尾",
+      "platform": "百度贴吧",
+      "rank": 2,
+      "heat": "146W实时讨论",
+      "url": ""
+    },
+    {
+      "title": "追骂顾客点餐少,嚣张老板被罚",
+      "platform": "百度贴吧",
+      "rank": 3,
+      "heat": "131.8W实时讨论",
+      "url": ""
+    },
+    {
+      "title": "纯绿色?欧盟给私人飞机开绿灯",
+      "platform": "百度贴吧",
+      "rank": 4,
+      "heat": "92.9W实时讨论",
+      "url": ""
+    },
+    {
+      "title": "逆天剧情,儿子改姓连坐爹",
+      "platform": "百度贴吧",
+      "rank": 5,
+      "heat": "73.7W实时讨论",
+      "url": ""
+    },
+    {
+      "title": "四川绵竹市连发四级以上地震",
+      "platform": "百度贴吧",
+      "rank": 6,
+      "heat": "55.6W实时讨论",
+      "url": ""
+    },
+    {
+      "title": "表哥带大幼弟,网友评论区揽功",
+      "platform": "百度贴吧",
+      "rank": 7,
+      "heat": "41.9W实时讨论",
+      "url": ""
+    },
+    {
+      "title": "印度再坑苹果,机密惨遭开源",
+      "platform": "百度贴吧",
+      "rank": 8,
+      "heat": "34.1W实时讨论",
+      "url": ""
+    },
+    {
+      "title": "电梯超载,全员罚站僵持不下",
+      "platform": "百度贴吧",
+      "rank": 9,
+      "heat": "28.7W实时讨论",
+      "url": ""
+    },
+    {
+      "title": "智能体下线,AI女友凉了？",
+      "platform": "百度贴吧",
+      "rank": 10,
+      "heat": "25.8W实时讨论",
+      "url": ""
+    },
+    {
+      "title": "紧急避险,369免当越南俘虏",
+      "platform": "百度贴吧",
+      "rank": 11,
+      "heat": "18.7W实时讨论",
+      "url": ""
+    },
+    {
+      "title": "霉霉被曝冠夫姓,独立人设崩塌",
+      "platform": "百度贴吧",
+      "rank": 12,
+      "heat": "13.8W实时讨论",
+      "url": ""
+    },
+    {
+      "title": "为什么那么多人很多年后才发现《黑猫警长》动画片只有五集？",
+      "platform": "知乎日报",
+      "rank": 1,
+      "heat": "",
+      "url": ""
+    },
+    {
+      "title": "为什么全网都在推世界杯，世界杯到底在看什么？",
+      "platform": "知乎日报",
+      "rank": 2,
+      "heat": "",
+      "url": ""
+    },
+    {
+      "title": "哪些古人的智慧，直到今天还在影响世界？",
+      "platform": "知乎日报",
+      "rank": 3,
+      "heat": "",
+      "url": ""
+    },
+    {
+      "title": "数学的本质究竟是什么？",
+      "platform": "知乎日报",
+      "rank": 4,
+      "heat": "",
       "url": ""
     },
     {
       "title": "找到了10年前跪舔b站的视频",
       "platform": "哔哩哔哩",
       "rank": 1,
-      "heat": "979.2万",
-      "url": ""
-    },
-    {
-      "title": "《原神》超越PV——「骤雪」",
-      "platform": "哔哩哔哩",
-      "rank": 2,
-      "heat": "721.1万",
+      "heat": "1575.4万观看 · 6月26日",
       "url": ""
     },
     {
       "title": "把毒品藏在哪里，60秒内不会被发现？",
       "platform": "哔哩哔哩",
-      "rank": 3,
-      "heat": "647.7万",
+      "rank": 2,
+      "heat": "1697.6万观看 · 6月26日",
       "url": ""
     },
     {
       "title": "左手《Luvsic》，右手《夜，萤火虫和你》，是什么感觉？",
       "platform": "哔哩哔哩",
-      "rank": 4,
-      "heat": "1292.4万",
-      "url": ""
-    },
-    {
-      "title": "《崩坏：星穹铁道》即兴巡演PV：「欢愉之死」",
-      "platform": "哔哩哔哩",
-      "rank": 5,
-      "heat": "335.8万",
-      "url": ""
-    },
-    {
-      "title": "大 周 礼 时 代(4)",
-      "platform": "哔哩哔哩",
-      "rank": 6,
-      "heat": "445.1万",
-      "url": ""
-    },
-    {
-      "title": "\"超算小姐，这一次，我一定要带你出去...\"",
-      "platform": "哔哩哔哩",
-      "rank": 7,
-      "heat": "283.8万",
-      "url": ""
-    },
-    {
-      "title": "我最爱的视频！三代治沙人的努力，世界上即将消失的第一个沙漠！",
-      "platform": "哔哩哔哩",
-      "rank": 8,
-      "heat": "214.6万",
-      "url": ""
-    },
-    {
-      "title": "当我在MC中把反乌托邦、拼接遗憾和Sinos De Natal融合在了一起...?",
-      "platform": "哔哩哔哩",
-      "rank": 9,
-      "heat": "199.9万",
-      "url": ""
-    },
-    {
-      "title": "去了一趟潮汕。",
-      "platform": "哔哩哔哩",
-      "rank": 10,
-      "heat": "511.9万",
-      "url": ""
-    },
-    {
-      "title": "对最近的回应与澄清",
-      "platform": "哔哩哔哩",
-      "rank": 11,
-      "heat": "284.3万",
-      "url": ""
-    },
-    {
-      "title": "《虎吹最难绷の一集》",
-      "platform": "哔哩哔哩",
-      "rank": 12,
-      "heat": "421.8万",
-      "url": ""
-    },
-    {
-      "title": "本人于2026年6月26日蒸了一锅荔枝馒头 望周知 #荔枝馒头 #馒头 #荔枝",
-      "platform": "抖音",
-      "rank": 1,
-      "heat": "45578627次播放",
-      "url": ""
-    },
-    {
-      "title": "饭店的暑假工，客人带食材！",
-      "platform": "抖音",
-      "rank": 2,
-      "heat": "33529269次播放",
-      "url": ""
-    },
-    {
-      "title": "饭店的暑假工，下班来客人！#逆水寒手游 #逆水寒新世界",
-      "platform": "抖音",
       "rank": 3,
-      "heat": "29510892次播放",
+      "heat": "2296.4万观看 · 6月25日",
       "url": ""
     },
     {
-      "title": "都能想象出校长去教育局开会的样子 #高考 #数学 #学霸  #满分 #万万没想到",
-      "platform": "抖音",
-      "rank": 4,
-      "heat": "28714963次播放",
-      "url": ""
-    },
-    {
-      "title": "放纵餐就得这样吃… #放纵餐 #增肌 #健身",
-      "platform": "抖音",
-      "rank": 5,
-      "heat": "24665980次播放",
-      "url": ""
-    },
-    {
-      "title": "#揭秘军校学员高考分数 （作者：王苗 徐凤佳 李佳奇 张永耀 补璨灿 蔡雨杉 秦绪哲 刘欣韵 潘玮源 卢家平 梁钰舒 王依 童同桦 董镓旭 段鑫杰 李俊毅 易超 魏文康 张程翔 施璐 邓小满 彭博晗 柴睿聪 姬一鸣 袁明炅 赵鹏越 剪辑：于简狄）",
-      "platform": "抖音",
-      "rank": 6,
-      "heat": "21576211次播放",
-      "url": ""
-    },
-    {
-      "title": "小心翼翼闯了很多祸，扣扣搜搜花了很多钱😂#离了大谱 #离谱操作 #无语",
-      "platform": "抖音",
-      "rank": 7,
-      "heat": "21351957次播放",
-      "url": ""
-    },
-    {
-      "title": "|螺钿紫檀五弦琵琶|千年绝响，盛唐遗韵 #非遗守护人#非遗之美#15万以内超舒适的豪华座舱",
-      "platform": "抖音",
-      "rank": 8,
-      "heat": "19240921次播放",
-      "url": ""
-    },
-    {
-      "title": "高考出分学霸超淡定！直言没有任何意外，从幼儿园开始考出好成绩就有奖励，爸爸表示她已经有三十万了 。",
-      "platform": "抖音",
-      "rank": 9,
-      "heat": "18027764次播放",
-      "url": ""
-    },
-    {
-      "title": "我们少侠就是这样 #燕云十六声#AI",
-      "platform": "抖音",
-      "rank": 10,
-      "heat": "17117365次播放",
-      "url": ""
-    },
-    {
-      "title": "来看看还没开智的我 #搞笑#回忆#高考成绩 #美的美享家#美的全屋智能",
-      "platform": "抖音",
-      "rank": 11,
-      "heat": "16531825次播放",
-      "url": ""
-    },
-    {
-      "title": "“山西挖眼案”受害男孩郭斌以721分被长春大学录取，听老师说大学需要通过英语四六级，他每日学习20多个英语单词。（记者：龚雪、涂家骏、王婧 剪辑：王京）",
-      "platform": "抖音",
-      "rank": 12,
-      "heat": "16276691次播放",
-      "url": ""
-    },
-    {
-      "title": "结束了!刚果金踢碎韩国出线梦",
-      "platform": "百度贴吧",
-      "rank": 1,
-      "heat": "189.7W实时讨论",
-      "url": ""
-    },
-    {
-      "title": "真人真事,高考作弊哥陨落记",
-      "platform": "百度贴吧",
-      "rank": 2,
-      "heat": "165.8W实时讨论",
-      "url": ""
-    },
-    {
-      "title": "韩援报国,T1喜提MSI首胜",
-      "platform": "百度贴吧",
-      "rank": 3,
-      "heat": "117.2W实时讨论",
-      "url": ""
-    },
-    {
-      "title": "官媒下场质问恋与深空",
-      "platform": "百度贴吧",
-      "rank": 4,
-      "heat": "87.5W实时讨论",
-      "url": ""
-    },
-    {
-      "title": "马宁晋级,执裁世界杯淘汰赛",
-      "platform": "百度贴吧",
-      "rank": 5,
-      "heat": "81.4W实时讨论",
-      "url": ""
-    },
-    {
-      "title": "绿王+1,网文女主笑纳黄毛",
-      "platform": "百度贴吧",
-      "rank": 6,
-      "heat": "71.7W实时讨论",
-      "url": ""
-    },
-    {
-      "title": "百万里挑一!数学满分大佬出没",
-      "platform": "百度贴吧",
-      "rank": 7,
-      "heat": "52.5W实时讨论",
-      "url": ""
-    },
-    {
-      "title": "真学霸,抗吧老哥登上顶级期刊",
-      "platform": "百度贴吧",
-      "rank": 8,
-      "heat": "40.9W实时讨论",
-      "url": ""
-    },
-    {
-      "title": "爆了,Guma女枪台词太张狂",
-      "platform": "百度贴吧",
-      "rank": 9,
-      "heat": "40.9W实时讨论",
-      "url": ""
-    },
-    {
-      "title": "绝杀无效,葡萄牙哥伦比亚闷平",
-      "platform": "百度贴吧",
-      "rank": 10,
-      "heat": "28.8W实时讨论",
-      "url": ""
-    },
-    {
-      "title": "快招发力?勇哥餐饮直播被封",
-      "platform": "百度贴吧",
-      "rank": 11,
-      "heat": "20.8W实时讨论",
-      "url": ""
-    },
-    {
-      "title": "英格兰头名出线,巴拿马垫底出局",
-      "platform": "百度贴吧",
-      "rank": 12,
-      "heat": "17.8W实时讨论",
-      "url": ""
-    },
-    {
-      "title": "新疆戈壁滩知了暴发，网友称吃三个不顶山东一个，同样是知了，为什么新疆的个头小、肉少、口感还差？",
-      "platform": "知乎日报",
-      "rank": 1,
-      "heat": "",
-      "url": ""
-    },
-    {
-      "title": "网传穿洞洞鞋会得角化型脚气是真的吗？穿洞洞鞋时需要注意什么？",
-      "platform": "知乎日报",
-      "rank": 2,
-      "heat": "",
-      "url": ""
-    },
-    {
-      "title": "未来五年有86%的概率刷新最热年纪录，1.5℃红线或将再度短暂突破，这是否代表变暖将失控？",
-      "platform": "知乎日报",
-      "rank": 3,
-      "heat": "",
-      "url": ""
-    },
-    {
-      "title": "自然界有哪些奇特的寄生生物？",
-      "platform": "知乎日报",
-      "rank": 4,
-      "heat": "",
-      "url": ""
-    },
-    {
-      "title": "外星人来地球了！但迟到了那么一小会......",
-      "platform": "哔哩哔哩",
-      "rank": 1,
-      "heat": "285.6万观看 · 6月22日",
-      "url": ""
-    },
-    {
-      "title": "⚡躲在超市后门象鸣的二人⚡卖瓜的郝甜小姐",
-      "platform": "哔哩哔哩",
-      "rank": 2,
-      "heat": "166万观看 · 6月18日",
-      "url": ""
-    },
-    {
-      "title": "释放阿凡达Unleash The Avatar - 实机演示预告",
-      "platform": "哔哩哔哩",
-      "rank": 3,
-      "heat": "181.7万观看 · 6月23日",
-      "url": ""
-    },
-    {
-      "title": "🥕躲在超市后门吃萝卜的越狱兔🥕",
+      "title": "苗族银饰",
       "platform": "哔哩哔哩",
       "rank": 4,
-      "heat": "230.1万观看 · 6月21日",
+      "heat": "682.3万观看 · 6月29日",
       "url": ""
     }
   ],
-  "errors": []
+  "errors": [
+    "xhs_search_verification_required"
+  ]
 }

@@ -10,8 +10,27 @@ const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const crypto = require('crypto');
 
 const CFG = require('./config/market-config');
+const {
+  assemblePrompt,
+  summarizeModules,
+  writePromptRunSnapshot,
+} = require('./lib/context-harness');
+
+const XHS_PUBLISHER_DIR = path.join(os.homedir(), 'xhs-publisher');
+const XHS_LAUNCHER = path.join(XHS_PUBLISHER_DIR, 'launch_playwright.py');
+const XHS_PUBLISH_URL = 'https://creator.xiaohongshu.com/publish/publish';
+const CHATGPT_AUTOMATION_URL = 'https://chatgpt.com/?lieke_gpt_profile=gpt-a';
+const FORCED_GPT_ACCOUNT_SLUG = 'gpt-a';
+const FORCED_GPT_ACCOUNT_EMAIL = 'farewell13710@gmail.com';
+const GPT_IMAGE_ACCOUNT = FORCED_GPT_ACCOUNT_SLUG;
+const GPT_CDP_PORT = Number(process.env.MARKET_HUB_GPT_CDP_PORT || 9223);
+const GPT_COMPANION_PORT = Number(process.env.MARKET_HUB_GPT_COMPANION_PORT || 8766);
+const XHS_CDP_PORT = Number(process.env.MARKET_HUB_XHS_CDP_PORT || 9224);
+const XHS_COMPANION_PORT = Number(process.env.MARKET_HUB_XHS_COMPANION_PORT || 8767);
+const XHS_LEGACY_PROFILE_FRAGMENT = path.join('xhs-publisher', 'chrome-ext-profile').toLowerCase();
 
 const IMAGE_POOL_CONFIG_PATH = path.join(__dirname, 'image-pool-config.json');
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp']);
@@ -32,6 +51,7 @@ const TOPIC_RECOMMENDATIONS_PATH = path.join(__dirname, 'topic-recommendations.j
 const TOPIC_PIPELINE_PATH = path.join(__dirname, 'topic_pipeline.py');
 const TOPIC_CONFIG_PATH = path.join(__dirname, 'topic-config.json');
 const MARKET_INSIGHTS_PATH = path.join(__dirname, 'market-insights.json');
+const PROMPT_RUNS_PATH = path.join(__dirname, 'data', 'prompt-runs.jsonl');
 const MARKET_INSIGHT_TABLE = 'tbl6uTJb7IGWWzVg';
 const MARKET_INSIGHT_NAME_FIELD = 'fldtel2qsK';
 let topicRefreshRunning = false;
@@ -352,7 +372,12 @@ function defaultImagePoolDir() {
 function loadImagePoolDir() {
   try {
     const cfg = JSON.parse(fs.readFileSync(IMAGE_POOL_CONFIG_PATH, 'utf8'));
-    if (cfg && cfg.dir) return String(cfg.dir);
+    if (cfg && cfg.dir) {
+      const configured = String(cfg.dir);
+      const normalized = configured.toLowerCase().replace(/[\\/]+/g, path.sep);
+      const pointsToOneOffResultDir = normalized.includes(`${path.sep}xhs-publisher${path.sep}output${path.sep}gpt-results${path.sep}`);
+      if (!pointsToOneOffResultDir && fs.existsSync(configured)) return configured;
+    }
   } catch {}
   return defaultImagePoolDir();
 }
@@ -386,6 +411,32 @@ function resolvePoolImage(filePath) {
     throw new Error('不支持的图片格式');
   }
   return resolved;
+}
+
+function resolveUploadImage(fileRef) {
+  const raw = typeof fileRef === 'object' && fileRef ? fileRef.path : fileRef;
+  const allowOutsidePool = Boolean(typeof fileRef === 'object' && fileRef?.allowOutsidePool);
+  if (!allowOutsidePool) return resolvePoolImage(raw);
+  const resolved = path.resolve(String(raw || ''));
+  const cacheRoot = path.resolve(IMAGE_CACHE_DIR);
+  if (!resolved.startsWith(cacheRoot + path.sep) && resolved !== cacheRoot) {
+    throw new Error('外部图片只允许来自飞书成品图缓存');
+  }
+  if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
+    throw new Error('图片文件不存在');
+  }
+  if (!IMAGE_EXTS.has(path.extname(resolved).toLowerCase())) {
+    throw new Error('不支持的图片格式');
+  }
+  return resolved;
+}
+
+function downloadFeishuResultImageRef(ref) {
+  const m = String(ref || '').match(/^feishu:([^:]+):([^:]+)$/);
+  if (!m) return null;
+  resolveFeishuResultImage(ref);
+  const [, recordId, fileToken] = m;
+  return { path: downloadFeishuResultImage(recordId, fileToken), allowOutsidePool: true };
 }
 
 function listImagePoolFiles() {
@@ -1318,8 +1369,8 @@ ${topicSignal?.coreConcept || topicSignal?.trafficKeyword ? `搜索/热点：${t
   ];
 
   if (!isPhilMode) {
-    const prompt = leanModules.map(m => m.content).join('\n\n---\n\n');
-    return { prompt, modules: leanModules };
+    const assembled = assemblePrompt(leanModules, { mode: 'single-lean' });
+    return { prompt: assembled.prompt, modules: assembled.modules, stats: assembled.stats };
   }
 
   const modules = [
@@ -1348,8 +1399,8 @@ ${topicSignal?.coreConcept || topicSignal?.trafficKeyword ? `搜索/热点：${t
     ...(kocToneBlock ? [{ name: '⑩ 语气覆写（KOC）', content: kocToneBlock }] : []),
     { name: '⑪ 输出格式', key: isPhilMode ? 'output-phil' : 'output-single', content: outputBlock },
   ];
-  const prompt = modules.map(m => m.content).join('\n\n---\n\n');
-  return { prompt, modules };
+  const assembled = assemblePrompt(modules, { mode: 'single-full' });
+  return { prompt: assembled.prompt, modules: assembled.modules, stats: assembled.stats };
 }
 
 // ─── 批量生产专用 Prompt（简化输出）─────────────────────────────────
@@ -1475,8 +1526,8 @@ function buildBatchPrompt(ctx, direction, sellingPoint, framework, persona = nul
     { name: '⑧ 当前任务',     content: taskBlock },
     { name: '⑨ 输出格式',     key: 'output-batch', content: outputBlock },
   ];
-  const prompt = modules.map(m => m.content).join('\n\n---\n\n');
-  return { prompt, modules };
+  const assembled = assemblePrompt(modules, { mode: 'batch' });
+  return { prompt: assembled.prompt, modules: assembled.modules, stats: assembled.stats };
 }
 
 // ─── 解析批量生产输出 ────────────────────────────────────────────────
@@ -1572,6 +1623,100 @@ function updateBaseRecord(tableId, recordId, fields, baseToken = CFG.feishu.base
       '--json', `@${tmpName}`,
     ]);
   } finally { try { fs.unlinkSync(tmpFile); } catch (_) {} }
+}
+
+function clearBaseAttachmentField(recordId, fieldId) {
+  if (!recordId || !fieldId) return;
+  updateBaseRecord(OUTPUT_TABLE, recordId, { [fieldId]: [] }, OUTPUT_BASE);
+}
+
+function fileSha256(filePath) {
+  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+}
+
+function validateGeneratedImageFiles(filePaths, queueItems = [], expectedImageCount = filePaths.length) {
+  const files = (filePaths || []).map(resolvePoolImage);
+  if (files.length !== expectedImageCount) {
+    throw new Error(`成品图数量不对：${files.length}/${expectedImageCount}`);
+  }
+  const seen = new Map();
+  const failures = [];
+  files.forEach((file, index) => {
+    if (!fs.existsSync(file)) {
+      failures.push(`第${index + 1}张文件不存在`);
+      return;
+    }
+    const size = fs.statSync(file).size;
+    if (size < 30 * 1024) failures.push(`第${index + 1}张文件过小，疑似未成功下载`);
+    const hash = fileSha256(file);
+    if (seen.has(hash)) failures.push(`第${index + 1}张与第${seen.get(hash) + 1}张完全重复`);
+    seen.set(hash, index);
+    const item = queueItems[index] || {};
+    const qc = item.quality_gate || {};
+    if (qc.status && qc.status !== 'pass') {
+      failures.push(`第${index + 1}张质检未通过：${qc.reason || qc.status}`);
+    }
+    if (!qc.status) {
+      failures.push(`第${index + 1}张缺少成品图一致性质检结果`);
+    }
+  });
+  if (failures.length) throw new Error(`成品图质检失败：${failures.join('；')}`);
+  return files;
+}
+
+function cleanupGeneratedImageFiles(files, job = null) {
+  for (const file of files || []) {
+    try {
+      const resolved = resolvePoolImage(file);
+      if (/^gpt-replace-/i.test(path.basename(resolved))) fs.unlinkSync(resolved);
+    } catch (error) {
+      if (job) dailyLog(job, `本地成品图清理跳过：${error.message}`);
+    }
+  }
+}
+
+function stopStaleDirectGptRunners(job = null) {
+  if (process.platform !== 'win32') return;
+  const script = [
+    "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\"",
+    "| Where-Object { $_.CommandLine -like '*direct_gpt_queue_runner.js*' }",
+    "| ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
+  ].join(' ');
+  const result = spawnSync('powershell.exe', ['-NoProfile', '-Command', script], {
+    encoding: 'utf8',
+    timeout: 10000,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  if (result.status !== 0 && job) {
+    dailyLog(job, `旧 direct GPT runner 清理失败：${String(result.stderr || result.stdout || '').slice(0, 200)}`);
+  }
+}
+
+function startDirectGptQueueRunner(job, expectedImageCount) {
+  const script = path.join(XHS_PUBLISHER_DIR, 'scripts', 'direct_gpt_queue_runner.js');
+  if (!fs.existsSync(script)) throw new Error(`direct GPT runner 不存在：${script}`);
+  stopStaleDirectGptRunners(job);
+  const logDir = path.join(XHS_PUBLISHER_DIR, 'logs');
+  fs.mkdirSync(logDir, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
+  const outFile = path.join(logDir, `direct-gpt-auto-${stamp}.out.log`);
+  const errFile = path.join(logDir, `direct-gpt-auto-${stamp}.err.log`);
+  const out = fs.openSync(outFile, 'a');
+  const err = fs.openSync(errFile, 'a');
+  const child = spawn(process.execPath, [script, '--limit', String(Math.max(1, Math.min(9, expectedImageCount || 1)))], {
+    cwd: XHS_PUBLISHER_DIR,
+    detached: true,
+    windowsHide: true,
+    stdio: ['ignore', out, err],
+    env: {
+      ...process.env,
+      GPT_CDP: `http://127.0.0.1:${GPT_CDP_PORT}`,
+      GPT_COMPANION: `http://127.0.0.1:${GPT_COMPANION_PORT}`,
+    },
+  });
+  child.unref();
+  dailyLog(job, `已启动 direct GPT runner：PID ${child.pid}，日志 ${path.basename(outFile)}`);
+  return { pid: child.pid, outFile, errFile };
 }
 
 function writeOutputRecord(fields) {
@@ -1679,11 +1824,12 @@ function readOutputRecordSnapshot(recordId) {
   };
 }
 
-function uploadBaseAttachments(recordId, fieldId, filePaths) {
-  const files = (filePaths || []).map(resolvePoolImage);
+function uploadBaseAttachments(recordId, fieldId, filePaths, options = {}) {
+  const files = (filePaths || []).map(resolveUploadImage);
   if (!recordId) throw new Error('附件上传缺少发布表 recordId');
   if (!fieldId) throw new Error('附件上传缺少飞书图片字段 ID');
   if (!files.length) throw new Error('附件上传没有本地成品图');
+  if (options.clearExisting !== false) clearBaseAttachmentField(recordId, fieldId);
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'market-hub-base-attach-'));
   try {
     const args = [
@@ -1704,6 +1850,17 @@ function uploadBaseAttachments(recordId, fieldId, filePaths) {
   } finally {
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
   }
+}
+
+async function waitForOutputImages(recordId, expectedImageCount, timeoutMs = 90000) {
+  const startedAt = Date.now();
+  let last = readOutputRecordSnapshot(recordId);
+  while (Date.now() - startedAt < timeoutMs) {
+    last = readOutputRecordSnapshot(recordId);
+    if ((last.images || []).length >= expectedImageCount) return last;
+    await waitMs(3000);
+  }
+  throw new Error(`飞书附件上传未完成：图片=${(last.images || []).length}/${expectedImageCount}`);
 }
 
 const WORK_BASE = 'REDACTED';
@@ -1826,17 +1983,21 @@ function runCodexAsync(prompt, timeoutMs = 420000) {
 
 function runClaudeAsync(prompt, timeoutMs = 90000) {
   const provider = (process.env.MARKET_HUB_TEXT_PROVIDER || 'gpt-plus').toLowerCase();
+  if (provider === 'codex') {
+    return runCodexAsync(prompt, timeoutMs);
+  }
   if (provider !== 'claude') {
     return (async () => {
       try {
-        await postLocalJson('http://127.0.0.1:8766/gpt_launch', { rotate: false }, 30000);
+        await ensureGptImageProfile(null, GPT_IMAGE_ACCOUNT);
+        await assertGptImageProfileLoggedIn(null, GPT_IMAGE_ACCOUNT);
       } catch (e) {
         throw new Error(`GPT Plus 文案引擎未能打开：${e.message}`);
       }
       let cdpReady = false;
       for (let attempt = 0; attempt < 35; attempt++) {
         try {
-          await getLocalJson('http://127.0.0.1:9223/json/version', 1500);
+          await getLocalJson(`http://127.0.0.1:${GPT_CDP_PORT}/json/version`, 1500);
           cdpReady = true;
           break;
         } catch {
@@ -1844,7 +2005,7 @@ function runClaudeAsync(prompt, timeoutMs = 90000) {
         }
       }
       if (!cdpReady) throw new Error('GPT Profile 已启动，但浏览器在 35 秒内没有准备好');
-      const data = await postLocalJson('http://127.0.0.1:8766/gpt_text', {
+      const data = await postLocalJson(`http://127.0.0.1:${GPT_COMPANION_PORT}/gpt_text`, {
         prompt,
         timeout: Math.ceil(Math.max(timeoutMs, 90000) / 1000),
       }, Math.max(timeoutMs + 60000, 180000));
@@ -1900,8 +2061,8 @@ function runTopicCollector() {
     let stderr = '';
     const timer = setTimeout(() => {
       child.kill();
-      reject(new Error('选题信号采集超过 5 分钟'));
-    }, 300000);
+      reject(new Error('选题信号采集超过 10 分钟'));
+    }, 600000);
     child.stdout.on('data', chunk => { stdout += chunk; });
     child.stderr.on('data', chunk => { stderr += chunk; });
     child.on('error', error => { clearTimeout(timer); reject(error); });
@@ -2017,13 +2178,19 @@ app.get('/api/insights', (req, res) => {
 app.post('/api/insights/preview-prompt', async (req, res) => {
   try {
     const manualBehavior = req.body?.manualBehavior ?? loadMarketInsights().manualBehavior ?? '';
-    if (req.body?.forceCollect === true || !loadTopicJson(TOPIC_SIGNALS_PATH, null)) {
-      await runTopicCollector();
-    }
-    const signals = loadTopicJson(TOPIC_SIGNALS_PATH, null);
+    let signals = loadTopicJson(TOPIC_SIGNALS_PATH, null);
     if (!signals || signals.error) throw new Error(signals?.error || '没有可用搜索信号');
-    const prompt = buildMarketInsightPrompt(signals, manualBehavior);
-    res.json({ ok: true, prompt, signals: compactInsightSignals(signals), manualBehavior });
+    const saved = loadMarketInsights();
+    const prompt = buildMarketInsightPrompt(signals, manualBehavior, saved.lastSeedPlan || null, saved.lastValidation || []);
+    res.json({
+      ok: true,
+      prompt,
+      seedPrompt: buildMarketInsightSeedPrompt(manualBehavior),
+      signals: compactInsightSignals(signals),
+      seedPlan: saved.lastSeedPlan || null,
+      validation: saved.lastValidation || usefulSearchEvidence(signals, saved.lastSeedPlan || null),
+      manualBehavior,
+    });
   } catch (error) {
     res.json({ ok: false, error: error.message });
   }
@@ -2033,13 +2200,10 @@ app.post('/api/insights/refresh', async (req, res) => {
   if (insightRefreshRunning) return res.json({ ok: false, error: '市场洞察正在生成，请稍后查看' });
   insightRefreshRunning = true;
   try {
-    if (req.body?.forceCollect === true || !loadTopicJson(TOPIC_SIGNALS_PATH, null)) {
-      await runTopicCollector();
-    }
-    const signals = loadTopicJson(TOPIC_SIGNALS_PATH, null);
-    if (!signals || signals.error) throw new Error(signals?.error || '没有可用搜索信号');
     const manualBehavior = String(req.body?.manualBehavior ?? loadMarketInsights().manualBehavior ?? '');
-    const prompt = buildMarketInsightPrompt(signals, manualBehavior);
+    const collected = await collectSignalsForMarketInsight(manualBehavior, { forceCollect: req.body?.forceCollect === true });
+    const signals = collected.signals;
+    const prompt = buildMarketInsightPrompt(signals, manualBehavior, collected.seedPlan, collected.validation);
     const raw = await runClaudeAsync(prompt, 300000);
     const parsed = parseMarketInsights(raw);
     const state = saveMarketInsights({
@@ -2047,6 +2211,10 @@ app.post('/api/insights/refresh', async (req, res) => {
       selectedId: '',
       manualBehavior,
       lastPrompt: prompt,
+      lastSeedPrompt: collected.seedPrompt,
+      lastSeedPlan: collected.seedPlan,
+      lastValidation: collected.validation,
+      usefulSeeds: collected.usefulSeeds,
       lastSignals: compactInsightSignals(signals),
     });
     res.json({ ok: true, ...state, tableId: MARKET_INSIGHT_TABLE });
@@ -2154,6 +2322,7 @@ app.post('/api/generate', async (req, res) => {
         usedAngle: null,
         inputs: { direction: direction || '', toneStyle, subTemplate: null, persona: null, scene: null, refArticle: null },
         modules: [],
+        promptChars: prompt.length,
         prompt,
       };
     } else {
@@ -2186,13 +2355,24 @@ app.post('/api/generate', async (req, res) => {
           refArticle: refArticle?.title || refArticle?.name || null,
           topicSignal: topicSignal?.coreConcept || topicSignal?.title || null,
         },
-        modules: (built.modules || []).map(m => ({ name: m.name, chars: (m.content || '').length })),
+        modules: summarizeModules(built.modules || []).modules,
+        promptChars: prompt.length,
+        contextHarness: built.stats || summarizeModules(built.modules || []),
         prompt,
       };
     }
 
     const rawText = await runClaudeAsync(prompt, 420000);
     const plan = parsePlan(rawText);
+    try {
+      writePromptRunSnapshot(PROMPT_RUNS_PATH, {
+        ...lastPromptSnapshot,
+        outputChars: rawText.length,
+        output: plan.full || rawText,
+      });
+    } catch (e) {
+      console.warn('[PromptRun snapshot]', e.message);
+    }
 
     // 生成成功后推进切入方式轮转
     if (!rawPrompt) advanceAngle(framework);
@@ -2212,7 +2392,12 @@ app.post('/api/generate', async (req, res) => {
       autoPersona,
       autoScene,
       nextAngle: getCurrentAngle(framework),
-      contextStats: { iterComp: ctx.iterComp.length, reference: ctx.reference.length },
+      contextStats: {
+        iterComp: ctx.iterComp.length,
+        reference: ctx.reference.length,
+        promptChars: prompt.length,
+        modules: lastPromptSnapshot?.modules || [],
+      },
     });
 
   } catch (e) {
@@ -2242,7 +2427,13 @@ app.post('/api/preview-prompt', async (req, res) => {
       ok: true,
       prompt: result.prompt,
       modules: result.modules,
-      contextStats: { iterComp: ctx.iterComp.length, reference: ctx.reference.length, titles: titleCount },
+      contextStats: {
+        iterComp: ctx.iterComp.length,
+        reference: ctx.reference.length,
+        titles: titleCount,
+        promptChars: result.prompt.length,
+        harness: result.stats || summarizeModules(result.modules || []),
+      },
       inputs: { framework, direction, sellingPoint, bRoute, angle: angle?.name || null, topicSignal: topicSignal?.coreConcept || null, subTemplate: subTemplate?.name || null, persona: persona?.name || null, scene: scene?.name || null, refArticle: refArticle?.title || refArticle?.name || null },
     });
   } catch (e) {
@@ -2349,19 +2540,10 @@ app.post('/api/save-to-publish', (req, res) => {
       '发布计划': '自动生成',
     };
     if (publishAccount) fields['发布账号'] = String(publishAccount).slice(0, 120);
-    if (tags) fields['话题'] = String(tags).trim().slice(0, 240);
+    if (tags) fields['话题'] = sanitizeDailyTagString(tags).slice(0, 240);
 
     const selectedImages = Array.isArray(imagePaths) ? imagePaths.slice(0, 9) : [];
-    const localImages = [];
-    if (selectedImages.length) {
-      const feishuImages = selectedImages.map(x => {
-        const feishuImage = resolveFeishuResultImage(x);
-        if (feishuImage) return feishuImage;
-        localImages.push(x);
-        return null;
-      }).filter(Boolean);
-      if (feishuImages.length) fields['图片'] = feishuImages;
-    }
+    const localImages = selectedImages.map(x => downloadFeishuResultImageRef(x) || x);
 
     const written = writeOutputRecord(fields);
     const recordId = extractRecordIdFromWrite(written) || findOutputRecordIdByTitle(title || '');
@@ -2370,6 +2552,18 @@ app.post('/api/save-to-publish', (req, res) => {
       uploadBaseAttachments(recordId, OUTPUT_FIELDS.图片, localImages);
     }
     res.json({ ok: true, recordId, imageCount: selectedImages.length });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/output/update-tags', (req, res) => {
+  try {
+    const recordId = String(req.body?.recordId || '').trim();
+    const tags = sanitizeDailyTagString(req.body?.tags || '');
+    if (!recordId) throw new Error('缺少发布表 recordId');
+    updateBaseRecord(OUTPUT_TABLE, recordId, { [OUTPUT_FIELDS.话题]: tags }, OUTPUT_BASE);
+    res.json({ ok: true, recordId, tags });
   } catch (e) {
     res.json({ ok: false, error: e.message });
   }
@@ -2643,6 +2837,133 @@ function compactInsightSignals(signals) {
   };
 }
 
+function normalizeInsightSeedTerms(items, fallback = '') {
+  const raw = Array.isArray(items) ? items : String(fallback || '').split(/\r?\n|[>→，,；;]/);
+  return [...new Set(raw.map(item => {
+    if (item && typeof item === 'object') return String(item.seed || item.term || item.keyword || item.coreSearchTerm || '').trim();
+    return String(item || '').replace(/^\s*[-*、\d.]+\s*/, '').trim();
+  }).filter(Boolean))].slice(0, 12);
+}
+
+function buildMarketInsightSeedPrompt(manualBehavior = '') {
+  const manual = String(manualBehavior || '').trim() || '气泡白酒';
+  return `你是每天烈刻气泡白酒的“小红书搜索行为规划员”。先不要写内容，也不要总结洞察。
+
+你的任务：从一个很粗的入口词，推演真实用户可能会怎样搜索“跟饮酒有关的生活问题”，并产出后续要拿去小红书验证的搜索词。
+
+入口词 / 用户给定线索：
+${manual}
+
+生成规则：
+1. 先想一个具体用户行为，不是品牌卖点。比如：下班回家想喝一点、一个人在家不想喝醉、朋友来家里吃饭要准备小酒、女生想找不像白酒的酒。
+2. 从这个行为衍生出人群特征：她处在什么场景、有什么顾虑、为什么会搜。
+3. 再给出她真的可能输入的小红书搜索词。搜索词要像真人会搜的，不要像品牌投放词。
+4. 每个词后面写清楚：预期如果搜到什么样的高赞内容，才算“有用”。
+5. 只保留和饮酒、微醺、聚会、独处、家里小酌、低度酒、气泡酒、果酒/白酒认知变化相关的词。
+
+产品事实只作为边界，不要直接改写成搜索词：
+${loadProductInfo().slice(0, 4000)}
+
+输出严格 JSON，不要 Markdown：
+{"baseQuery":"气泡白酒","behaviorSeeds":[{"seed":"下班微醺喝什么酒","userFeature":"下班后想要一个属于自己的缓冲时间","userBehavior":"回家后在冰箱或外卖旁边找一瓶能喝一点的酒","whySearch":"她不是找酒单，而是在找一个今晚可执行的放松方式","expectedUsefulContent":"高赞图文里有真实下班/居家/小酌场景，可学习标题、正文和配图","referenceNeed":"生活切片或氛围种草图文","minUsefulLikes":80}]}`;
+}
+
+function parseMarketInsightSeedPlan(raw, manualBehavior = '') {
+  const cleaned = String(raw || '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('用户搜索行为规划没有返回 JSON');
+  const parsed = JSON.parse(match[0]);
+  const behaviorSeeds = Array.isArray(parsed.behaviorSeeds) ? parsed.behaviorSeeds : [];
+  const normalized = behaviorSeeds.map((item, index) => ({
+    id: item.id || `seed-${Date.now()}-${index}`,
+    seed: String(item.seed || '').trim(),
+    userFeature: String(item.userFeature || '').trim(),
+    userBehavior: String(item.userBehavior || '').trim(),
+    whySearch: String(item.whySearch || '').trim(),
+    expectedUsefulContent: String(item.expectedUsefulContent || '').trim(),
+    referenceNeed: String(item.referenceNeed || '').trim(),
+    minUsefulLikes: Math.max(0, Number(item.minUsefulLikes) || 80),
+  })).filter(item => item.seed).slice(0, 12);
+  const fallbackSeeds = normalizeInsightSeedTerms([], manualBehavior || '气泡白酒');
+  const finalSeeds = normalized.length ? normalized : fallbackSeeds.map((seed, index) => ({
+    id: `fallback-seed-${index + 1}`,
+    seed,
+    userFeature: '人工输入线索',
+    userBehavior: '',
+    whySearch: '',
+    expectedUsefulContent: '搜索后按赞藏评验证是否有可模仿内容',
+    referenceNeed: '',
+    minUsefulLikes: 80,
+  }));
+  if (!finalSeeds.length) throw new Error('用户搜索行为规划没有可用搜索词');
+  return {
+    generatedAt: new Date().toISOString(),
+    baseQuery: String(parsed.baseQuery || manualBehavior || '气泡白酒').trim(),
+    behaviorSeeds: finalSeeds,
+  };
+}
+
+function usefulSearchEvidence(signals, seedPlan = null) {
+  const seedTerms = new Set(normalizeInsightSeedTerms(seedPlan?.behaviorSeeds || [], ''));
+  const rows = (signals?.searchNotes || []).map(row => {
+    const score = Number(row.likes || 0) + Number(row.collects || 0) * 2 + Number(row.comments || 0) * 3;
+    return {
+      keyword: String(row.keyword || '').trim(),
+      title: String(row.title || '').trim(),
+      source: String(row.source || '').trim(),
+      likes: Number(row.likes || 0),
+      collects: Number(row.collects || 0),
+      comments: Number(row.comments || 0),
+      score,
+      url: row.url || '',
+      cover: row.cover || '',
+    };
+  }).filter(row => row.keyword && (!seedTerms.size || seedTerms.has(row.keyword)));
+  const grouped = new Map();
+  for (const row of rows) {
+    if (!grouped.has(row.keyword)) grouped.set(row.keyword, []);
+    grouped.get(row.keyword).push(row);
+  }
+  return [...grouped.entries()].map(([keyword, items]) => {
+    const top = [...items].sort((a, b) => b.score - a.score).slice(0, 5);
+    const best = top[0] || {};
+    return {
+      keyword,
+      useful: Number(best.likes || 0) >= 80 || Number(best.score || 0) >= 300,
+      bestScore: Number(best.score || 0),
+      bestLikes: Number(best.likes || 0),
+      count: items.length,
+      top,
+    };
+  }).sort((a, b) => b.bestScore - a.bestScore);
+}
+
+async function collectSignalsForMarketInsight(manualBehavior = '', { forceCollect = true } = {}) {
+  const savedInsightState = loadMarketInsights();
+  const seedPrompt = buildMarketInsightSeedPrompt(manualBehavior || savedInsightState.manualBehavior || '');
+  const rawSeedPlan = await runClaudeAsync(seedPrompt, 180000);
+  const seedPlan = parseMarketInsightSeedPlan(rawSeedPlan, manualBehavior || savedInsightState.manualBehavior || '');
+  const previousConfig = loadTopicConfig();
+  const plannedSeeds = normalizeInsightSeedTerms(seedPlan.behaviorSeeds, manualBehavior || '');
+  saveTopicConfig({ ...previousConfig, seeds: plannedSeeds });
+  await runTopicCollector();
+  const signals = loadTopicJson(TOPIC_SIGNALS_PATH, null);
+  if (!signals || signals.error) throw new Error(signals?.error || '没有可用搜索信号');
+  const validation = usefulSearchEvidence(signals, seedPlan);
+  const useful = validation.filter(item => item.useful);
+  if (!useful.length) {
+    const best = validation.slice(0, 5).map(item => `${item.keyword}: likes=${item.bestLikes}, score=${item.bestScore}`).join('；');
+    throw new Error(`用户搜索行为没有验证出高互动内容；${best || '没有搜索结果'}`);
+  }
+  return {
+    signals,
+    seedPlan: { ...seedPlan, behaviorSeeds: seedPlan.behaviorSeeds.map(item => ({ ...item, verified: useful.some(v => v.keyword === item.seed) })) },
+    validation,
+    usefulSeeds: useful.map(item => item.keyword),
+    seedPrompt,
+  };
+}
+
 function normalizeBehaviorChain(raw) {
   return String(raw || '')
     .split(/\r?\n|[>→]/)
@@ -2651,11 +2972,18 @@ function normalizeBehaviorChain(raw) {
     .slice(0, 12);
 }
 
-function buildMarketInsightPrompt(signals, manualBehavior = '') {
+function buildMarketInsightPrompt(signals, manualBehavior = '', seedPlan = null, validation = []) {
   const seedTerms = normalizeBehaviorChain(manualBehavior);
   const seedBlock = seedTerms.length
     ? `\n\n## 人工输入的种子词 / 假设词\n${seedTerms.map((item, i) => `${i + 1}. ${item}`).join('\n')}\n\n这些不是完整路径。请把它们当作入口线索，反推出真实用户可能怎样一步步搜索、比较、相信和行动。`
     : '\n\n## 人工输入的种子词 / 假设词\n暂无。请从真实信号里挑出最有生产价值的入口词，再反推用户决策路径。';
+  const seedPlanBlock = seedPlan ? `\n\n## 已先行推演并验证的用户搜索行为\n${JSON.stringify({
+    baseQuery: seedPlan.baseQuery,
+    behaviorSeeds: seedPlan.behaviorSeeds,
+    usefulEvidence: (validation || []).filter(item => item.useful).slice(0, 8),
+  }, null, 2)}
+
+请优先围绕 usefulEvidence=true 的搜索词产出洞察。没有高互动证据的词，只能作为辅助长尾词，不能作为核心洞察。` : '';
   return `你是每天烈刻气泡白酒的市场洞察编辑。你的任务不是列关键词，而是从一个“可能会被搜的词”反推用户决策路径。
 
 核心问题：
@@ -2694,6 +3022,7 @@ ${loadProductInfo().slice(0, 8000)}
 输出严格 JSON：
 {"generatedAt":"","category":"低度酒 / 气泡白酒","insights":[{"id":"insight-1","name":"","coreSearchTerm":"","longTailTerms":[""],"searchBehaviorChain":[""],"searchIntent":"","userProblem":"","decisionStage":"代入","contentTask":"","productBridge":"","scene":"","desiredState":"","objectCarriers":[""],"dreamMoments":[""],"referenceNeed":"","evidence":[""],"score":85}]}
 ${seedBlock}
+${seedPlanBlock}
 
 真实搜索信号：
 ${JSON.stringify(compactInsightSignals(signals), null, 2)}`;
@@ -2833,6 +3162,455 @@ function getLocalJson(url, timeoutMs = 10000) {
   });
 }
 
+async function openCdpUrl(port, targetUrl) {
+  const safePort = Number(port) || GPT_CDP_PORT;
+  const response = await fetch(`http://127.0.0.1:${safePort}/json/new?${encodeURIComponent(targetUrl)}`, { method: 'PUT' });
+  if (!response.ok) throw new Error(`CDP open url failed: ${response.status}`);
+  return response.json();
+}
+
+function currentCdpCommandLine(port = GPT_CDP_PORT) {
+  const safePort = Number(port) || GPT_CDP_PORT;
+  const script = `$p = Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'chrome.exe' -and $_.CommandLine -like '*--remote-debugging-port=${safePort}*' } | Select-Object -First 1 -ExpandProperty CommandLine; if ($p) { $p }`;
+  const result = spawnSync('powershell.exe', ['-NoProfile', '-Command', script], { encoding: 'utf8', timeout: 10000 });
+  return String(result.stdout || '').trim();
+}
+
+function loadGptAccountRegistry() {
+  const registryPath = path.join(XHS_PUBLISHER_DIR, 'gpt-accounts.json');
+  const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+  registry.accounts = Array.isArray(registry.accounts) ? registry.accounts : [];
+  return { registryPath, registry };
+}
+
+function getForcedGptAccount() {
+  const { registry } = loadGptAccountRegistry();
+  const account = registry.accounts.find(item => {
+    const values = [item?.slug, item?.email, item?.label].map(v => String(v || '').toLowerCase());
+    return values.includes(FORCED_GPT_ACCOUNT_SLUG) || values.includes(FORCED_GPT_ACCOUNT_EMAIL);
+  });
+  if (!account) throw new Error(`GPT 账号表缺少 Farewell：${FORCED_GPT_ACCOUNT_EMAIL}`);
+  const email = String(account.email || '').toLowerCase();
+  const slug = String(account.slug || '').toLowerCase();
+  if (email !== FORCED_GPT_ACCOUNT_EMAIL || slug !== FORCED_GPT_ACCOUNT_SLUG) {
+    throw new Error(`GPT 账号表配置错误：必须是 ${FORCED_GPT_ACCOUNT_EMAIL}/${FORCED_GPT_ACCOUNT_SLUG}`);
+  }
+  return account;
+}
+
+function setDefaultGptAccount() {
+  const registryPath = path.join(XHS_PUBLISHER_DIR, 'gpt-accounts.json');
+  try {
+    const loaded = loadGptAccountRegistry();
+    const registry = loaded.registry;
+    const accounts = registry.accounts;
+    const index = accounts.findIndex(item => {
+      const values = [item?.slug, item?.email, item?.label].map(v => String(v || '').toLowerCase());
+      return values.includes(FORCED_GPT_ACCOUNT_SLUG) || values.includes(FORCED_GPT_ACCOUNT_EMAIL);
+    });
+    if (index < 0) throw new Error(`找不到 Farewell GPT 账号：${FORCED_GPT_ACCOUNT_EMAIL}`);
+    if (registry.activeIndex !== index || accounts.length !== 1) {
+      registry.activeIndex = index;
+      registry.accounts = [accounts[index]];
+      registry.activeIndex = 0;
+      fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2), 'utf8');
+    }
+    return { ok: true, activeIndex: 0, account: registry.accounts[0] || accounts[index] };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+}
+
+function getGptProfileFragment() {
+  const fallback = path.normalize(
+    path.join(XHS_PUBLISHER_DIR, 'profiles', 'gpt', FORCED_GPT_ACCOUNT_SLUG)
+  ).toLowerCase();
+  try {
+    const account = getForcedGptAccount();
+    const profileDir = account?.profile_dir ? String(account.profile_dir) : '';
+    if (!profileDir) return fallback;
+    const absolute = path.isAbsolute(profileDir)
+      ? profileDir
+      : path.join(XHS_PUBLISHER_DIR, profileDir);
+    return path.normalize(absolute).toLowerCase();
+  } catch {
+    return fallback;
+  }
+}
+
+function commandUsesForcedGptProfile(command) {
+  const raw = String(command || '').toLowerCase();
+  if (!raw) return false;
+  if (/playwright_chromiumdev_profile|automation-hub|gpt-b|gpt-b-from-chrome-profile3/.test(raw)) return false;
+  return raw.includes(getGptProfileFragment());
+}
+
+const CHATGPT_LOGIN_GATE_PATTERN = /log in|login|sign in|sign up|continue with google|use google|chatgpt\s*(?:plus|pro)?\s*log in|登录|登陆|登入|註冊|注册|使用\s*google|继续使用\s*google|繼續使用\s*google|两步|兩步|验证码|驗證碼|session expired|尚未登入|未登录|未登入/i;
+
+function evaluateCdpExpression(tab, expression, timeoutMs = 6000) {
+  return new Promise((resolve, reject) => {
+    if (!tab?.webSocketDebuggerUrl) return reject(new Error('tab has no websocket debugger url'));
+    let WebSocketImpl;
+    try { WebSocketImpl = require('ws'); } catch { WebSocketImpl = global.WebSocket; }
+    if (!WebSocketImpl) return reject(new Error('WebSocket unavailable'));
+    const ws = new WebSocketImpl(tab.webSocketDebuggerUrl);
+    const id = 1;
+    const timer = setTimeout(() => {
+      try { ws.close(); } catch {}
+      reject(new Error('CDP Runtime.evaluate timeout'));
+    }, timeoutMs);
+    const cleanup = () => clearTimeout(timer);
+    ws.on('open', () => {
+      ws.send(JSON.stringify({
+        id,
+        method: 'Runtime.evaluate',
+        params: { expression, returnByValue: true, awaitPromise: true },
+      }));
+    });
+    ws.on('message', data => {
+      let message = null;
+      try { message = JSON.parse(String(data)); } catch {}
+      if (!message || message.id !== id) return;
+      cleanup();
+      try { ws.close(); } catch {}
+      if (message.error) return reject(new Error(message.error.message || 'Runtime.evaluate failed'));
+      resolve(message.result?.result?.value);
+    });
+    ws.on('error', error => {
+      cleanup();
+      reject(error);
+    });
+  });
+}
+
+async function inspectChatGptTabDom(tab) {
+  const expression = `(() => {
+    const text = String(document.body?.innerText || '');
+    const title = String(document.title || '');
+    const href = String(location.href || '');
+    const loginPattern = ${CHATGPT_LOGIN_GATE_PATTERN.toString()};
+    const loginGate = loginPattern.test(text) || loginPattern.test(title) || /\\/login|\\/signin|auth\\.openai\\.com|accounts\\.google\\.com/i.test(href);
+    const composer = !!document.querySelector('#prompt-textarea, textarea[data-testid="prompt-textarea"], [contenteditable="true"], div[role="textbox"]');
+    const accountish = Array.from(document.querySelectorAll('button,a,[role="button"]'))
+      .map(el => String(el.innerText || el.getAttribute('aria-label') || '').trim())
+      .filter(Boolean)
+      .join('\\n')
+      .slice(0, 2000);
+    return { href, title, loginGate, composer, accountish, sample: text.slice(0, 1200) };
+  })()`;
+  try {
+    return await evaluateCdpExpression(tab, expression, 7000);
+  } catch (error) {
+    return { href: tab.url || '', title: tab.title || '', loginGate: true, composer: false, error: error.message };
+  }
+}
+
+function runGptRecoveryHarness(job) {
+  const script = path.join(XHS_PUBLISHER_DIR, 'gpt_preflight.py');
+  if (!fs.existsSync(script)) {
+    throw new Error(`GPT Recovery Harness 缺失：${script}`);
+  }
+  const result = spawnSync('python', [script], {
+    cwd: XHS_PUBLISHER_DIR,
+    encoding: 'utf8',
+    timeout: 30000,
+    windowsHide: true,
+  });
+  const stdout = String(result.stdout || '').trim();
+  const stderr = String(result.stderr || '').trim();
+  let payload = null;
+  try {
+    payload = stdout ? JSON.parse(stdout) : null;
+  } catch {
+    payload = null;
+  }
+  if (result.error) {
+    throw new Error(`GPT Recovery Harness 执行失败：${result.error.message}`);
+  }
+  if (result.status !== 0 || !payload?.ok) {
+    const reason = payload?.reason || stderr || stdout || `exit ${result.status}`;
+    const facts = payload ? JSON.stringify(payload).slice(0, 1200) : [stdout, stderr].filter(Boolean).join(' | ').slice(0, 1200);
+    const message = `GPT Recovery Harness 未通过，已停止建队列：${reason}${facts ? `；${facts}` : ''}`;
+    if (job) dailyLog(job, message);
+    throw new Error(message);
+  }
+  if (job) dailyLog(job, `GPT Recovery Harness 通过：Farewell / ${FORCED_GPT_ACCOUNT_EMAIL} / ${FORCED_GPT_ACCOUNT_SLUG}`);
+  return payload;
+}
+
+function launchPublisherChromium(args = [], extraEnv = {}) {
+  if (!fs.existsSync(XHS_LAUNCHER)) throw new Error(`找不到发布助手启动器：${XHS_LAUNCHER}`);
+  const child = spawn('python', [XHS_LAUNCHER, ...args], {
+    cwd: XHS_PUBLISHER_DIR,
+    env: { ...process.env, ...extraEnv },
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: true,
+  });
+  child.unref();
+}
+
+async function waitForCdpProfile(profileFragment, timeoutMs = 120000, port = GPT_CDP_PORT) {
+  const needle = String(profileFragment || '').toLowerCase();
+  const startedAt = Date.now();
+  let lastCommand = '';
+  let lastPortError = '';
+  while (Date.now() - startedAt < timeoutMs) {
+    lastCommand = currentCdpCommandLine(port);
+    if (lastCommand.toLowerCase().includes(needle)) {
+      try {
+        await getLocalJson(`http://127.0.0.1:${port}/json/version`, 5000);
+        return lastCommand;
+      } catch (error) {
+        lastPortError = error.message || String(error);
+      }
+    }
+    await waitMs(1500);
+  }
+  throw new Error(`等待 Chromium profile 超时：${profileFragment}；当前=${lastCommand || '未启动'}；CDP=${lastPortError || '未就绪'}`);
+}
+
+async function waitForCompanionProfile(profileSlug, timeoutMs = 90000, port = GPT_COMPANION_PORT) {
+  const startedAt = Date.now();
+  let last = null;
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      last = await getLocalJson(`http://127.0.0.1:${port}/profile`, 5000);
+      if (String(last.profile_slug || '').toLowerCase() === String(profileSlug || '').toLowerCase()) return last;
+    } catch {}
+    await waitMs(1500);
+  }
+  throw new Error(`等待发布助手 profile 超时：${profileSlug}；当前=${last ? JSON.stringify(last) : '无响应'}`);
+}
+
+async function inspectGptCdpPort(port) {
+  try {
+    const command = currentCdpCommandLine(port);
+    if (!command) return { ok: false, port, reason: 'not_running' };
+    if (!commandUsesForcedGptProfile(command)) {
+      return { ok: false, port, command, reason: 'wrong_profile_not_farewell' };
+    }
+    const tabs = await getLocalJson(`http://127.0.0.1:${port}/json`, 5000);
+    const list = Array.isArray(tabs) ? tabs : [];
+    const urls = list.map(tab => String(tab.url || ''));
+    const titles = list.map(tab => String(tab.title || ''));
+    const chatTabs = list.filter(tab => /^https:\/\/chatgpt\.com/i.test(String(tab.url || '')));
+    const chatChecks = [];
+    for (const tab of chatTabs) {
+      chatChecks.push(await inspectChatGptTabDom(tab));
+    }
+    const authGate = urls.some(url => /accounts\.google\.com|auth\.openai\.com|sessionexpired/i.test(url))
+      || chatTabs.some(tab => /\/signin|\/login/i.test(String(tab.url || ''))
+        || CHATGPT_LOGIN_GATE_PATTERN.test(String(tab.title || '')))
+      || chatChecks.some(check => check?.loginGate);
+    const usable = chatChecks.some(check => check?.composer && !check?.loginGate)
+      && !authGate;
+    return { ok: usable, port, command, tabs: list, urls, titles, chatChecks, reason: usable ? 'usable_farewell' : (chatTabs.length ? 'chatgpt_auth_or_uncertain' : 'no_chatgpt_tab') };
+  } catch (error) {
+    return { ok: false, port, reason: error.message || String(error) };
+  }
+}
+
+async function findUsableGptCdp() {
+  const inspected = [];
+  for (const port of [GPT_CDP_PORT]) {
+    const info = await inspectGptCdpPort(port);
+    inspected.push(info);
+    if (info.ok) return { ...info, inspected };
+  }
+  return { ok: false, inspected };
+}
+
+async function ensureGptImageProfile(job, accountSlug = GPT_IMAGE_ACCOUNT) {
+  const registry = setDefaultGptAccount();
+  if (!registry.ok) throw new Error(`GPT Farewell 账号锁定失败：${registry.error}`);
+  if (job) dailyLog(job, `GPT 默认账号已固定：Farewell / ${FORCED_GPT_ACCOUNT_EMAIL}（activeIndex=${registry.activeIndex}）`);
+  const usable = await findUsableGptCdp();
+  if (usable.ok) {
+    if (job) dailyLog(job, `检测到 Farewell ChatGPT 登录态：CDP ${usable.port}，本轮直接复用，不再重复拉起登录页`);
+    return usable;
+  }
+  const profileFragment = getGptProfileFragment();
+  const command = currentCdpCommandLine(GPT_CDP_PORT);
+  if (!commandUsesForcedGptProfile(command)) {
+    if (job) dailyLog(job, `切换到 Farewell GPT 生图 profile：${FORCED_GPT_ACCOUNT_SLUG}`);
+    launchPublisherChromium(['--gpt-account', FORCED_GPT_ACCOUNT_SLUG], {
+      XHS_PUBLISHER_CDP_PORT: String(GPT_CDP_PORT),
+      XHS_PUBLISHER_COMPANION_PORT: String(GPT_COMPANION_PORT),
+    });
+    await waitForCdpProfile(profileFragment, 150000, GPT_CDP_PORT);
+    await waitForCompanionProfile(FORCED_GPT_ACCOUNT_SLUG, 120000, GPT_COMPANION_PORT);
+  } else if (job) {
+    dailyLog(job, `Farewell GPT 生图 profile 已在运行：${FORCED_GPT_ACCOUNT_SLUG}`);
+  }
+  const tabs = await getLocalJson(`http://127.0.0.1:${GPT_CDP_PORT}/json`, 10000);
+  const hasChatGpt = (Array.isArray(tabs) ? tabs : []).some(t => String(t.url || '').includes('chatgpt.com'));
+  const hasMarkerChatGpt = (Array.isArray(tabs) ? tabs : []).some(t => String(t.url || '').includes('chatgpt.com') && String(t.url || '').includes('lieke_gpt_profile=gpt-a'));
+  if (!hasChatGpt || !hasMarkerChatGpt) {
+    await openCdpUrl(GPT_CDP_PORT, CHATGPT_AUTOMATION_URL);
+    await waitForCdpProfile(profileFragment, 90000, GPT_CDP_PORT);
+  }
+  return inspectGptCdpPort(GPT_CDP_PORT);
+}
+
+async function assertGptImageProfileLoggedIn(job, accountSlug = GPT_IMAGE_ACCOUNT) {
+  runGptRecoveryHarness(job);
+  const usable = await findUsableGptCdp();
+  if (!usable.ok) {
+    const visible = (usable.inspected || [])
+      .flatMap(info => [`${info.port}:${info.reason}`, ...(info.urls || []), ...(info.titles || []), ...((info.chatChecks || []).map(check => check.sample || check.error || '').filter(Boolean))])
+      .filter(Boolean)
+      .slice(0, 8)
+      .join(' | ');
+    const message = `Farewell GPT 生图 profile 未处于可用登录态，已停止建队列：${visible || '无可用页面'}`;
+    if (job) dailyLog(job, message);
+    throw new Error(message);
+  }
+  if (job) dailyLog(job, `GPT 登录态门禁通过：Farewell / ${FORCED_GPT_ACCOUNT_EMAIL}（CDP ${usable.port}）`);
+  return usable;
+}
+
+async function ensureXhsPublishProfile(job, profileSlug = 'legacy') {
+  const command = currentCdpCommandLine(XHS_CDP_PORT);
+  if (!command.toLowerCase().includes(XHS_LEGACY_PROFILE_FRAGMENT)) {
+    if (job) dailyLog(job, `切回小红书发布 profile：${profileSlug}`);
+    launchPublisherChromium(['--profile', profileSlug, '--url', XHS_PUBLISH_URL], {
+      XHS_PUBLISHER_CDP_PORT: String(XHS_CDP_PORT),
+      XHS_PUBLISHER_COMPANION_PORT: String(XHS_COMPANION_PORT),
+    });
+    await waitForCdpProfile(XHS_LEGACY_PROFILE_FRAGMENT, 150000, XHS_CDP_PORT);
+    await waitForCompanionProfile(profileSlug, 120000, XHS_COMPANION_PORT);
+  } else if (job) {
+    dailyLog(job, `小红书发布 profile 已在运行：${profileSlug}`);
+  }
+}
+
+function gptQueueRecordId(queueState = {}) {
+  if (queueState.publish_record_id) return queueState.publish_record_id;
+  const item = (queueState.items || []).find(row => row.publish_record_id || row.publishRecordId);
+  return item ? (item.publish_record_id || item.publishRecordId || '') : '';
+}
+
+function assertGptQueueBoundToRecord(queueState = {}, recordId, context = 'GPT 队列') {
+  const targetRecordId = String(recordId || '').trim();
+  if (!targetRecordId) throw new Error(`${context}缺少发布表 recordId`);
+  const items = Array.isArray(queueState.items) ? queueState.items : [];
+  const queueRecordId = String(gptQueueRecordId(queueState) || '').trim();
+  if (!queueRecordId) {
+    throw new Error(`${context}缺少 publish_record_id，拒绝把未绑定队列图片写入发布表`);
+  }
+  if (queueRecordId !== targetRecordId) {
+    throw new Error(`${context}属于发布记录 ${queueRecordId}，不能上传到当前记录 ${targetRecordId}`);
+  }
+  const unboundIndexes = [];
+  const wrongIndexes = [];
+  items.forEach((item, index) => {
+    const itemRecordId = String(item.publish_record_id || item.publishRecordId || '').trim();
+    if (!itemRecordId) unboundIndexes.push(index + 1);
+    else if (itemRecordId !== targetRecordId) wrongIndexes.push(`${index + 1}:${itemRecordId}`);
+  });
+  if (unboundIndexes.length) {
+    throw new Error(`${context}存在未绑定任务：第 ${unboundIndexes.join(', ')} 张，拒绝上传`);
+  }
+  if (wrongIndexes.length) {
+    throw new Error(`${context}存在跨记录任务：${wrongIndexes.join(', ')}，拒绝上传`);
+  }
+  return queueRecordId;
+}
+
+function summarizeGptQueue(queueState = {}) {
+  const items = queueState.items || [];
+  const completed = Number(queueState.completed_count ?? items.filter(item => ['done', 'complete', 'completed'].includes(item.status)).length);
+  const failed = Number(queueState.failed_count ?? items.filter(item => item.status === 'failed').length);
+  const pending = Number(queueState.pending_count ?? items.filter(item => item.status === 'pending').length);
+  return {
+    ok: queueState.ok !== false,
+    queueId: queueState.queue_id || '',
+    publishRecordId: gptQueueRecordId(queueState),
+    status: queueState.status || 'empty',
+    stage: queueState.stage || queueState.status || 'empty',
+    expected: Number(queueState.expected_count || queueState.batch_limit || items.length || 0),
+    total: items.length,
+    completed,
+    failed,
+    pending,
+    lastUpdatedAt: queueState.last_updated_at || '',
+  };
+}
+
+async function safeLocalJson(name, url, timeoutMs = 10000) {
+  try {
+    const data = await getLocalJson(url, timeoutMs);
+    return { name, ok: true, data };
+  } catch (error) {
+    return { name, ok: false, error: error.message };
+  }
+}
+
+async function getDailyAutomationHealth({ includeRaw = false } = {}) {
+  const [publisher, gptAccounts, imageTool] = await Promise.all([
+    safeLocalJson('publisher', `http://127.0.0.1:${XHS_COMPANION_PORT}/profile`, 10000),
+    safeLocalJson('gptAccounts', `http://127.0.0.1:${GPT_COMPANION_PORT}/gpt_accounts`, 10000),
+    safeLocalJson('imageTool', 'http://127.0.0.1:5000/api/gpt-queue-state', 10000),
+  ]);
+  const dailyJobs = [...dailyRunStore.values()].map(job => ({
+    id: job.id,
+    ok: job.ok,
+    done: job.done,
+    startedAt: job.startedAt,
+    stage: job.result?.stage || '',
+    recordId: job.result?.recordId || '',
+    error: job.error || '',
+  }));
+  return {
+    ok: publisher.ok && imageTool.ok,
+    publisher: publisher.ok ? { ok: true, profile: publisher.data } : { ok: false, error: publisher.error },
+    gptAccounts: gptAccounts.ok ? {
+      ok: true,
+      count: Array.isArray(gptAccounts.data.accounts) ? gptAccounts.data.accounts.length : 0,
+      active: gptAccounts.data.active || gptAccounts.data.current || '',
+      data: gptAccounts.data,
+    } : { ok: false, error: gptAccounts.error },
+    imageTool: imageTool.ok ? {
+      ok: true,
+      queue: summarizeGptQueue(imageTool.data),
+      ...(includeRaw ? { raw: imageTool.data } : {}),
+    } : { ok: false, error: imageTool.error },
+    runningJobs: dailyJobs.filter(job => !job.done),
+    recentJobs: dailyJobs.slice(-10),
+  };
+}
+
+async function cleanupGptResultConversations() {
+  const ports = [GPT_COMPANION_PORT, XHS_COMPANION_PORT].filter((port, index, arr) => arr.indexOf(port) === index);
+  const localResults = await Promise.allSettled(ports.map(port => postLocalJson(`http://127.0.0.1:${port}/cleanup_gpt_results`, {}, 30000)));
+  const cleanupScript = path.join(XHS_PUBLISHER_DIR, 'scripts', 'cleanup_gpt_image_conversations.py');
+  if (!fs.existsSync(cleanupScript)) return { localResults, conversationCleanup: { ok: false, reason: 'cleanup_script_missing' } };
+  const proc = spawnSync('python', [cleanupScript], {
+    cwd: XHS_PUBLISHER_DIR,
+    encoding: 'utf8',
+    timeout: 90000,
+  });
+  return {
+    localResults,
+    conversationCleanup: {
+      ok: proc.status === 0,
+      status: proc.status,
+      stdout: (proc.stdout || '').slice(0, 4000),
+      stderr: (proc.stderr || '').slice(0, 4000),
+    },
+  };
+}
+
+async function openXhsPublishPageViaCompanion() {
+  try {
+    return await postLocalJson(`http://127.0.0.1:${XHS_COMPANION_PORT}/open_publish_page`, {}, 30000);
+  } catch (firstError) {
+    if (XHS_COMPANION_PORT === GPT_COMPANION_PORT) throw firstError;
+    return postLocalJson(`http://127.0.0.1:${GPT_COMPANION_PORT}/open_publish_page`, {}, 30000);
+  }
+}
+
 async function getFeishuProductReferenceIds() {
   const payload = await getLocalJson('http://127.0.0.1:5000/api/feishu-products?refresh=1', 60000);
   const products = (payload.products || []).filter(p => p.record_id && p.file_token);
@@ -2843,36 +3621,6 @@ async function getFeishuProductReferenceIds() {
   // task receives: label detail + silhouette/proportion + perspective evidence.
   const ordered = [...withLabel, ...products.filter(p => !withLabel.some(x => x.record_id === p.record_id))];
   return ordered.slice(0, 4).map(p => p.record_id);
-}
-
-function buildImageOverlayTexts(body, count) {
-  const text = String(body || '')
-    .replace(/\r\n/g, '\n')
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/^#+\s*/gm, '')
-    .replace(/^\s*(?:备选标题|标题\d*|评论区话术|优化方向|推断依据|框架选择理由|目标人群|主次卖点逻辑)\s*[：:].*$/gm, '')
-    .replace(/^\s*\d+[\.、]\s*/gm, '')
-    .replace(/#[^\s#]+/g, '')
-    .trim();
-  const paragraphs = text.split(/\n\s*\n+/)
-    .map(p => p.split('\n').map(line => line.trim()).filter(Boolean).join(' '))
-    .filter(p => p.length >= 36 && p.length <= 180)
-    .filter(p => !/^(---|标题|正文|评论|优化|推断|备选)/.test(p));
-  const atmosphereWords = /选择|未来|生活|城市|离开|回来|那年|春天|夏天|秋天|冬天|后来|当时|终于|仍然|自己|长大|想去|想要|困扰|犹豫|自由|远方|某一天|好像|突然|明白|记得/;
-  const salesWords = /第一口|入口|回甘|青提|菠萝|气泡|白酒|酒液|酒精|度|0糖|配料|购买|下单|链接|火锅|烧烤|聚会|朋友家|一瓶|两瓶|值得买/;
-  const ranked = paragraphs
-    .map((p, index) => ({ p, index, score: (atmosphereWords.test(p) ? 8 : 0) - (salesWords.test(p) ? 12 : 0) + Math.min(p.length, 120) / 40 }))
-    .sort((a, b) => b.score - a.score || a.index - b.index)
-    .filter(item => item.score > 0)
-    .map(item => item.p);
-  const clean = text.replace(/\s+/g, ' ').trim();
-  const candidates = ranked.length ? ranked : paragraphs.filter(p => !salesWords.test(p));
-  return Array.from({ length: count }, (_, i) => {
-    const source = candidates[i % Math.max(1, candidates.length)] || clean.slice(i * 70, i * 70 + 110);
-    const sentences = source.split(/(?<=[。！？!?])/).map(s => s.trim()).filter(Boolean);
-    const selected = sentences.slice(0, 3).join('');
-    return (selected || source).slice(0, 120);
-  });
 }
 
 function buildImageOverlayTexts(body, count) {
@@ -3121,6 +3869,7 @@ function downloadCompetitorAttachments(recordId, maxImages = Number.POSITIVE_INF
   ]);
   const files = fs.readdirSync(dir)
     .filter(name => /\.(?:png|jpe?g|webp)$/i.test(name))
+    .filter(name => !/(?:^|[-_\s])comment(?:[-_\s]|\d|$)/i.test(name))
     .sort((a, b) => a.localeCompare(b))
     .map(name => path.join(dir, name));
   return files.slice(0, maxImages);
@@ -3159,7 +3908,11 @@ function parseDailyDraft(raw) {
     const match = raw.match(/###\s*\u6b63\u6587\s*\n([\s\S]*?)(?=\n###|$)/);
     body = match ? match[1].trim() : raw.trim();
   }
-  body = body.replace(/\n\s*(?:#[^\s#]+\s*){2,}[\s\S]*$/m, '').trim();
+  body = body
+    .replace(/^\s*(?:编辑|編輯|Edit)\s*$/gim, '')
+    .replace(/^\s*(?:标题|正文)\s*[：:]\s*/gm, '')
+    .replace(/\n\s*(?:#[^\s#]+\s*){2,}[\s\S]*$/m, '')
+    .trim();
   return { title: title || '\u4eca\u65e5\u5c0f\u7ea2\u4e66\u8349\u7a3f', body };
 }
 
@@ -3258,12 +4011,14 @@ ${(insight?.dreamMoments || []).map((v, i) => `${i + 1}. ${v}`).join('\n')}
 长尾词：${searchTerms.slice(1).join(' / ')}
 固定必带话题词：气泡白酒 / 每天烈刻气泡白酒
 
+原话题只用来识别参考笔记的流量入口和互动机制，不允许直接继承。凡是原话题里的竞品品牌、产品名、代言人、活动口号、同款词、平台广告词，全部删除，不得进入标题、正文或话题。
+
 布局顺序：
 1. 标题必须优先复现参考标题的点击机制和情绪钩子；搜索词不硬塞进标题，除非它本身就是最自然的点击句。
 2. 正文前 120 字必须自然出现核心搜索词；不能硬塞，必须是叙述者真实处境里的问句、判断句或选择句。
 3. 长尾词不要求逐字生硬堆砌；允许嵌入长句中形成可被搜索切中的连续片段。比如长尾词“夫人”可以存在于“丈夫人很好”这种连续文本片段里，但不能为了埋词破坏语义。
 4. 至少 2 个长尾词要分散进入正文中段/结尾/评论引导，不集中堆在一段。
-5. 话题标签承担收录补充：必须包含 #气泡白酒 和 #每天烈刻气泡白酒；再补 1 个核心词、2-3 个长尾词、1-2 个品类词。不用泛泛的 #生活 #分享。
+5. 话题标签承担收录补充：必须包含 #气泡白酒 和 #每天烈刻气泡白酒；再补 1 个核心词、2-3 个长尾词、1-2 个品类词。不用泛泛的 #生活 #分享，也不得继承原话题里的竞品广告 tag。
 6. 如果参考文是品牌调性/造梦/巴黎式母本，搜索词只作为“可被搜到的暗线”，不得压过母本的审美、情绪和标题机制。
 
 ## 可使用的少量产品事实（最多取两条）
@@ -3275,7 +4030,7 @@ ${loadBrandFacts().slice(0, 2200)}
 3. 市场洞察只负责提供搜索意图和造梦材料：把“用户为什么搜、想进入什么状态、三个具体时刻”融进原文已有主题。不要把它改成旧的 Market Hub 饮酒测评模板。
 4. 产品只在原文出现物件、饮用动作或消费选择的位置进入；产品露出比例跟随原文。若原文没有产品中心段，品牌只允许作为一个生活物件出现一次。
    参考文里的竞品品牌、酒名、口味、颜色、包装和购买数量全部只是占位符，成稿不得保留；只能换成“可使用的少量产品事实”里真实存在的每天烈刻信息。
-5. 搜索词必须被改写成符合叙述者处境的自然语句；不能为了埋词把地点、人物、事件改成聚会、火锅、测评或第一口体验。核心词进入前 120 字正文，至少两个长尾词进入后文；长尾词可以作为连续字词片段自然藏在一句话里。
+5. 搜索词必须被改写成符合叙述者处境的自然语句；不能为了埋词把地点、人物、事件改成聚会、火锅、测评或第一口体验。核心词进入前 120 字正文，至少两个长尾词进入后文；长尾词可以作为连续字词片段自然藏在一句话里。成稿里要能明确看见搜索布局：正文前段有核心词，中后段有长尾词，话题有核心词/长尾词。
 6. 正文只使用一个主产品事实，最多一个辅助事实。不得把资料平均铺满。
 7. 正文至少保留两段可直接放进氛围图片的文字：每段 45-120 字，写人生处境、选择或情绪转折，不写口感、参数、购买和劝酒。
 8. 标题保留参考标题的点击机制，控制在 20 个汉字左右；标题负责停留和点击，搜索意图主要交给正文前 120 字与标签承接。不得连续复用参考标题 6 个以上相同字词。正文末尾附未成年人及孕妇禁酒提示。
@@ -3309,6 +4064,9 @@ function collectDailyDraftIssues(draft, reference, topic, insight) {
   }
   if (/330ml|500ml|750ml/.test(all) && !/330ml|500ml|750ml/.test(loadBrandFacts())) {
     issues.push('出现了资料里未确认的容量参数，需要删除');
+  }
+  if (hasDailyCompetitorOrAdTerm(all)) {
+    issues.push('残留了参考笔记里的竞品品牌、代言人、活动口号或广告词，必须删除并改写为每天烈刻自己的表达');
   }
   if (searchTerms[0] && !all.includes(searchTerms[0])) {
     issues.push(`核心搜索词「${searchTerms[0]}」没有布局`);
@@ -3380,26 +4138,92 @@ async function repairDailyDraftIfNeeded(draft, reference, topic, insight, bluepr
   return { draft: repaired, issues: secondIssues, repairedFrom: firstIssues };
 }
 
-function buildDailyTags(reference, topic, insight) {
-  const mandatory = ['气泡白酒', '每天烈刻气泡白酒'];
-  const raw = [
-    ...mandatory,
-    ...(String(reference?.tags || '').match(/#[^#\s\[\]]+/g) || []),
+const DAILY_REQUIRED_TAGS = ['气泡白酒', '每天烈刻气泡白酒'];
+const DAILY_SAFE_FALLBACK_TAGS = ['低度酒', '微醺', '小酌'];
+const DAILY_COMPETITOR_OR_AD_RE = /张裕|熊司令|于适|于适同款|小熊|盒马|山姆|Costco|开市客|酒鬼严选|RIO|锐澳|梅见|贝瑞甜心|十七光年|江小白|野格|百利甜|巴黎水|Perrier|三得利|朝日|麒麟|雪花|青岛|百威|喜力|科罗娜|莫奈花园|琉璃|喜茶|茶特调|酸木瓜|枇杷|同款|代言|官方|旗舰店|联名|真实力不用装/i;
+const DAILY_WRONG_CATEGORY_RE = /葡萄酒|果汁葡萄酒|红酒|白葡萄|威士忌|啤酒|精酿|清酒|莫斯卡托|甜白|起泡酒/i;
+const DAILY_UNSAFE_CLAIM_RE = /0负担|无负担|解腻|刮油|不上头|不醉|不伤身|健康喝酒|减肥|助眠|治愈|续命|救命|330ml|500ml|750ml/i;
+const DAILY_GENERIC_TAG_RE = /^(生活|分享|日常|好物|种草|推荐|我的日常)$/i;
+
+function hasDailyCompetitorOrAdTerm(value) {
+  return DAILY_COMPETITOR_OR_AD_RE.test(String(value || ''));
+}
+
+function normalizeDailyTag(value) {
+  return String(value || '')
+    .replace(/^#+/, '')
+    .replace(/\[话题\]$/g, '')
+    .replace(/\s+/g, '')
+    .trim();
+}
+
+function isUnsafeDailyTag(value) {
+  const tag = normalizeDailyTag(value);
+  if (!tag || tag.length < 2 || tag.length > 24) return true;
+  if (DAILY_REQUIRED_TAGS.includes(tag)) return false;
+  if (DAILY_COMPETITOR_OR_AD_RE.test(tag)) return true;
+  if (DAILY_UNSAFE_CLAIM_RE.test(tag)) return true;
+  if (DAILY_WRONG_CATEGORY_RE.test(tag) && !/气泡白酒|白酒/.test(tag)) return true;
+  if (DAILY_GENERIC_TAG_RE.test(tag)) return true;
+  return false;
+}
+
+function isUnsafeDailySearchTerm(value) {
+  const term = String(value || '').trim();
+  if (!term || term.length < 2 || term.length > 32) return true;
+  if (DAILY_COMPETITOR_OR_AD_RE.test(term)) return true;
+  if (DAILY_UNSAFE_CLAIM_RE.test(term)) return true;
+  if (DAILY_WRONG_CATEGORY_RE.test(term) && !/气泡白酒|白酒/.test(term)) return true;
+  return false;
+}
+
+function collectDailySearchTerms(topic, insight) {
+  return [...new Set([
     insight?.coreSearchTerm,
     ...(insight?.longTailTerms || []),
+    ...(topic?.searchTerms || []),
+    topic?.trafficKeyword,
+    topic?.coreConcept,
+  ].filter(Boolean).map(value => String(value).trim()).filter(value => !isUnsafeDailySearchTerm(value)))];
+}
+
+function buildDailyTags(reference, topic, insight) {
+  const mandatory = DAILY_REQUIRED_TAGS;
+  const searchTerms = collectDailySearchTerms(topic, insight);
+  const referenceTags = String(reference?.tags || '').match(/#[^#\s\[\]]+/g) || [];
+  const raw = [
+    ...mandatory,
+    ...searchTerms,
     topic?.trafficKeyword,
     topic?.coreConcept,
     ...(topic?.searchTerms || []),
+    ...referenceTags,
+    ...DAILY_SAFE_FALLBACK_TAGS,
   ];
-  const cleaned = raw.map(value => String(value || '').replace(/^#/, '').replace(/\[话题\]$/g, '').trim())
-    .filter(value => value.length >= 2 && value.length <= 24)
-    .filter(value => !/0负担|无负担|解腻|刮油|不上头|不醉|健康喝酒|330ml|500ml|750ml/.test(value));
+  const cleaned = raw.map(normalizeDailyTag).filter(value => !isUnsafeDailyTag(value));
   const unique = [...new Set(cleaned)];
   const ordered = [
     ...mandatory,
+    ...searchTerms.map(normalizeDailyTag).filter(value => !mandatory.includes(value) && !isUnsafeDailyTag(value)),
     ...unique.filter(value => !mandatory.includes(value)),
   ];
   return [...new Set(ordered)].slice(0, 10).map(value => `#${value}`).join(' ');
+}
+
+function sanitizeDailyTagString(value, { keepFallback = true } = {}) {
+  const rawTags = String(value || '').match(/#[^#\s\[\]]+/g) || String(value || '').split(/[\s,，;；/]+/);
+  const cleaned = rawTags
+    .map(normalizeDailyTag)
+    .filter(tag => tag && !isUnsafeDailyTag(tag));
+  const ordered = [
+    ...DAILY_REQUIRED_TAGS,
+    ...cleaned.filter(tag => !DAILY_REQUIRED_TAGS.includes(tag)),
+    ...(keepFallback ? DAILY_SAFE_FALLBACK_TAGS : []),
+  ];
+  return [...new Set(ordered)]
+    .slice(0, 10)
+    .map(tag => `#${tag}`)
+    .join(' ');
 }
 
 function sanitizeDailySeedText(value) {
@@ -3514,6 +4338,9 @@ function findCompetitorRecordIdByUrl(url) {
 function ensureCompetitorReferenceForTopic(topic, insight, options = {}) {
   const excludeReferenceIds = new Set((options.excludeReferenceIds || []).map(String).filter(Boolean));
   const excludeReferenceUrls = new Set((options.excludeReferenceUrls || []).map(normalizeReferenceUrl).filter(Boolean));
+  const maxReferenceImages = Number.isFinite(Number(options.maxReferenceImages))
+    ? Math.max(1, Number(options.maxReferenceImages))
+    : Number.POSITIVE_INFINITY;
   const candidates = [...new Set((topic?.evidence || []).map(item => String(item?.url || '').trim()).filter(Boolean))];
   if (!candidates.length) throw new Error('本次热点没有携带具体笔记链接，已停止，避免拿无关旧笔记凑数');
   const failures = [];
@@ -3551,6 +4378,11 @@ function ensureCompetitorReferenceForTopic(topic, insight, options = {}) {
       if (!ref || /视频/.test(ref.category || '') || bodyLength < 80) {
         try { markCompetitorImageStatus(recordId, /视频/.test(ref?.category || '') ? '视频待转写' : '正文过短'); } catch {}
         throw new Error(/视频/.test(ref?.category || '') ? '视频笔记暂不用于本轮图文仿写' : `正文仅 ${bodyLength} 字`);
+      }
+      const attachmentCount = Array.isArray(ref.attachments) ? ref.attachments.length : 0;
+      if (attachmentCount > maxReferenceImages) {
+        failures.push(`${cleanUrl}：参考图 ${attachmentCount} 张，超过本轮上限 ${maxReferenceImages} 张`);
+        continue;
       }
       validReferences.push({ ...ref, score: scoreReferenceForTopic(ref, topic) });
     } catch (error) {
@@ -3664,7 +4496,11 @@ app.get('/api/daily/preview-reference', (req, res) => {
     const digest = loadTopicJson(TOPIC_RECOMMENDATIONS_PATH, { recommendations: [] });
     const topic = [...(digest.recommendations || [])].sort((a, b) => Number(b.score || 0) - Number(a.score || 0))[0];
     if (!topic) throw new Error('\u6ca1\u6709\u53ef\u7528\u7684\u70ed\u70b9\u9009\u9898');
-    const selectedReference = chooseReferenceForTopic(topic);
+    const requestedReferenceId = String(req.query.id || req.query.referenceId || '').trim();
+    const selectedReference = requestedReferenceId
+      ? readCompetitorReferences(300).find(ref => ref.id === requestedReferenceId)
+      : chooseReferenceForTopic(topic);
+    if (!selectedReference) throw new Error(`指定的竞品记录不存在：${requestedReferenceId}`);
     res.json({
       ok: true,
       topic: {
@@ -3717,6 +4553,36 @@ app.get('/api/daily/preview-references', (req, res) => {
   }
 });
 
+app.get('/api/daily/health', async (req, res) => {
+  res.json(await getDailyAutomationHealth());
+});
+
+app.get('/api/gpt/preflight', (req, res) => {
+  try {
+    const preflight = runGptRecoveryHarness(null);
+    res.json({ ok: true, preflight });
+  } catch (error) {
+    res.json({ ok: false, error: error.message });
+  }
+});
+
+app.get('/api/daily/status', async (req, res) => {
+  const health = await getDailyAutomationHealth();
+  res.json({
+    ok: true,
+    health,
+    jobs: [...dailyRunStore.values()].map(job => ({
+      id: job.id,
+      ok: job.ok,
+      done: job.done,
+      startedAt: job.startedAt,
+      error: job.error,
+      result: job.result,
+      logs: job.logs,
+    })),
+  });
+});
+
 app.post('/api/daily/run', (req, res) => {
   const running = [...dailyRunStore.values()].find(job => !job.done);
   if (running) return res.json({ ok: true, jobId: running.id, resumed: true });
@@ -3733,14 +4599,10 @@ app.post('/api/daily/run', (req, res) => {
       let insightWasCreated = false;
       if (insightPick.needsRefresh) {
         dailyLog(job, `市场洞察需要刷新：${insightPick.reason}`);
-        let broadSignals = loadTopicJson(TOPIC_SIGNALS_PATH, null);
-        if (!broadSignals || req.body?.forceCollect === true) {
-          await runTopicCollector();
-          broadSignals = loadTopicJson(TOPIC_SIGNALS_PATH, null);
-        }
-        if (!broadSignals || broadSignals.error) throw new Error(broadSignals?.error || '市场洞察缺少搜索信号');
         const savedInsightState = loadMarketInsights();
-        const insightPrompt = buildMarketInsightPrompt(broadSignals, savedInsightState.manualBehavior || '');
+        const collected = await collectSignalsForMarketInsight(savedInsightState.manualBehavior || '', { forceCollect: true });
+        const broadSignals = collected.signals;
+        const insightPrompt = buildMarketInsightPrompt(broadSignals, savedInsightState.manualBehavior || '', collected.seedPlan, collected.validation);
         const rawInsight = await runClaudeAsync(insightPrompt, 300000);
         const parsedInsights = parseMarketInsights(rawInsight);
         saveMarketInsights({
@@ -3748,6 +4610,10 @@ app.post('/api/daily/run', (req, res) => {
           selectedId: '',
           manualBehavior: savedInsightState.manualBehavior || '',
           lastPrompt: insightPrompt,
+          lastSeedPrompt: collected.seedPrompt,
+          lastSeedPlan: collected.seedPlan,
+          lastValidation: collected.validation,
+          usefulSeeds: collected.usefulSeeds,
           lastSignals: compactInsightSignals(broadSignals),
         });
         insight = [...parsedInsights.insights].sort((a, b) => b.score - a.score)[0];
@@ -3808,7 +4674,11 @@ app.post('/api/daily/run', (req, res) => {
         if (!topic) throw new Error('没有可用的热点选题');
         const excludeReferenceIds = Array.isArray(req.body?.excludeReferenceIds) ? req.body.excludeReferenceIds : [];
         const excludeReferenceUrls = Array.isArray(req.body?.excludeReferenceUrls) ? req.body.excludeReferenceUrls : [];
-        selectedReference = ensureCompetitorReferenceForTopic(topic, insight, { excludeReferenceIds, excludeReferenceUrls });
+        selectedReference = ensureCompetitorReferenceForTopic(topic, insight, {
+          excludeReferenceIds,
+          excludeReferenceUrls,
+          maxReferenceImages: req.body?.maxReferenceImages,
+        });
       }
       const contentInsight = sanitizeDailySeed(insight);
       const contentTopic = sanitizeDailySeed(topic);
@@ -3817,6 +4687,12 @@ app.post('/api/daily/run', (req, res) => {
       if (!selectedReference) throw new Error(`\u6307\u5b9a\u7684\u7ade\u54c1\u8bb0\u5f55\u4e0d\u5b58\u5728\uff1a${requestedReferenceId}`);
       const engagementCover = isEngagementCoverReference(selectedReference);
       dailyLog(job, `第 2 步：竞品笔记已登记并补齐正文/附件：${selectedReference.title || selectedReference.url}`);
+      const expectedImageCount = engagementCover ? 1 : selectedReference.attachments.length;
+      if (req.body?.draftOnly !== true) {
+        dailyLog(job, `GPT 登录门禁：预计需要 ${expectedImageCount} 张图，先确认 GPT 可用后再生成文案和写发布表`);
+        await ensureGptImageProfile(job, GPT_IMAGE_ACCOUNT);
+        await assertGptImageProfileLoggedIn(job, GPT_IMAGE_ACCOUNT);
+      }
 
       dailyLog(job, '第 3 步：先提取单篇竞品的主题指纹，再按同一主题改写');
       const referenceBlueprint = engagementCover
@@ -3831,6 +4707,8 @@ app.post('/api/daily/run', (req, res) => {
       if (repairResult.repairedFrom?.length) dailyLog(job, `文案质检已自动修稿：${repairResult.repairedFrom.join('；')}`);
       if (repairResult.issues?.length) dailyLog(job, `文案仍需人工复核：${repairResult.issues.join('；')}`);
       const tags = buildDailyTags(selectedReference, contentTopic, contentInsight);
+      const visibleSearchTerms = collectDailySearchTerms(contentTopic, contentInsight);
+      dailyLog(job, `搜索布局：核心词「${visibleSearchTerms[0] || '未取到'}」；长尾词「${visibleSearchTerms.slice(1, 5).join(' / ') || '未取到'}」；话题已过滤竞品广告 tag`);
       job.result = {
         topic,
         reference: { id: selectedReference.id, title: selectedReference.title, url: selectedReference.url, coreSubject: referenceBlueprint.coreSubject },
@@ -3844,7 +4722,7 @@ app.post('/api/daily/run', (req, res) => {
         '\u53d1\u5e03\u8d26\u53f7': '\u6bcf\u5929\u70c8\u523b / legacy',
         '\u53c2\u8003\u94fe\u63a5': selectedReference.url,
       };
-      const existingRecordId = findOutputRecordIdByReference(selectedReference.url);
+      const existingRecordId = req.body?.createNew === true ? '' : findOutputRecordIdByReference(selectedReference.url);
       const normalizedOutputFields = Object.fromEntries(
         Object.entries(outputFields).map(([key, value]) => [OUTPUT_FIELDS[key] || key, value])
       );
@@ -3859,15 +4737,52 @@ app.post('/api/daily/run', (req, res) => {
       }
       const savedBody = readOutputRecordBody(recordId) || draft.body;
 
-      const expectedImageCount = engagementCover ? 1 : selectedReference.attachments.length;
+      if (req.body?.draftOnly === true) {
+        markTopicUsed(topic.id, { publishRecordId: recordId, referenceRecordId: selectedReference.id, referenceUrl: selectedReference.url, stage: 'draft_saved' });
+        markMarketInsightUsed(insight.id, { lastTopicId: topic.id, lastPublishRecordId: recordId, stage: 'draft_saved' });
+        if (insight.feishuRecordId) {
+          try { updateBaseRecord(MARKET_INSIGHT_TABLE, insight.feishuRecordId, { 状态: '已进入生产' }, OUTPUT_BASE); } catch {}
+        }
+        job.result = {
+          topic,
+          reference: { id: selectedReference.id, title: selectedReference.title, url: selectedReference.url, coreSubject: referenceBlueprint.coreSubject },
+          draft: { title: draft.title, tags },
+          recordId,
+          imageTasks: expectedImageCount,
+          stage: 'draft_saved',
+        };
+        dailyLog(job, `轻量模式：已写入发布表并停在待换图阶段（预计后续需要 ${expectedImageCount} 张图）`);
+        return;
+      }
       const refs = downloadCompetitorAttachments(selectedReference.id, expectedImageCount);
       if (refs.length !== expectedImageCount) throw new Error(`\u7ade\u54c1\u8868\u767b\u8bb0 ${expectedImageCount} \u5f20\u56fe\uff0c\u5b9e\u9645\u4e0b\u8f7d ${refs.length} \u5f20`);
       markCompetitorImageStatus(selectedReference.id, '\u5df2\u5efa\u961f\u5217');
-      try {
-        await postLocalJson('http://127.0.0.1:5000/api/gpt-queue-state', { action: 'clear' }, 30000);
-        dailyLog(job, '\u5df2\u6e05\u7a7a\u65e7 GPT \u6362\u56fe\u961f\u5217');
-      } catch (error) {
-        dailyLog(job, `\u65e7 GPT \u961f\u5217\u6e05\u7406\u5931\u8d25\uff1a${error.message}`);
+      await ensureGptImageProfile(job, GPT_IMAGE_ACCOUNT);
+      await assertGptImageProfileLoggedIn(job, GPT_IMAGE_ACCOUNT);
+      const health = await getDailyAutomationHealth({ includeRaw: true });
+      if (!health.imageTool.ok) throw new Error(`GPT 换图工具未连接：${health.imageTool.error || 'unknown'}`);
+      if (!health.publisher.ok) throw new Error(`发布助手未连接：${health.publisher.error || 'unknown'}`);
+      dailyLog(job, `稳定性检查：发布助手在线，GPT 队列状态=${health.imageTool.queue.stage}，GPT账号=${health.gptAccounts.ok ? health.gptAccounts.count : '未知'} 个`);
+      const existingQueue = health.imageTool.raw || {};
+      const existingQueueSummary = summarizeGptQueue(existingQueue);
+      const reusableQueue = existingQueueSummary.publishRecordId === recordId && existingQueueSummary.total === expectedImageCount;
+      const occupiedByOtherRecord = existingQueueSummary.total > 0
+        && !['empty', 'completed'].includes(existingQueueSummary.status)
+        && existingQueueSummary.publishRecordId
+        && existingQueueSummary.publishRecordId !== recordId;
+      if (reusableQueue) {
+        await postLocalJson('http://127.0.0.1:5000/api/gpt-queue-state', { action: 'retry' }, 30000);
+        dailyLog(job, `检测到当前发布记录已有 GPT 队列，复用断点：${existingQueueSummary.completed}/${existingQueueSummary.total}`);
+      } else {
+        if (occupiedByOtherRecord && req.body?.replaceQueue === false) {
+          throw new Error(`GPT 队列被其他发布记录占用：${existingQueueSummary.publishRecordId}，已按 replaceQueue=false 停止`);
+        }
+        try {
+          await postLocalJson('http://127.0.0.1:5000/api/gpt-queue-state', { action: 'clear' }, 30000);
+          dailyLog(job, existingQueueSummary.total ? `已清空旧 GPT 换图队列（旧记录 ${existingQueueSummary.publishRecordId || '未知'}）` : 'GPT 换图队列为空，可创建新队列');
+        } catch (error) {
+          dailyLog(job, `旧 GPT 队列清理失败：${error.message}`);
+        }
       }
       const productReferenceIds = engagementCover ? [] : await getFeishuProductReferenceIds();
       const overlayTextList = engagementCover
@@ -3876,11 +4791,11 @@ app.post('/api/daily/run', (req, res) => {
       dailyLog(job, engagementCover
         ? `已识别互动共鸣封面，只生成 1 张无产品互动图`
         : `\u5df2\u4ece\u53d1\u5e03\u8868\u6b63\u6587\u5b57\u6bb5\u63d0\u53d6 ${overlayTextList.length} \u6761\u6c1b\u56f4\u56fe\u6587\u5b57`);
-      const queue = await postLocalJson('http://127.0.0.1:5000/api/gpt-helper-queue', {
+      let queue = reusableQueue ? { ok: true, reused: true, count: existingQueueSummary.total } : await postLocalJson('http://127.0.0.1:5000/api/gpt-helper-queue', {
         publish_record_id: recordId,
         scenes: refs.map(file => ({ path: file, record_id: selectedReference.id, name: path.basename(file) })),
         batch_size: expectedImageCount, gen_count: 1, match_mode: 'manual', product_record_ids: productReferenceIds,
-        scene_modes: Object.fromEntries(refs.map((_, i) => [String(i), inferQueueSceneMode(selectedReference, engagementCover)])),
+        scene_modes: Object.fromEntries(refs.map((_, i) => [String(i), engagementCover ? 'engagement_cover' : 'auto'])),
         overlay_texts: Object.fromEntries(overlayTextList.map((text, i) => [String(i), text])),
         positive: '\u9010\u56fe\u5224\u65ad\u3002\u65e0\u4ea7\u54c1\u7684\u6c1b\u56f4\u56fe\uff1a\u751f\u6210\u76f8\u4f3c\u6c1b\u56f4\u65b0\u573a\u666f\uff0c\u6392\u5165\u672c\u7bc7 post \u6b63\u6587\u91d1\u53e5\u7247\u6bb5\u3002\u539f\u56fe\u5df2\u6709\u660e\u786e\u9152\u7c7b\u4ea7\u54c1\uff1a\u4ec5\u66ff\u6362\u8be5\u4ea7\u54c1\uff0c\u5e76\u4e25\u683c\u4f7f\u7528\u98de\u4e66\u4ea7\u54c1\u7d20\u6750\u8868\u7684\u74f6\u8eab\u4e0e\u6807\u7b7e\u7ec6\u8282\u56fe\u3002',
         negative: '\u6a21\u7cca\u3001\u53d8\u5f62\u3001\u9519\u8bef\u74f6\u6807\u3001\u591a\u4f59\u74f6\u5b50\u3001AI\u611f\u3001\u590d\u5236\u539f\u56fe\u6587\u5b57\u3001\u590d\u5236\u5546\u6807\u6216\u6c34\u5370\u3001\u76f4\u63a5\u7167\u642c\u539f\u56fe\u4eba\u7269\u548c\u88c5\u9970',
@@ -3896,10 +4811,10 @@ app.post('/api/daily/run', (req, res) => {
       dailyLog(job, engagementCover
         ? `已按互动封面策略创建 1 个 GPT 生图任务`
         : `\u5df2\u6309\u539f post \u9644\u4ef6\u6570\u521b\u5efa ${expectedImageCount} \u4e2a GPT \u751f\u56fe\u4efb\u52a1`);
-      try {
-        await postLocalJson('http://127.0.0.1:8766/gpt_launch', { rotate: false }, 30000);
-        dailyLog(job, '\u5df2\u6253\u5f00 GPT Profile\uff0c\u7b49\u5f85\u6269\u5c55\u5904\u7406\u961f\u5217');
-      } catch (error) { dailyLog(job, `GPT Profile \u6253\u5f00\u5931\u8d25\uff1a${error.message}`); }
+      await ensureGptImageProfile(job, GPT_IMAGE_ACCOUNT);
+      await assertGptImageProfileLoggedIn(job, GPT_IMAGE_ACCOUNT);
+      dailyLog(job, `GPT 生图 profile 已确认：${GPT_IMAGE_ACCOUNT}，启动本地 direct runner 处理队列`);
+      startDirectGptQueueRunner(job, expectedImageCount);
 
       job.result = { topic, reference: { id: selectedReference.id, title: selectedReference.title, url: selectedReference.url, coreSubject: referenceBlueprint.coreSubject }, draft: { title: draft.title, tags }, recordId, imageTasks: expectedImageCount, stage: 'waiting_images' };
       dailyLog(job, `\u5df2\u8fdb\u5165\u751f\u56fe\u9636\u6bb5\uff0c\u5c06\u81ea\u52a8\u7b49\u5f85 ${expectedImageCount} \u5f20\u7ed3\u679c\u56fe`);
@@ -3928,11 +4843,13 @@ app.post('/api/daily/run', (req, res) => {
         .map(item => item.result_file || (Array.isArray(item.result_files) ? item.result_files[0] : ''))
         .filter(Boolean);
       if (files.length < expectedImageCount) throw new Error(`GPT \u53ea\u4e0b\u8f7d\u5230 ${files.length} \u5f20\u56fe\uff0c\u5e94\u6709 ${expectedImageCount} \u5f20`);
-      uploadBaseAttachments(recordId, OUTPUT_FIELDS.\u56fe\u7247, files);
-      const saved = readOutputRecordSnapshot(recordId);
+      const checkedFiles = validateGeneratedImageFiles(files, finalQueueState.items || [], expectedImageCount);
+      uploadBaseAttachments(recordId, OUTPUT_FIELDS.\u56fe\u7247, checkedFiles);
+      const saved = await waitForOutputImages(recordId, expectedImageCount);
       if (!saved.title || !saved.body || !saved.reference || saved.images.length < expectedImageCount) {
         throw new Error(`\u53d1\u5e03\u8868\u9a8c\u6536\u5931\u8d25\uff1a\u6807\u9898=${saved.title ? '\u6709' : '\u7a7a'}\uff0c\u6b63\u6587=${saved.body ? '\u6709' : '\u7a7a'}\uff0c\u53c2\u8003\u94fe\u63a5=${saved.reference ? '\u6709' : '\u7a7a'}\uff0c\u56fe\u7247=${saved.images.length}/${expectedImageCount}`);
       }
+      cleanupGeneratedImageFiles(checkedFiles, job);
       markCompetitorImageStatus(selectedReference.id, '\u5df2\u5b8c\u6210');
       markTopicUsed(topic.id, { publishRecordId: recordId, referenceRecordId: selectedReference.id, referenceUrl: selectedReference.url });
       markMarketInsightUsed(insight.id, { lastTopicId: topic.id, lastPublishRecordId: recordId });
@@ -3940,14 +4857,25 @@ app.post('/api/daily/run', (req, res) => {
         try { updateBaseRecord(MARKET_INSIGHT_TABLE, insight.feishuRecordId, { \u72b6\u6001: '\u5df2\u5b8c\u6210' }, OUTPUT_BASE); } catch {}
       }
       dailyLog(job, `\u5df2\u4e0a\u4f20 ${files.length} \u5f20\u6210\u54c1\u56fe\u5230\u98de\u4e66\u9644\u4ef6\u5b57\u6bb5`);
-      await Promise.allSettled([
-        postLocalJson('http://127.0.0.1:8766/cleanup_gpt_results', {}, 30000),
-        postLocalJson('http://127.0.0.1:8766/open_publish_page', {}, 30000),
-      ]);
+      const reviewWarnings = [];
+      try { await cleanupGptResultConversations(); }
+      catch (error) { reviewWarnings.push(`GPT 对话清理未完成：${error.message}`); }
+      try {
+        await ensureXhsPublishProfile(job, 'legacy');
+        await openXhsPublishPageViaCompanion();
+      } catch (error) {
+        reviewWarnings.push(`小红书发布页未自动打开：${error.message}`);
+      }
       try { fs.rmSync(path.dirname(refs[0]), { recursive: true, force: true }); } catch {}
       job.result.stage = 'ready_for_review';
       job.result.imageCount = files.length;
-      dailyLog(job, '\u672c\u5730\u7f13\u5b58\u5df2\u6e05\u7406\uff0c\u5c0f\u7ea2\u4e66\u53d1\u5e03\u9875\u5df2\u6253\u5f00\uff0c\u7b49\u5f85\u4eba\u5de5\u5ba1\u6838');
+      if (reviewWarnings.length) {
+        job.result.warnings = reviewWarnings;
+        reviewWarnings.forEach(message => dailyLog(job, `提醒：${message}`));
+        dailyLog(job, '飞书发布表已就绪；发布页打开失败不影响附件和文案回填');
+      } else {
+        dailyLog(job, '本地缓存已清理，小红书发布页已打开，等待人工审核');
+      }
     } catch (error) {
       job.ok = false; job.error = error.message; dailyLog(job, `\u5931\u8d25\uff1a${error.message}`);
     } finally { job.done = true; }
@@ -3966,6 +4894,7 @@ app.post('/api/daily/finalize-images', async (req, res) => {
     const expectedImageCount = Math.max(1, Math.min(9, Number(req.body?.expectedImageCount || 1)));
     if (!recordId) throw new Error('缺少发布表 recordId');
     const finalQueueState = await getLocalJson('http://127.0.0.1:5000/api/gpt-queue-state');
+    assertGptQueueBoundToRecord(finalQueueState, recordId, 'GPT 收图队列');
     const items = finalQueueState.items || [];
     const failed = items.filter(item => item.status === 'failed');
     if (failed.length) throw new Error(`GPT 队列仍有失败任务：${failed.map(item => item.error || item.status).join('；')}`);
@@ -3976,12 +4905,20 @@ app.post('/api/daily/finalize-images', async (req, res) => {
     if (files.length < expectedImageCount) {
       throw new Error(`GPT 结果图不足：已有 ${files.length} 张，应有 ${expectedImageCount} 张。请先恢复 GPT 登录态并继续原队列。`);
     }
-    uploadBaseAttachments(recordId, OUTPUT_FIELDS.\u56fe\u7247, files);
-    await Promise.allSettled([
-      postLocalJson('http://127.0.0.1:8766/cleanup_gpt_results', {}, 30000),
-      postLocalJson('http://127.0.0.1:8766/open_publish_page', {}, 30000),
-    ]);
-    res.json({ ok: true, recordId, imageCount: files.length, files });
+    const checkedFiles = validateGeneratedImageFiles(files, items, expectedImageCount);
+    uploadBaseAttachments(recordId, OUTPUT_FIELDS.\u56fe\u7247, checkedFiles);
+    await waitForOutputImages(recordId, expectedImageCount);
+    cleanupGeneratedImageFiles(checkedFiles);
+    const warnings = [];
+    try { await cleanupGptResultConversations(); }
+    catch (error) { warnings.push(`GPT 对话清理未完成：${error.message}`); }
+    try {
+      await ensureXhsPublishProfile(null, 'legacy');
+      await openXhsPublishPageViaCompanion();
+    } catch (error) {
+      warnings.push(`小红书发布页未自动打开：${error.message}`);
+    }
+    res.json({ ok: true, recordId, imageCount: files.length, files, warnings });
   } catch (error) {
     res.json({ ok: false, error: error.message });
   }
@@ -3994,16 +4931,21 @@ app.post('/api/daily/resume-gpt-images', async (req, res) => {
     let queueState = await getLocalJson('http://127.0.0.1:5000/api/gpt-queue-state');
     const items = queueState.items || [];
     const queueRecordId = items.map(item => item.publish_record_id || item.publishRecordId || '').find(Boolean) || '';
+    if (requestedRecordId && queueRecordId && requestedRecordId !== queueRecordId) {
+      throw new Error(`GPT 恢复队列属于发布记录 ${queueRecordId}，不能上传到当前记录 ${requestedRecordId}`);
+    }
     const recordId = requestedRecordId || queueRecordId;
     if (!recordId) {
       throw new Error('缺少发布表 recordId：新队列会自动记录；旧队列请手填一次发布表 recordId。');
     }
+    assertGptQueueBoundToRecord(queueState, recordId, 'GPT 恢复队列');
 
     if (items.some(item => item.status === 'failed')) {
       await postLocalJson('http://127.0.0.1:5000/api/gpt-queue-state', { action: 'retry' }, 30000);
     }
     try {
-      await postLocalJson('http://127.0.0.1:8766/gpt_launch', { rotate: false }, 30000);
+      await ensureGptImageProfile(null, GPT_IMAGE_ACCOUNT);
+      await assertGptImageProfileLoggedIn(null, GPT_IMAGE_ACCOUNT);
     } catch (error) {
       throw new Error(`GPT Profile 打开失败：${error.message}`);
     }
@@ -4021,11 +4963,14 @@ app.post('/api/daily/resume-gpt-images', async (req, res) => {
         .map(item => item.result_file || (Array.isArray(item.result_files) ? item.result_files[0] : ''))
         .filter(Boolean);
       if (files.length >= expectedImageCount) {
-        uploadBaseAttachments(recordId, OUTPUT_FIELDS.\u56fe\u7247, files);
-        await Promise.allSettled([
-          postLocalJson('http://127.0.0.1:8766/cleanup_gpt_results', {}, 30000),
-          postLocalJson('http://127.0.0.1:8766/open_publish_page', {}, 30000),
-        ]);
+        assertGptQueueBoundToRecord(queueState, recordId, 'GPT 恢复队列');
+        const checkedFiles = validateGeneratedImageFiles(files, currentItems, expectedImageCount);
+        uploadBaseAttachments(recordId, OUTPUT_FIELDS.\u56fe\u7247, checkedFiles);
+        await waitForOutputImages(recordId, expectedImageCount);
+        cleanupGeneratedImageFiles(checkedFiles);
+        await cleanupGptResultConversations();
+        await ensureXhsPublishProfile(null, 'legacy');
+        await openXhsPublishPageViaCompanion();
         return res.json({ ok: true, recordId, imageCount: files.length, files });
       }
     }
@@ -4409,7 +5354,23 @@ function readRefTable() {
 app.get('/api/context-stats', async (req, res) => {
   try {
     const ctx = await fetchFeishuContext();
-    res.json({ ok: true, iterComp: ctx.iterComp.length, reference: ctx.reference.length });
+    res.json({
+      ok: true,
+      iterComp: ctx.iterComp.length,
+      reference: ctx.reference.length,
+      cache: {
+        cached: !!state.contextCache,
+        ageSeconds: state.contextCache ? Math.round((Date.now() - state.contextCacheTime) / 1000) : null,
+        ttlSeconds: Math.round(CFG.contextCacheTtl / 1000),
+      },
+      lastPrompt: lastPromptSnapshot ? {
+        at: lastPromptSnapshot.at,
+        mode: lastPromptSnapshot.mode,
+        promptChars: lastPromptSnapshot.promptChars || String(lastPromptSnapshot.prompt || '').length,
+        modules: lastPromptSnapshot.modules || [],
+      } : null,
+      promptRunsPath: PROMPT_RUNS_PATH,
+    });
   } catch (e) {
     res.json({ ok: false, error: e.message });
   }
@@ -5660,7 +6621,7 @@ app.post('/api/xhs/import', (req, res) => {
     if (!fresh.length) return res.json({ ok: true, created: 0, duplicate: urls.length, ids: urls.map(url => existing.get(url)).filter(Boolean) });
     const created = larkCli(['--as', 'user', 'base', '+record-batch-create',
       '--base-token', XHS_BASE, '--table-id', XHS_TABLE,
-      '--json', JSON.stringify({ fields: ['地址贴这里', '笔记地址'], rows: fresh.map(url => [url, url]) }),
+      '--json', xhsTempJsonArg('xhs-import', { fields: ['地址贴这里', '笔记地址'], rows: fresh.map(url => [url, url]) }),
       '--format', 'json']);
     const createdIds = created.data?.record_id_list || [];
     const ids = [...createdIds, ...urls.filter(url => existing.has(url)).map(url => existing.get(url))];
@@ -5863,7 +6824,7 @@ app.post('/api/xhs/scrape', (req, res) => {
       try {
         larkCli(['--as', 'user', 'base', '+record-upsert',
           '--base-token', XHS_BASE, '--table-id', XHS_TABLE,
-          '--record-id', rec.id, '--json', JSON.stringify({ '评论文字': result.texts.join('\n') })]);
+          '--record-id', rec.id, '--json', xhsTempJsonArg('xhs-comments', { '评论文字': result.texts.join('\n') })]);
         log('  ✍ 写回飞书完成');
         job.results.push({ id: rec.id, status: 'done', texts: result.texts.length });
       } catch (e) {

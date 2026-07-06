@@ -1,183 +1,234 @@
 {
-  "generatedAt": "2026-06-28T15:13:35.426Z",
+  "generatedAt": "2026-07-05T22:30:00.877Z",
   "recommendations": [
     {
       "id": "topic-1",
       "kind": "行业需求",
-      "trafficKeyword": "烧烤喝什么",
-      "coreConcept": "撸串不点啤酒的那种人",
-      "bridge": "6月下旬烧烤旺季，搜索'烧烤喝什么'的用户正在主动寻找啤酒以外的选项，气泡白酒的解腻感与轻醉速率切入这一场景尚无强势声音",
+      "trafficKeyword": "下班喝的小酒",
+      "searchTerms": [
+        "下班回家想喝点酒喝什么",
+        "下班回家简单喝点酒",
+        "适合下班回家喝的酒",
+        "下班回家喝点小酒"
+      ],
+      "coreConcept": "冷柜前多带一瓶",
+      "bridge": "用户已经在用“下班喝的小酒”找一个今晚能立刻发生的选择，330ml的小瓶气泡白酒可以自然落在便利店冷柜、回家路上和晚饭前的轻决策里。",
       "framework": "B",
       "intervention": "标题开头与标签",
-      "direction": "以'今晚烧烤局'开篇，具体描写不点啤酒改换气泡白酒后的身体感受（不胀肚、不闷热），收尾用'撸串不点啤酒的那种人'做身份标签，引导读者对号入座并主动转发",
-      "rationale": "'烧烤喝什么'在热词中连续出现多条；笔记'我发现了快速掉称的秘密……'（烧烤喝什么词条）获23827赞，'有没有冰冰凉凉好喝的饮料不长胖晚上喝也行'同时出现在'夏天喝什么'与'烧烤喝什么'两个词条下获1423赞，说明这批用户有'解腻+不发胖+好喝'的复合需求；话题'烧烤撸串喝冷啤'（5.3万浏览）仍以啤酒为默认，气泡白酒目前无占位内容",
-      "visual": "首图：产品全瓶锚点图置于户外烤架旁，冰块映衬气泡；第2张：手持产品与烤串同框，背景街边烟火摊；第3张：玻璃杯中气泡特写，与啤酒杯并排对比构图",
-      "score": 87,
+      "direction": "开头从晚上7点半冷柜前写起：本来只想买水，看到青提和菠萝两款330ml后，多带一瓶回家；价格只出现一次，写成“49.9元让我犹豫了一下，但今晚刚好想换个入口”。",
+      "rationale": "核心词下图文笔记《玫瑰车厘子冰酒♥️大数据帮我推给爱喝酒的宝》有10392赞、4154收藏，说明用户会收藏酒饮推荐作为购买参考；话题“下班喝点小酒”有30835浏览，已经形成可识别场景；视频《下班 就是为了喝酒》也验证了下班后喝一杯的情绪钩子。",
+      "visual": "首图拍便利店冷柜灯下的真实产品锚点：每天烈刻瓶身在冷柜边缘清晰可见，旁边有矿泉水或饮料作为犹豫对象；图组补便利店小票、电脑包肩带、开门回家的手部动作、杯壁水汽。",
+      "score": 88,
       "sources": [
-        "xhs-content-plan"
+        "xhs-content-plan",
+        "xiaohongshu-ops"
       ],
       "evidence": [
         {
-          "title": "我发现了快速掉称的秘密……",
-          "source": "xhs_saved_research",
-          "likes": 23827,
-          "cover": ""
+          "type": "normal",
+          "keyword": "下班回家想喝点酒喝什么",
+          "title": "玫瑰车厘子冰酒♥️大数据帮我推给爱喝酒的宝",
+          "source": "xhs_popular",
+          "likes": 10392,
+          "cover": "",
+          "url": "https://www.xiaohongshu.com/explore/669dbfc40000000005007f44?xsec_token=REDACTED&xsec_source=pc_popular"
         },
         {
-          "title": "有没有冰冰凉凉好喝的饮料不长胖晚上喝也行",
-          "source": "xhs_saved_research",
-          "likes": 1423,
-          "cover": ""
-        },
-        {
-          "title": "一个可以反复用的大餐前止损减肥公式",
-          "source": "xhs_saved_research",
-          "likes": 936,
-          "cover": ""
+          "type": "video",
+          "keyword": "下班回家想喝点酒喝什么",
+          "title": "下班 就是为了喝酒",
+          "source": "xhs_popular",
+          "likes": 5598,
+          "cover": "",
+          "url": "https://www.xiaohongshu.com/explore/6836e0e4000000002101a113?xsec_token=REDACTED&xsec_source=pc_popular"
         }
       ]
     },
     {
       "id": "topic-2",
-      "kind": "平台表达",
-      "trafficKeyword": "适合女生在家小酌的酒",
-      "coreConcept": "一个人也要认真开一瓶",
-      "bridge": "'适合女生在家小酌的酒'位列热词首位，对应情绪是独处仪式感而非社交表演，气泡开瓶的声响与视觉天然承载'认真对待自己这一刻'的叙事节奏",
-      "framework": "B",
-      "intervention": "标题开头与标签",
-      "direction": "以某个具体独处时间节点（周五关灯前/浴后十分钟）开篇，逐句写开瓶—倒酒—第一口的感官细节，全文不提喝多少，只写状态变化，结尾落在'一个人也值得认真开一瓶'作为身份确认，引导收藏",
-      "rationale": "搜索词'适合女生在家小酌的酒'位列热词首条；话题'氛围感微醺公式'（44.7万浏览）和'女士微醺酒'（67.9万浏览）近期处于活跃期；笔记'ADHD微醺时效率奇高'获3086赞且评论量达477条，评论/点赞比远高均值，说明用户对'独处+微醺'叙事有强共鸣与表达欲，是可复制的内容结构",
-      "visual": "首图：产品全瓶锚点图，柔光氛围感背景；第2张：床头或窗边俯拍，产品与书、香薰蜡烛同框；第3张：手持产品侧光特写，气泡清晰可见",
-      "score": 83,
+      "kind": "行业需求",
+      "trafficKeyword": "晚上下班回家自己喝点酒吃饭",
+      "searchTerms": [
+        "晚上下班回家自己喝点酒吃饭",
+        "下班后只想喝点酒怎么办",
+        "下班回家想喝点酒喝什么"
+      ],
+      "coreConcept": "外卖旁的半杯",
+      "bridge": "这个搜索不是在问酒单，而是在问一个人吃晚饭时要不要多一个明确的停顿；气泡白酒可以作为外卖旁边那半杯，不抢饭菜主角，只改变这顿饭的边界感。",
+      "framework": "A",
+      "intervention": "整篇语境",
+      "direction": "整篇围绕“外卖已经下单，还差一瓶喝的”写，人物在电梯口看支付页，最后决定多加一瓶；产品只在倒半杯、杯壁起汽泡和桌面真实产品锚点里出现。",
+      "rationale": "热搜表达包含“晚上下班回家自己喝点酒吃饭”，和洞察里的外卖订单、支付页高度一致；《醉爱🥃微醺 | 人生最好的状态恰如微醺》有7303赞、3867收藏，说明“微醺状态”有收藏价值；首页推荐里“当女友在外面坚强独立了一天，晚上回到家后”有8943赞，支持白天硬撑、晚上回家松开的表达。",
+      "visual": "首图为外卖袋、一次性筷子、手机支付页和每天烈刻真实瓶身同框；后续图拍半杯气泡、门口拖鞋、外卖盒打开前的桌面、喝完一口后手机扣在旁边。",
+      "score": 85,
       "sources": [
-        "xhs-content-plan"
+        "xhs-content-plan",
+        "xiaohongshu-ops"
       ],
       "evidence": [
         {
-          "title": "ADHD微醺时效率奇高",
-          "source": "xhs_saved_research",
-          "likes": 3086,
-          "cover": ""
+          "type": "normal",
+          "keyword": "下班回家想喝点酒喝什么",
+          "title": "醉爱🥃微醺 | 人生最好的状态恰如微醺",
+          "source": "xhs_popular",
+          "likes": 7303,
+          "cover": "",
+          "url": "https://www.xiaohongshu.com/explore/5eb516940000000001007406?xsec_token=REDACTED&xsec_source=pc_popular"
         },
         {
-          "title": "一口降温🍃醉清风✨清新温柔的夏日微醺",
-          "source": "xhs_saved_research",
-          "likes": 2844,
-          "cover": ""
+          "type": "video",
+          "keyword": "",
+          "title": "当女友在外面坚强独立了一天，晚上回到家后",
+          "source": "xiaohongshu_home",
+          "likes": 8943,
+          "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/b814d593d2ffceecf65464d32f9d7fbc/1040g00832272fsucn2005od068h8c39dkspvb50!nc_n_webp_prv_1",
+          "url": "https://www.xiaohongshu.com/explore/6a49192f000000000f005b7a?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
         },
         {
-          "title": "上海…夜晚就该浪费在这种好地方🍸·˚",
-          "source": "xhs_saved_research",
-          "likes": 2564,
-          "cover": ""
+          "type": "video",
+          "keyword": "下班回家想喝点酒喝什么",
+          "title": "下班 就是为了喝酒",
+          "source": "xhs_popular",
+          "likes": 5598,
+          "cover": "",
+          "url": "https://www.xiaohongshu.com/explore/6836e0e4000000002101a113?xsec_token=REDACTED&xsec_source=pc_popular"
         }
       ]
     },
     {
       "id": "topic-3",
-      "kind": "平台表达",
-      "trafficKeyword": "微醺",
-      "coreConcept": "刚好够的那种松",
-      "bridge": "微醺话题累计31.9亿浏览，是平台最大情绪容器；'刚好够'对应的是有控制感的微醺而非失控饮酒，气泡白酒的轻盈质地与这种精准状态天然匹配",
+      "kind": "行业需求",
+      "trafficKeyword": "适合下班回家喝的酒",
+      "searchTerms": [
+        "适合下班回家喝的酒",
+        "下班回家简单喝点酒",
+        "女生晚上回家自己喝点酒",
+        "下班回家喝点小酒"
+      ],
+      "coreConcept": "门格里的两个晚上",
+      "bridge": "用户买前的最后顾虑是值不值得多买这一瓶，把青提和菠萝各放一瓶进冰箱门格，能把“买酒”变成“给未来两个晚上留选择”。",
       "framework": "B",
-      "intervention": "标签",
-      "direction": "全文不出现饮酒量描述，专注写微醺状态下3-4个具体身体与情绪片段（思路变清晰、说话变坦诚、睡前回忆更鲜活），每个片段一句话，最后用产品作为进入该状态的工具收尾，标签挂#微醺 #氛围感微醺公式 #刚好够的那种松",
-      "rationale": "话题'微醺'（31.9亿浏览）是平台量级最大的情绪话题；话题'氛围感微醺公式'（44.7万）为近期新建话题，'年轻人微醺新姿势'（9888）亦在增长；笔记'有什么酒在不难喝又最快到达微醺状态呢？'评论达1208条而点赞仅1129，评论量超越点赞本身说明话题尚未被充分回答，存在填空机会",
-      "visual": "首图：产品全瓶锚点图，气泡细节放大清晰；第2张：人物侧脸虚焦+产品前景实焦，灯光柔暖；第3张：书桌或窗边场景，产品置前景，背景城市夜色散焦",
-      "score": 86,
+      "intervention": "标题与标签",
+      "direction": "写周末前一晚回家后整理冰箱：门格空着、购物袋还没收、青提和菠萝各放一瓶；重点写“我不是囤酒，是给两个普通晚上留个开关”。",
+      "rationale": "搜索链从“下班回家想喝点酒喝什么”延伸到“适合下班回家喝的酒”，说明用户需要可复刻、可购买的具体答案；高互动图文酒饮推荐有10392赞和4154收藏，适合做生活切片式仿写；话题“下班回家喝点小酒”有5343浏览，能承接冰箱门格场景。",
+      "visual": "首图必须是冰箱门格真实产品锚点：青提和菠萝两瓶放在门格，瓶身有水汽；图组拍购物袋、厨房冷光、杯子加冰、周五晚上未拆封的一瓶和周六晚已开的一瓶。",
+      "score": 84,
       "sources": [
-        "xhs-content-plan"
+        "xhs-content-plan",
+        "xiaohongshu-ops"
       ],
       "evidence": [
         {
-          "title": "有什么酒在不难喝又最快到达微醺状态呢？",
-          "source": "xhs_saved_research",
-          "likes": 1129,
-          "cover": ""
+          "type": "normal",
+          "keyword": "下班回家想喝点酒喝什么",
+          "title": "玫瑰车厘子冰酒♥️大数据帮我推给爱喝酒的宝",
+          "source": "xhs_popular",
+          "likes": 10392,
+          "cover": "",
+          "url": "https://www.xiaohongshu.com/explore/669dbfc40000000005007f44?xsec_token=REDACTED&xsec_source=pc_popular"
         },
         {
-          "title": "ADHD微醺时效率奇高",
-          "source": "xhs_saved_research",
-          "likes": 3086,
-          "cover": ""
-        },
-        {
-          "title": "一口降温🍃醉清风✨清新温柔的夏日微醺",
-          "source": "xhs_saved_research",
-          "likes": 2844,
-          "cover": ""
+          "type": "normal",
+          "keyword": "下班回家想喝点酒喝什么",
+          "title": "醉爱🥃微醺 | 人生最好的状态恰如微醺",
+          "source": "xhs_popular",
+          "likes": 7303,
+          "cover": "",
+          "url": "https://www.xiaohongshu.com/explore/5eb516940000000001007406?xsec_token=REDACTED&xsec_source=pc_popular"
         }
       ]
     },
     {
       "id": "topic-4",
-      "kind": "行业需求",
-      "trafficKeyword": "青提酒",
-      "coreConcept": "把青提喝出汽水感",
-      "bridge": "青提相关搜索词在热词中密集出现7条（青提茉莉酒/青提调酒/青提伏特加等），说明用户正在主动为青提风味寻找新的酒类载体；气泡白酒可提供'青提+粮食香底+气泡'这一差异化感官组合",
-      "framework": "C",
+      "kind": "平台表达",
+      "trafficKeyword": "下班后微醺小酌",
+      "searchTerms": [
+        "下班后只想喝点酒怎么办",
+        "下班后想喝点酒",
+        "女生晚上回家自己喝点酒",
+        "下班回家喝点酒什么感觉"
+      ],
+      "coreConcept": "先把手机扣下",
+      "bridge": "首页推荐流里“在外面坚强独立一天，晚上回家后”的表达有停留力，和下班后想喝点酒的真实问题可以自然连接：不是为了喝多，而是给工作状态按下暂停。",
+      "framework": "A",
       "intervention": "标题开头与标签",
-      "direction": "以'同样是青提'开篇做三路对比（自泡果酒/青提汽水/气泡白酒），重点写气泡白酒特有的粮食底感带来的层次差异，给调酒爱好者提供一个新实验对象，结尾建议一种具体喝法或温度，激发'我也试试'的行动欲",
-      "rationale": "笔记'60r，好喝疯了'（青提酒词条）获30733赞，是本次采样全部笔记中点赞最高；热词表中青提词条出现密度最高，且调酒方向词（青提朗姆酒/青提伏特加/青提酒调酒）说明这批用户对跨品类实验持开放态度；当前青提酒讨论集中在果酒和自泡领域，白酒品类尚无声音",
-      "visual": "首图：产品全瓶锚点图与青提实物同框；第2张：透明玻璃杯中产品与青提造型，气泡清晰；第3张：三款对比摆拍（自泡果酒/青提汽水/气泡白酒），视觉差异明显",
-      "score": 84,
+      "direction": "标题开头直接写“先把手机扣下”，正文用手机还在震、电脑包还没放稳、先倒半杯这三个动作推进；不要写酒评，把产品写成让今晚暂停一下的物件。",
+      "rationale": "首页推荐样本《当女友在外面坚强独立了一天，晚上回到家后》有8943赞，说明“白天硬撑、晚上回家切换状态”是高互动表达；搜索热词包含“下班后只想喝点酒怎么办”和“女生晚上回家自己喝点酒”，贴合独处微醺问题；图文《醉爱🥃微醺》收藏高，能作为状态型正文母本。",
+      "visual": "首图为茶几俯拍：手机扣着、电脑包肩带露出、每天烈刻瓶身和半杯气泡同框；图组补进门放包、倒酒近景、灯光变暗后的沙发角、未读消息停在屏幕边缘。",
+      "score": 83,
       "sources": [
+        "xiaohongshu-ops",
         "xhs-content-plan"
       ],
       "evidence": [
         {
-          "title": "60r，好喝疯了",
-          "source": "xhs_saved_research",
-          "likes": 30733,
-          "cover": ""
+          "type": "normal",
+          "keyword": "下班回家想喝点酒喝什么",
+          "title": "醉爱🥃微醺 | 人生最好的状态恰如微醺",
+          "source": "xhs_popular",
+          "likes": 7303,
+          "cover": "",
+          "url": "https://www.xiaohongshu.com/explore/5eb516940000000001007406?xsec_token=REDACTED&xsec_source=pc_popular"
         },
         {
-          "title": "居家微醺🍹青提冰啤",
-          "source": "xhs_saved_research",
-          "likes": 2359,
-          "cover": ""
+          "type": "video",
+          "keyword": "",
+          "title": "当女友在外面坚强独立了一天，晚上回到家后",
+          "source": "xiaohongshu_home",
+          "likes": 8943,
+          "cover": "https://sns-webpic-qc.xhscdn.com/202607060146/b814d593d2ffceecf65464d32f9d7fbc/1040g00832272fsucn2005od068h8c39dkspvb50!nc_n_webp_prv_1",
+          "url": "https://www.xiaohongshu.com/explore/6a49192f000000000f005b7a?xsec_token=REDACTED&xsec_source=xiaohongshu_home"
         },
         {
-          "title": "酒鬼严选（穷人版）",
-          "source": "xhs_saved_research",
-          "likes": 2834,
-          "cover": ""
+          "type": "video",
+          "keyword": "下班回家想喝点酒喝什么",
+          "title": "下班 就是为了喝酒",
+          "source": "xhs_popular",
+          "likes": 5598,
+          "cover": "",
+          "url": "https://www.xiaohongshu.com/explore/6836e0e4000000002101a113?xsec_token=REDACTED&xsec_source=pc_popular"
         }
       ]
     },
     {
       "id": "topic-5",
       "kind": "行业需求",
-      "trafficKeyword": "低度酒",
-      "coreConcept": "不拼酒量的新派喝法",
-      "bridge": "搜索词'第一次喝酒推荐什么酒''低度的酒有哪些'标志大量增量用户正在入场；气泡白酒作为'低度+白酒香气'的品类，可成为被传统白酒劝退者的重新入场路径",
-      "framework": "A",
-      "intervention": "标题开头与标签",
-      "direction": "以'被传统白酒劝退三次后'开篇，列出传统白酒三大劝退点（辣/冲/必须干），再一一对应气泡白酒喝法如何打破这三点，结尾用'不拼酒量的新派喝法'做身份锚定，帮用户完成从'不会喝酒'到'选择喝对酒'的身份升级",
-      "rationale": "话题'低度酒'（1889万浏览）持续扩张；热词'第一次喝酒推荐什么酒''低度酒是多少度''低度的酒有哪些'同时出现说明增量新用户持续涌入；笔记'在韩国便利店喝到最好喝的'（低度酒词条）获7813赞且评论量高达2790条，超高评论量说明选酒内容具有强讨论引导力，用户乐于分享推荐",
-      "visual": "首图：产品全瓶锚点图，白酒瓶型清晰、气泡可见；第2张：'传统白酒VS气泡白酒'对比卡片式构图，视觉化呈现差异；第3张：轻松聚会场景（家聚/露营）产品置前景",
-      "score": 80,
+      "trafficKeyword": "下班回家简单喝点酒",
+      "searchTerms": [
+        "下班回家简单喝点酒",
+        "下班回家想喝点酒喝什么",
+        "适合下班回家喝的酒"
+      ],
+      "coreConcept": "回家后的第二选择",
+      "bridge": "她原本只会在奶茶、饮料和什么都不买之间选，气泡白酒要做的是多给普通晚上一个第二选择，而不是把独酌包装成很大的奖励。",
+      "framework": "B",
+      "intervention": "标题与标签",
+      "direction": "从“本来要点奶茶，后来想想还是换成一瓶小酒”写起；正文要把购买动作写轻：路过、拿起、付款、回家放进冰箱门格，避免硬促销语气。",
+      "rationale": "洞察明确用户最后顾虑是“今晚值不值得多买这一瓶”，而热搜链里“下班回家简单喝点酒”“适合下班回家喝的酒”都在寻找低门槛答案；高收藏酒饮图文证明用户会把这类推荐作为后续购买参考；“下班喝点小酒”话题浏览量支持测试轻决策场景。",
+      "visual": "首图用支付页或便利店小票做前景，后景放每天烈刻真实瓶身；图组拍奶茶/饮料与产品在同一冷柜选择线、付款小票、回家放进冰箱门格、倒进杯里起泡的瞬间。",
+      "score": 82,
       "sources": [
-        "xhs-content-plan"
+        "xhs-content-plan",
+        "xiaohongshu-ops"
       ],
       "evidence": [
         {
-          "title": "在韩国便利店喝到最好喝的",
-          "source": "xhs_saved_research",
-          "likes": 7813,
-          "cover": ""
+          "type": "normal",
+          "keyword": "下班回家想喝点酒喝什么",
+          "title": "玫瑰车厘子冰酒♥️大数据帮我推给爱喝酒的宝",
+          "source": "xhs_popular",
+          "likes": 10392,
+          "cover": "",
+          "url": "https://www.xiaohongshu.com/explore/669dbfc40000000005007f44?xsec_token=REDACTED&xsec_source=pc_popular"
         },
         {
-          "title": "谁来解释一下这个现象…",
-          "source": "xhs_saved_research",
-          "likes": 2922,
-          "cover": ""
-        },
-        {
-          "title": "盒马必买的酒直接给到一个夯",
-          "source": "xhs_saved_research",
-          "likes": 1219,
-          "cover": ""
+          "type": "normal",
+          "keyword": "下班回家想喝点酒喝什么",
+          "title": "吧台饮酒规则怪谈",
+          "source": "xhs_popular",
+          "likes": 5218,
+          "cover": "",
+          "url": "https://www.xiaohongshu.com/explore/69dcbeed000000002102d13b?xsec_token=REDACTED&xsec_source=pc_popular"
         }
       ]
     }

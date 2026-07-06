@@ -20,6 +20,7 @@ XHS_CLI = ROOT.parent / "xiaohongshu-cli"
 BASE_TOKEN = "REDACTED"
 TABLE_ID = "tblGpK7czdgjFZbi"
 ATTACHMENT_FIELD = "附件"
+COMMENT_ATTACHMENT_FIELD = "评论图片"
 DOWNLOAD_DIR = ROOT / "xhs-image-cache"
 LARK_CLI = str(Path.home() / "AppData" / "Roaming" / "npm" / "lark-cli.cmd")
 UV_BIN = str(Path.home() / ".local" / "bin" / "uv.exe")
@@ -86,6 +87,8 @@ def scan_records(limit=None, target_ids=None):
             "--field-id", "附件",
             "--field-id", "附件地址",
             "--field-id", "热点来源",
+            "--field-id", "评论文字",
+            "--field-id", "评论图片",
             "--limit", "100",
             "--offset", str(offset),
             "--format", "json",
@@ -102,12 +105,15 @@ def scan_records(limit=None, target_ids=None):
                 url = xhs_extract_url(row[idx["笔记地址"]])
             attachments = row[idx["附件"]] if "附件" in idx else []
             hotspot = str(row[idx["热点来源"]] or "") if "热点来源" in idx else ""
+            comment_text = str(row[idx["评论文字"]] or "") if "评论文字" in idx else ""
+            comment_images = row[idx["评论图片"]] if "评论图片" in idx else []
+            extra = {"has_comments": bool(comment_text.strip()), "has_comment_images": bool(comment_images)}
             if target_ids:
                 if record_id in remaining and url:
-                    records.append({"id": record_id, "url": url, "has_attachments": bool(attachments)})
+                    records.append({"id": record_id, "url": url, "has_attachments": bool(attachments), **extra})
                     remaining.discard(record_id)
             elif url and hotspot and not attachments:
-                records.append({"id": record_id, "url": url, "has_attachments": bool(attachments)})
+                records.append({"id": record_id, "url": url, "has_attachments": bool(attachments), **extra})
             if limit and len(records) >= limit:
                 return records
             if target_ids and not remaining:
@@ -128,6 +134,10 @@ def list_records_by_ids(ids):
 
 def xhs_read(url):
     return run_json([UV_BIN, "run", "xhs", "read", url, "--json"], cwd=XHS_CLI, timeout=75)
+
+
+def xhs_comments(url):
+    return run_json([UV_BIN, "run", "xhs", "comments", url, "--all", "--json"], cwd=XHS_CLI, timeout=120)
 
 
 def first_note_card(payload):
@@ -226,6 +236,12 @@ def update_record(record_id, card, urls):
         name = tag.get("name") or tag.get("tag_name")
         if name:
             tags.append(str(name))
+    interact = card.get("interact_info") or {}
+    def count(name):
+        try:
+            return int(interact.get(name) or 0)
+        except Exception:
+            return 0
     patch = {
         "笔记ID": card.get("note_id") or "",
         "笔记标题": card.get("title") or "",
@@ -234,6 +250,10 @@ def update_record(record_id, card, urls):
         "笔记发布日期": fmt_time(card.get("time")),
         "笔记更新日期": fmt_time(card.get("last_update_time")),
         "附件地址": "\n".join(urls),
+        "点赞数": count("liked_count"),
+        "收藏数": count("collected_count"),
+        "评论数": count("comment_count"),
+        "分享数": count("share_count"),
         **classify_card(card, tags),
     }
     with_tmp_json("competitor-update", patch, lambda json_arg: run_json([
@@ -246,7 +266,7 @@ def update_record(record_id, card, urls):
     ], timeout=45))
 
 
-def upload_attachments(record_id, files):
+def upload_attachments(record_id, files, field=ATTACHMENT_FIELD):
     if not files:
         return
     cmd = [
@@ -254,7 +274,7 @@ def upload_attachments(record_id, files):
         "--base-token", BASE_TOKEN,
         "--table-id", TABLE_ID,
         "--record-id", record_id,
-        "--field-id", ATTACHMENT_FIELD,
+        "--field-id", field,
         "--as", "user",
     ]
     for file in files:
@@ -262,10 +282,63 @@ def upload_attachments(record_id, files):
     run_json(cmd, timeout=120)
 
 
+def effective_comments(payload, limit=10):
+    all_comments = []
+    for comment in ((payload.get("data") or {}).get("comments") or []):
+        all_comments.append(comment)
+        all_comments.extend(comment.get("sub_comments") or [])
+    rows = []
+    for comment in all_comments:
+        text = str(comment.get("content") or "").strip()
+        pictures = comment.get("pictures") or []
+        if len(text) < 15 or not pictures:
+            continue
+        urls = []
+        for picture in pictures:
+            url = picture.get("url_default") or picture.get("url_pre")
+            if url:
+                urls.append(str(url).replace("http://", "https://"))
+        if urls:
+            try:
+                likes = int(comment.get("like_count") or 0)
+            except Exception:
+                likes = 0
+            rows.append({"text": text, "likes": likes, "urls": urls})
+    rows.sort(key=lambda item: (-item["likes"], -len(item["text"])))
+    return rows[:max(1, limit)]
+
+
+def download_comment_images(record_id, comments):
+    DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    files = []
+    for i, comment in enumerate(comments, 1):
+        # Keep one representative image per effective comment so text/image remain paired.
+        url = comment["urls"][0]
+        target = DOWNLOAD_DIR / f"{record_id}-comment-{i:02d}.webp"
+        req = Request(url, headers={"User-Agent": "Mozilla/5.0", "Referer": "https://www.xiaohongshu.com/"})
+        with urlopen(req, timeout=30) as resp:
+            target.write_bytes(resp.read())
+        files.append(target.relative_to(ROOT).as_posix())
+    return files
+
+
+def update_comments(record_id, comments):
+    text = "\n\n".join(f"{i}. {item['text']}" for i, item in enumerate(comments, 1))
+    with_tmp_json("competitor-comments", {"评论文字": text}, lambda json_arg: run_json([
+        LARK_CLI, "base", "+record-upsert",
+        "--base-token", BASE_TOKEN,
+        "--table-id", TABLE_ID,
+        "--record-id", record_id,
+        "--json", json_arg,
+        "--as", "user",
+    ], timeout=45))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=3)
     parser.add_argument("--max-images", type=int, default=9)
+    parser.add_argument("--max-comments", type=int, default=10)
     parser.add_argument("--record-ids", default="", help="Comma-separated Feishu record ids to enrich")
     args = parser.parse_args()
 
@@ -282,7 +355,16 @@ def main():
             if not rec.get("has_attachments"):
                 files = download_images(rec["id"], urls, max(1, args.max_images))
                 upload_attachments(rec["id"], files)
-            results.append({"id": rec["id"], "ok": True, "images": len(files), "title": card.get("title") or ""})
+            comment_rows = []
+            comment_files = []
+            if not (rec.get("has_comments") and rec.get("has_comment_images")):
+                comment_rows = effective_comments(xhs_comments(rec["url"]), args.max_comments)
+                if comment_rows:
+                    update_comments(rec["id"], comment_rows)
+                    if not rec.get("has_comment_images"):
+                        comment_files = download_comment_images(rec["id"], comment_rows)
+                        upload_attachments(rec["id"], comment_files, COMMENT_ATTACHMENT_FIELD)
+            results.append({"id": rec["id"], "ok": True, "images": len(files), "comments": len(comment_rows), "comment_images": len(comment_files), "title": card.get("title") or ""})
             time.sleep(1.2)
         except Exception as exc:
             results.append({"id": rec["id"], "ok": False, "error": str(exc)[:500]})

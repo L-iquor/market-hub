@@ -4,7 +4,10 @@ import re
 import subprocess
 import sys
 import time
+import urllib.parse
+import urllib.request
 from datetime import datetime
+from itertools import count as iter_count
 from pathlib import Path
 
 import requests
@@ -40,7 +43,7 @@ def load_config():
         config["cacheHours"] = max(0.25, min(float(incoming["cacheHours"]), 24))
     seeds = incoming.get("seeds")
     if isinstance(seeds, list):
-        cleaned = [str(seed).strip() for seed in seeds if str(seed).strip()]
+        cleaned = list(dict.fromkeys(str(seed).strip() for seed in seeds if str(seed).strip()))
         if cleaned:
             config["seeds"] = cleaned[:20]
     sources = incoming.get("sources")
@@ -63,17 +66,203 @@ def run_xhs(*args):
         timeout=60,
     )
     time.sleep(1.5)
-    if proc.returncode:
-        return {"ok": False, "error": proc.stderr.strip() or proc.stdout.strip()}
     try:
-        return json.loads(proc.stdout)
+        payload = json.loads(proc.stdout)
+        if proc.stderr.strip():
+            payload["stderr"] = proc.stderr.strip()
+        return payload
     except json.JSONDecodeError as exc:
+        if proc.returncode:
+            return {"ok": False, "error": {"code": "command_failed", "message": proc.stderr.strip() or proc.stdout.strip()}}
         return {"ok": False, "error": f"invalid xhs json: {exc}"}
+
+
+def error_code(payload):
+    error = (payload or {}).get("error") or {}
+    return str(error.get("code") or "") if isinstance(error, dict) else ""
+
+
+def error_message(payload):
+    error = (payload or {}).get("error") or {}
+    if isinstance(error, dict):
+        return str(error.get("message") or error.get("code") or "failed")
+    return str(error or "failed")
 
 
 def check_xhs_status():
     try:
         return run_xhs("status")
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+
+def sync_xhs_cookies_from_cdp(cdp_port=None):
+    """Reuse the already-open publisher Chromium login before asking for QR again."""
+    raw_ports = []
+    if cdp_port:
+        raw_ports.append(cdp_port)
+    raw_ports.extend(
+        part.strip()
+        for part in str(os.environ.get("XHS_COOKIE_CDP_PORTS") or "9224,9223").split(",")
+        if part.strip()
+    )
+    ports = []
+    for port in raw_ports:
+        try:
+            port = int(port)
+        except Exception:
+            continue
+        if port not in ports:
+            ports.append(port)
+    errors = []
+    for port in ports:
+        result = _sync_xhs_cookies_from_single_cdp(port)
+        if result.get("ok"):
+            return result
+        errors.append(f"{port}:{result.get('error') or 'failed'}")
+    return {"ok": False, "error": "; ".join(errors) or "no_cdp_port"}
+
+
+def _sync_xhs_cookies_from_single_cdp(cdp_port=9223):
+    try:
+        import websocket
+
+        tabs = json.loads(
+            urllib.request.urlopen(f"http://127.0.0.1:{cdp_port}/json", timeout=3).read().decode("utf-8")
+        )
+        target = next(
+            (
+                tab for tab in tabs
+                if tab.get("webSocketDebuggerUrl")
+                and (
+                    "xiaohongshu.com" in str(tab.get("url") or "")
+                    or "xiaohongshu.com" in str(tab.get("title") or "")
+                )
+            ),
+            None,
+        ) or next((tab for tab in tabs if tab.get("webSocketDebuggerUrl")), None)
+        if not target:
+            return {"ok": False, "error": "no_cdp_target"}
+
+        ws = websocket.create_connection(target["webSocketDebuggerUrl"], timeout=5)
+        ids = iter_count(1)
+
+        def call(method, params=None):
+            message_id = next(ids)
+            ws.send(json.dumps({"id": message_id, "method": method, "params": params or {}}))
+            deadline = time.time() + 8
+            while time.time() < deadline:
+                payload = json.loads(ws.recv())
+                if payload.get("id") == message_id:
+                    if payload.get("error"):
+                        raise RuntimeError(payload["error"].get("message") or str(payload["error"]))
+                    return payload.get("result") or {}
+            raise TimeoutError(method)
+
+        try:
+            # Chrome for Testing / newer Chromium builds may return an empty
+            # Network.getAllCookies payload even when the page itself is logged
+            # in. Storage.getCookies is the more reliable browser-wide source
+            # for HttpOnly cookies such as web_session and creator tokens.
+            try:
+                storage_payload = call("Storage.getCookies")
+                cookies_payload = {"cookies": storage_payload.get("cookies") or []}
+            except Exception:
+                cookies_payload = call("Network.getAllCookies")
+        finally:
+            try:
+                ws.close()
+            except Exception:
+                pass
+
+        cookies = {}
+        for item in cookies_payload.get("cookies") or []:
+            domain = str(item.get("domain") or "")
+            name = str(item.get("name") or "")
+            value = str(item.get("value") or "")
+            if "xiaohongshu.com" in domain and name and value:
+                cookies[name] = value
+        missing = [name for name in ("a1", "webId", "web_session") if not cookies.get(name)]
+        if missing:
+            return {"ok": False, "error": f"incomplete_cookies:{','.join(missing)}", "count": len(cookies)}
+
+        sys.path.insert(0, str(XHS_CLI))
+        from xhs_cli.cookies import save_cookies
+
+        save_cookies(cookies)
+        return {"ok": True, "source": target.get("url", ""), "count": len(cookies), "port": cdp_port}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+
+def _cdp_page_target(cdp_port=9224, host="xiaohongshu.com"):
+    tabs = json.loads(
+        urllib.request.urlopen(f"http://127.0.0.1:{cdp_port}/json", timeout=3).read().decode("utf-8")
+    )
+    return next(
+        (
+            tab for tab in tabs
+            if tab.get("type") == "page"
+            and tab.get("webSocketDebuggerUrl")
+            and host in str(tab.get("url") or "")
+        ),
+        None,
+    ) or next((tab for tab in tabs if tab.get("type") == "page" and tab.get("webSocketDebuggerUrl")), None)
+
+
+def browser_xhs_logged_in(cdp_port=9224):
+    """Return True when the open browser is a real logged-in XHS/creator page.
+
+    xhs-cli status can report guest for creator-platform cookies, while the
+    browser can still publish. This check only gates browser fallback paths; it
+    does not pretend CLI API auth is valid.
+    """
+    try:
+        import websocket
+
+        target = _cdp_page_target(cdp_port, "xiaohongshu.com")
+        if not target:
+            return {"ok": False, "error": "no_xhs_page"}
+        ws = websocket.create_connection(target["webSocketDebuggerUrl"], timeout=5)
+        ids = iter_count(1)
+
+        def call(method, params=None):
+            message_id = next(ids)
+            ws.send(json.dumps({"id": message_id, "method": method, "params": params or {}}))
+            deadline = time.time() + 8
+            while time.time() < deadline:
+                payload = json.loads(ws.recv())
+                if payload.get("id") == message_id:
+                    if payload.get("error"):
+                        raise RuntimeError(payload["error"].get("message") or str(payload["error"]))
+                    return payload.get("result") or {}
+            raise TimeoutError(method)
+
+        try:
+            call("Runtime.enable")
+            page = call("Runtime.evaluate", {
+                "expression": "({title:document.title,url:location.href,text:(document.body.innerText||'').slice(0,800)})",
+                "returnByValue": True,
+            }).get("result", {}).get("value") or {}
+            cookies_payload = call("Storage.getCookies")
+        finally:
+            try:
+                ws.close()
+            except Exception:
+                pass
+
+        cookie_names = {
+            str(item.get("name") or "")
+            for item in cookies_payload.get("cookies") or []
+            if "xiaohongshu.com" in str(item.get("domain") or "")
+        }
+        text = str(page.get("text") or "")
+        login_text = "登录" in text and "创作服务平台" not in text
+        has_creator = "access-token-creator.xiaohongshu.com" in cookie_names or "galaxy_creator_session_id" in cookie_names
+        has_web = "web_session" in cookie_names and "a1" in cookie_names and "webId" in cookie_names
+        if (has_creator or has_web) and not login_text:
+            return {"ok": True, "page": page, "cookies": sorted(cookie_names)}
+        return {"ok": False, "page": page, "cookies": sorted(cookie_names), "error": "browser_xhs_not_logged_in"}
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
 
@@ -85,6 +274,29 @@ def ensure_xhs_authenticated(wait_seconds=120):
     guest = bool(user.get("guest"))
     if authenticated and not guest:
         return {"ok": True, "status": status, "needs_login": False}
+
+    synced = sync_xhs_cookies_from_cdp()
+    if synced.get("ok"):
+        status = check_xhs_status()
+        user = ((status or {}).get("data") or {}).get("user") or {}
+        authenticated = bool((status or {}).get("ok")) and bool((status or {}).get("data", {}).get("authenticated"))
+        guest = bool(user.get("guest"))
+        if authenticated and not guest:
+            return {"ok": True, "status": status, "needs_login": False, "synced_from_cdp": True}
+
+    browser_auth = browser_xhs_logged_in(9224)
+    if browser_auth.get("ok"):
+        return {
+            "ok": True,
+            "status": status,
+            "needs_login": False,
+            "browser_fallback": True,
+            "browser": browser_auth,
+            "sync": synced,
+        }
+
+    if os.environ.get("XHS_ALLOW_QR_LOGIN") != "1":
+        return {"ok": False, "status": status, "needs_login": True, "error": "xhs_login_required", "sync": synced}
 
     helper = ROOT / "scripts" / "xhs-login-qrcode.ps1"
     if helper.exists():
@@ -212,8 +424,154 @@ def notes_from(payload, source, keyword=""):
             "comments": count(interact.get("comment_count")),
             "cover": cover_url(card),
             "author": (card.get("user") or {}).get("nickname", ""),
+            "url": (
+                f"https://www.xiaohongshu.com/explore/{item.get('id')}"
+                f"?xsec_token={xsec_token}&xsec_source={xsec_source}"
+                if item.get("id") else ""
+            ),
         })
     return notes, hot_queries
+
+
+def browser_search_notes(keyword, sort="popular", cdp_port=9224, max_notes=18):
+    """Scrape the logged-in Xiaohongshu web search page as a fallback.
+
+    This intentionally opens a separate search tab in the existing 9224 browser
+    and does not close or restart the publisher window. It is used only when the
+    xhs-cli API search is unavailable/permission-blocked.
+    """
+    try:
+        import websocket
+
+        version = json.loads(
+            urllib.request.urlopen(f"http://127.0.0.1:{cdp_port}/json/version", timeout=3).read().decode("utf-8")
+        )
+        browser_ws = websocket.create_connection(version["webSocketDebuggerUrl"], timeout=5)
+        ids = iter_count(1)
+
+        def bcall(method, params=None):
+            message_id = next(ids)
+            browser_ws.send(json.dumps({"id": message_id, "method": method, "params": params or {}}))
+            deadline = time.time() + 8
+            while time.time() < deadline:
+                payload = json.loads(browser_ws.recv())
+                if payload.get("id") == message_id:
+                    if payload.get("error"):
+                        raise RuntimeError(payload["error"].get("message") or str(payload["error"]))
+                    return payload.get("result") or {}
+            raise TimeoutError(method)
+
+        encoded = urllib.parse.quote(keyword)
+        url = f"https://www.xiaohongshu.com/search_result?keyword={encoded}&source=web_search_result_notes&type=51"
+        created = bcall("Target.createTarget", {"url": url, "newWindow": False, "background": False})
+        target_id = created.get("targetId")
+        browser_ws.close()
+
+        page_target = None
+        deadline = time.time() + 20
+        while time.time() < deadline and not page_target:
+            tabs = json.loads(
+                urllib.request.urlopen(f"http://127.0.0.1:{cdp_port}/json", timeout=3).read().decode("utf-8")
+            )
+            page_target = next((tab for tab in tabs if tab.get("id") == target_id and tab.get("webSocketDebuggerUrl")), None)
+            time.sleep(0.5)
+        if not page_target:
+            return [], [f"{keyword}/{sort}: browser_target_not_ready"]
+
+        ws = websocket.create_connection(page_target["webSocketDebuggerUrl"], timeout=5)
+        pids = iter_count(1000)
+
+        def call(method, params=None):
+            message_id = next(pids)
+            ws.send(json.dumps({"id": message_id, "method": method, "params": params or {}}))
+            deadline = time.time() + 10
+            while time.time() < deadline:
+                payload = json.loads(ws.recv())
+                if payload.get("id") == message_id:
+                    if payload.get("error"):
+                        raise RuntimeError(payload["error"].get("message") or str(payload["error"]))
+                    return payload.get("result") or {}
+            raise TimeoutError(method)
+
+        try:
+            call("Runtime.enable")
+            call("Page.enable")
+            for _ in range(12):
+                time.sleep(1)
+                state = call("Runtime.evaluate", {
+                    "expression": "document.querySelectorAll('a[href*=\"/explore/\"]').length",
+                    "returnByValue": True,
+                }).get("result", {}).get("value")
+                if int(state or 0) >= 3:
+                    break
+            expr = r"""
+(() => {
+  const parseCount = (text) => {
+    text = String(text || '').replace(/,/g, '').trim();
+    let m = text.match(/(\d+(?:\.\d+)?)\s*万/);
+    if (m) return Math.round(Number(m[1]) * 10000);
+    m = text.match(/(\d+(?:\.\d+)?)/);
+    return m ? Math.round(Number(m[1])) : 0;
+  };
+  const anchors = [...document.querySelectorAll('a[href*="/explore/"]')];
+  const rows = [];
+  const seen = new Set();
+  for (const a of anchors) {
+    const href = new URL(a.getAttribute('href'), location.href).href;
+    const id = (href.match(/\/explore\/([^?/#]+)/) || [])[1] || '';
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    const card = a.closest('section') || a.closest('[class*="card"]') || a.parentElement || a;
+    const text = (card.innerText || a.innerText || '').trim();
+    const lines = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    const title = lines.find(s => !/赞|评论|收藏|关注|作者|广告/.test(s) && s.length >= 3) || (a.innerText || '').trim() || lines[0] || '';
+    const img = card.querySelector('img')?.src || a.querySelector('img')?.src || '';
+    const likes = parseCount(lines.find(s => /赞|喜欢|like/i.test(s)) || lines[lines.length - 1] || '');
+    rows.push({id, href, title, text: text.slice(0, 220), img, likes});
+  }
+  return {title: document.title, url: location.href, rows: rows.slice(0, 30), body: (document.body.innerText || '').slice(0, 500)};
+})()
+"""
+            data = call("Runtime.evaluate", {
+                "expression": expr,
+                "returnByValue": True,
+                "awaitPromise": True,
+            }).get("result", {}).get("value") or {}
+        finally:
+            try:
+                ws.close()
+            except Exception:
+                pass
+
+        notes = []
+        for row in data.get("rows") or []:
+            title = str(row.get("title") or "").strip()
+            if not title:
+                continue
+            relevance = relevance_score(title, row.get("text") or "", [], keyword)
+            if keyword and relevance < 1:
+                continue
+            notes.append({
+                "id": row.get("id") or "",
+                "xsec_token": "",
+                "xsec_source": "pc_search_browser",
+                "title": title,
+                "desc": row.get("text") or "",
+                "type": "image",
+                "tags": [],
+                "relevance": relevance,
+                "keyword": keyword,
+                "source": f"xhs_browser_{sort}",
+                "likes": int(row.get("likes") or 0),
+                "collects": 0,
+                "comments": 0,
+                "cover": row.get("img") or "",
+                "author": "",
+                "url": row.get("href") or (f"https://www.xiaohongshu.com/explore/{row.get('id')}" if row.get("id") else ""),
+            })
+        return notes[:max_notes], ([] if notes else [f"{keyword}/{sort}: browser_search_empty"])
+    except Exception as exc:
+        return [], [f"{keyword}/{sort}: browser_search_failed:{exc}"]
 
 
 def fetch_tophub():
@@ -316,9 +674,10 @@ def main():
             "error": "XHS 登录态未就绪，已尝试打开登录助手，请先扫码后重跑。",
             "details": auth,
         }
-        OUTPUT.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
         print(json.dumps(result, ensure_ascii=False))
-        return
+        # Keep the last successful signal cache intact. A transient login expiry
+        # must not replace useful research data with an error document.
+        raise SystemExit(2)
     reuse_saved = os.environ.get("TOPIC_REUSE_SAVED") == "1"
     skip_search = os.environ.get("TOPIC_SKIP_SEARCH") == "1"
     feed_payload = {"ok": False} if reuse_saved or not sources.get("homeFeed", True) else run_xhs("feed")
@@ -328,7 +687,10 @@ def main():
     topics = []
     hot_queries = []
     errors = []
+    search_blocked = False
     for seed in ([] if reuse_saved or skip_search else seeds):
+        if search_blocked:
+            break
         if sources.get("keywordSearch", True):
             for sort in ("popular", "latest"):
                 payload = run_xhs("search", seed, "--sort", sort)
@@ -337,7 +699,19 @@ def main():
                     searches.extend(notes[:12])
                     hot_queries.extend(queries)
                 else:
-                    errors.append(f"{seed}/{sort}: {payload.get('error', 'failed')}")
+                    if error_code(payload) == "verification_required":
+                        errors.append("xhs_search_verification_required")
+                        search_blocked = True
+                        break
+                    fallback_notes, fallback_errors = browser_search_notes(seed, sort)
+                    if fallback_notes:
+                        searches.extend(fallback_notes[:12])
+                        errors.append(f"{seed}/{sort}: xhs_cli_failed_browser_fallback_used: {error_message(payload)}")
+                    else:
+                        errors.append(f"{seed}/{sort}: {error_message(payload)}")
+                        errors.extend(fallback_errors)
+        if search_blocked:
+            break
         if sources.get("topicSearch", True):
             payload = run_xhs("topics", seed)
             if payload.get("ok"):
