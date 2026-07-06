@@ -6554,6 +6554,54 @@ app.get('/api/xhs/status', (req, res) => {
   } catch (e) { res.json({ ok: false, code: 'exception', error: e.message }); }
 });
 
+app.post('/api/xhs/open-verify', async (req, res) => {
+  try {
+    const targetUrl = String(req.body?.url || 'https://www.xiaohongshu.com/').trim();
+    const parsed = new URL(targetUrl);
+    const host = parsed.hostname.toLowerCase();
+    const allowed = host === 'xiaohongshu.com'
+      || host.endsWith('.xiaohongshu.com')
+      || host === 'xhslink.com'
+      || host.endsWith('.xhslink.com');
+    if (!allowed || !/^https?:$/.test(parsed.protocol)) {
+      return res.json({ ok: false, error: '只允许打开小红书相关链接' });
+    }
+    await ensureXhsPublishProfile(null, 'legacy');
+    const tab = await openCdpUrl(XHS_CDP_PORT, parsed.toString());
+    res.json({ ok: true, url: parsed.toString(), port: XHS_CDP_PORT, tab });
+  } catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/xhs/sync-cookies', (req, res) => {
+  try {
+    const code = [
+      'import json',
+      'import topic_pipeline',
+      'result = topic_pipeline.sync_xhs_cookies_from_cdp()',
+      'print(json.dumps(result, ensure_ascii=False))',
+    ].join('\n');
+    const r = spawnSync('python', ['-c', code], {
+      cwd: __dirname,
+      encoding: 'utf8',
+      timeout: 30000,
+      windowsHide: true,
+      env: {
+        ...process.env,
+        PYTHONIOENCODING: 'utf-8',
+        XHS_COOKIE_CDP_PORTS: String(req.body?.ports || `${XHS_CDP_PORT},${GPT_CDP_PORT}`),
+      },
+    });
+    const stdout = String(r.stdout || '').trim();
+    if (r.error) throw r.error;
+    if (r.status !== 0) throw new Error(String(r.stderr || stdout || `python exit ${r.status}`).slice(0, 800));
+    const jsonLine = stdout.split(/\r?\n/).map(s => s.trim()).filter(Boolean).pop() || '{}';
+    let payload;
+    try { payload = JSON.parse(jsonLine); }
+    catch { throw new Error(`cookie sync returned non-JSON: ${stdout.slice(0, 500)}`); }
+    res.json(payload.ok ? { ok: true, ...payload } : { ok: false, ...payload });
+  } catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
 app.post('/api/xhs/enrich-competitor-images', (req, res) => {
   const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter(Boolean) : [];
   const limit = Math.max(1, Math.min(100, Number(req.body?.limit || 30)));

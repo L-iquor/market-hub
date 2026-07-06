@@ -296,6 +296,21 @@ label { font-size:13px; color:var(--muted); }
 }
 .ctx-stats .row { display:flex; justify-content:space-between; padding:2px 0; }
 .ctx-stats .val { color:var(--text); font-weight:500; }
+.ctx-harness {
+  margin-top:8px; padding-top:8px; border-top:1px solid var(--border2);
+  display:flex; flex-direction:column; gap:2px;
+}
+.ctx-source-list {
+  display:flex; justify-content:flex-end; gap:4px; flex-wrap:wrap; max-width:170px;
+}
+.ctx-source-list span,
+.prompt-module-meta span {
+  border:1px solid var(--border2); background:var(--bg2); color:var(--muted);
+  border-radius:4px; padding:1px 5px; font-size:10px; line-height:1.5;
+}
+.prompt-module-meta {
+  display:flex; gap:5px; flex-wrap:wrap; margin-bottom:8px;
+}
 
 /* ── 结果区 ── */
 .result-header {
@@ -1566,6 +1581,12 @@ label { font-size:13px; color:var(--muted); }
           </div>
         </div>
         <div class="row"><span>参考爆款</span><span class="val" id="ctxRef">加载中…</span></div>
+        <div class="ctx-harness">
+          <div class="row"><span>Prompt 规模</span><span class="val" id="ctxPromptChars">暂无</span></div>
+          <div class="row"><span>模块 / 裁剪</span><span class="val" id="ctxModuleStats">暂无</span></div>
+          <div class="row"><span>缓存</span><span class="val" id="ctxCacheAge">暂无</span></div>
+          <div class="row"><span>来源</span><span class="ctx-source-list" id="ctxSourceBreakdown"><span>暂无</span></span></div>
+        </div>
       </div>
     </aside>
 
@@ -1930,6 +1951,10 @@ label { font-size:13px; color:var(--muted); }
             <button class="btn btn-sm" style="font-size:11px;padding:3px 8px" onclick="toggleIterForm('batch')">取消</button>
             <span id="iterStatusBatch" style="font-size:10px;color:var(--muted)"></span>
           </div>
+        </div>
+        <div class="ctx-harness">
+          <div class="row"><span>最近 Prompt</span><span class="val" id="batchCtxPromptChars">暂无</span></div>
+          <div class="row"><span>模块 / 裁剪</span><span class="val" id="batchCtxModuleStats">暂无</span></div>
         </div>
       </div>
     </aside>
@@ -4191,6 +4216,40 @@ async function loadContextStats() {
     if (elRef)  elRef.textContent  = r.reference + ' 条';
     const bIter = document.getElementById('batchCtxIter');
     if (bIter) bIter.textContent = r.iterComp + ' 条';
+    const last = r.lastPrompt || {};
+    const modules = Array.isArray(last.modules) ? last.modules : [];
+    const trimmed = modules.filter(m => m && m.trimmed).length;
+    const sourceCounts = modules.reduce((acc, m) => {
+      const source = (m && m.source) || 'local';
+      acc[source] = (acc[source] || 0) + 1;
+      return acc;
+    }, {});
+    const promptChars = document.getElementById('ctxPromptChars');
+    const moduleStats = document.getElementById('ctxModuleStats');
+    const cacheAge = document.getElementById('ctxCacheAge');
+    const sourceEl = document.getElementById('ctxSourceBreakdown');
+    const batchPromptChars = document.getElementById('batchCtxPromptChars');
+    const batchModuleStats = document.getElementById('batchCtxModuleStats');
+    const fmtChars = n => Number(n || 0).toLocaleString() + ' 字符';
+    const fmtAge = seconds => {
+      const n = Number(seconds);
+      if (!Number.isFinite(n)) return '未知';
+      if (n < 60) return Math.max(0, Math.round(n)) + ' 秒前';
+      if (n < 3600) return Math.round(n / 60) + ' 分钟前';
+      return Math.round(n / 3600) + ' 小时前';
+    };
+    const lastChars = Number(last.totalChars || last.promptChars || 0);
+    if (promptChars) promptChars.textContent = lastChars ? fmtChars(lastChars) : '暂无';
+    if (moduleStats) moduleStats.textContent = modules.length ? `${modules.length} 个 / ${trimmed} 裁剪` : '暂无';
+    if (cacheAge) cacheAge.textContent = r.cache?.ageSeconds == null ? '暂无' : fmtAge(r.cache.ageSeconds);
+    if (sourceEl) {
+      const entries = Object.entries(sourceCounts);
+      sourceEl.innerHTML = entries.length
+        ? entries.map(([k, v]) => `<span>${escHtml(k)} ${v}</span>`).join('')
+        : '<span>暂无</span>';
+    }
+    if (batchPromptChars) batchPromptChars.textContent = lastChars ? fmtChars(lastChars) : '暂无';
+    if (batchModuleStats) batchModuleStats.textContent = modules.length ? `${modules.length} 个 / ${trimmed} 裁剪` : '暂无';
   } catch(e) {}
 }
 
@@ -5584,6 +5643,10 @@ async function openPromptOverlay(mode = 'single', overrideBody = null) {
     if (stats.iterComp) statParts.push(`修改${stats.iterComp}条`);
     if (stats.reference) statParts.push(`爆款${stats.reference}条`);
     if (stats.titles) statParts.push(`标题${stats.titles}条`);
+    if (stats.harness?.moduleCount) {
+      const trimmedCount = (stats.harness.modules || []).filter(m => m.trimmed).length;
+      statParts.push(`上下文${stats.harness.moduleCount}段 / 裁剪${trimmedCount}段`);
+    }
     const summaryHtml = `<div style="margin-bottom:14px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;line-height:1.8">
       <div style="color:var(--dim);margin-bottom:6px;font-size:11px">当前生成参数</div>
       <div style="display:flex;flex-wrap:wrap;gap:5px">
@@ -5596,6 +5659,13 @@ async function openPromptOverlay(mode = 'single', overrideBody = null) {
     list.innerHTML = summaryHtml + r.modules.map((m, i) => {
       const key = m.key || '';
       const canSave = key && (SAVEABLE_KEYS.has(key) || key.startsWith('fw-body-') || key.startsWith('fw-example-'));
+      const content = m.content || '';
+      const moduleChars = Number(m.chars || content.length || 0);
+      const meta = [
+        m.source ? `source:${m.source}` : '',
+        m.priority != null ? `P${m.priority}` : '',
+        m.trimmed ? '已裁剪' : '完整',
+      ].filter(Boolean);
       const saveRow = canSave
         ? `<div style="display:flex;gap:8px;align-items:center;margin-top:8px">
              <button class="btn btn-primary btn-sm" style="font-size:11px" onclick="saveModule(${i},'${escJs(key)}')">💾 保存到文件</button>
@@ -5607,10 +5677,11 @@ async function openPromptOverlay(mode = 'single', overrideBody = null) {
       <div class="prompt-module">
         <div class="prompt-module-head" onclick="toggleModule(${i})">
           <span>${escHtml(m.name)}${canSave ? ' <span style="font-size:10px;color:var(--gold);margin-left:4px">可保存</span>' : ''}</span>
-          <span class="mod-chars" id="mod-chars-${i}">${m.content.length.toLocaleString()} 字符 ▸</span>
+          <span class="mod-chars" id="mod-chars-${i}">${moduleChars.toLocaleString()} 字符${m.trimmed ? ' · 裁剪' : ''} ▸</span>
         </div>
         <div class="prompt-module-content" id="mod-${i}">
-          <textarea id="mod-ta-${i}" style="width:100%;font-size:12px;font-family:monospace;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:10px;resize:none;line-height:1.7;box-sizing:border-box;overflow:hidden;display:block" onkeydown="event.stopPropagation()" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'">${escHtml(m.content)}</textarea>
+          ${meta.length ? `<div class="prompt-module-meta">${meta.map(item => `<span>${escHtml(item)}</span>`).join('')}</div>` : ''}
+          <textarea id="mod-ta-${i}" style="width:100%;font-size:12px;font-family:monospace;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:10px;resize:none;line-height:1.7;box-sizing:border-box;overflow:hidden;display:block" onkeydown="event.stopPropagation()" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'">${escHtml(content)}</textarea>
           ${saveRow}
         </div>
       </div>`;
