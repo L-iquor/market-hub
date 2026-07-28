@@ -35,7 +35,7 @@ const XHS_LEGACY_PROFILE_FRAGMENT = path.join('xhs-publisher', 'chrome-ext-profi
 const IMAGE_POOL_CONFIG_PATH = path.join(__dirname, 'image-pool-config.json');
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp']);
 const IMAGE_CACHE_DIR = path.join(__dirname, 'feishu-image-cache');
-const FEISHU_RESULT_BASE = 'REDACTED';
+const FEISHU_RESULT_BASE = process.env.FEISHU_RESULT_BASE_TOKEN || '';
 const FEISHU_RESULT_SCENE_TABLE = 'tblpU9jAjb26Nelp';
 const FEISHU_RESULT_FIELDS = {
   name: 'fldgghMP0S',
@@ -561,8 +561,8 @@ function extractField(record, idxMap, fieldCfg) {
 }
 
 // ─── 素材库（人/货/场）表配置 ────────────────────────────────────────
-const MAT_BASE = 'REDACTED'; // 内容生产表，非 CFG.feishu.baseToken
-const OUTPUT_BASE  = 'REDACTED'; // 脚本生产输出表
+const MAT_BASE = process.env.MAT_BASE_TOKEN || process.env.FEISHU_BASE_TOKEN || ''; // 内容生产表
+const OUTPUT_BASE  = process.env.OUTPUT_BASE_TOKEN || ''; // 脚本生产输出表
 const OUTPUT_TABLE = 'tblagggirJGbcWIh';
 const MATERIALS_CFG = {
   人: {
@@ -1863,7 +1863,7 @@ async function waitForOutputImages(recordId, expectedImageCount, timeoutMs = 900
   throw new Error(`飞书附件上传未完成：图片=${(last.images || []).length}/${expectedImageCount}`);
 }
 
-const WORK_BASE = 'REDACTED';
+const WORK_BASE = process.env.WORK_BASE_TOKEN || '';
 const WORK_TABLES = {
   tasks: { id: 'tblYrOGqZbPv18eF', name: '统一任务池' },
   reports: { id: 'tblpB7KAgqRl9XJ1', name: '每日工作汇报-剪辑运营助理' },
@@ -5850,7 +5850,7 @@ ${skill}
 app.get('/api/ares/hot-topics', (req, res) => {
   try {
     const r = larkCli(['--as', 'user', 'base', '+record-list',
-      '--base-token', 'REDACTED',
+      '--base-token', process.env.FEISHU_BASE_TOKEN || '',
       '--table-id', 'tblto6HMz9sjdgTp',
       '--limit', '8', '--format', 'json']);
     const items = (r.data?.items || []).map(rec => {
@@ -5865,7 +5865,7 @@ app.get('/api/ares/hot-topics', (req, res) => {
 app.get('/api/ares/recent-kb', (req, res) => {
   try {
     const r = larkCli(['--as', 'user', 'base', '+record-list',
-      '--base-token', 'REDACTED',
+      '--base-token', process.env.FEISHU_BASE_TOKEN || '',
       '--table-id', 'tbl8GgYJbuObKWtE',
       '--limit', '8', '--format', 'json',
       '--field-id', 'key takeaway', '--field-id', '内容类型', '--field-id', '个人想法']);
@@ -5920,7 +5920,7 @@ app.post('/api/ares/save-insight', (req, res) => {
   const { content, category = '方法论', type = '方法论' } = req.body;
   try {
     larkCli(['--as', 'user', 'base', '+record-upsert',
-      '--base-token', 'REDACTED',
+      '--base-token', process.env.FEISHU_BASE_TOKEN || '',
       '--table-id', 'tbl8GgYJbuObKWtE',
       '--fields', JSON.stringify({
         '个人想法': '[Ares对话洞见] ' + content.slice(0, 200),
@@ -5939,10 +5939,10 @@ app.delete('/api/ares/chat/:sessionId', (req, res) => {
 
 // ══ XHS 评论抓取 ═════════════════════════════════════════════════════
 
-const XHS_BASE      = 'REDACTED';
+const XHS_BASE      = process.env.XHS_BASE_TOKEN || process.env.FEISHU_BASE_TOKEN || '';
 const XHS_TABLE     = 'tblGpK7czdgjFZbi';
 const XHS_TRIED_F   = path.join(os.homedir(), 'xhs_tried.json');
-const PUBLISH_BASE  = 'REDACTED';
+const PUBLISH_BASE  = process.env.PUBLISH_BASE_TOKEN || '';
 const COMMENT_PHOTO_TABLE = 'tblJbrnsxyfvgteW';
 const COMMENT_LEARNING_CACHE = path.join(__dirname, 'data', 'comment-learning-cache.json');
 const UV_BIN        = path.join(os.homedir(), '.local', 'bin', 'uv.exe');

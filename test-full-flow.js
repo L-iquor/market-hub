@@ -6,7 +6,7 @@ const path = require('path');
 
 const GIT_BASH_EXEC = 'D:/nodes/Git/bin/bash.exe';
 const GIT_BASH_ENV  = 'D:\\nodes\\Git\\bin\\bash.exe';
-const BASE_TOKEN    = 'REDACTED';
+const BASE_TOKEN    = process.env.FEISHU_BASE_TOKEN || '';
 const TABLE_ID      = 'tbltqx50D84QXj6X';
 
 function log(msg) { console.log(`[${new Date().toLocaleTimeString()}] ${msg}`); }

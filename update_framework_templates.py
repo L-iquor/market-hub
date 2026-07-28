@@ -3,10 +3,11 @@ market-hub 框架模板初始化
 将四个框架 (A/B/C/D) 的示例文案写入 脚本预览，将反推提示词写入 具体框架做法
 """
 
-import subprocess
 import json
+import os
+import subprocess
 
-BASE_TOKEN = "REDACTED"
+BASE_TOKEN = os.environ.get("FEISHU_BASE_TOKEN", "")
 TABLE_ID = "tbl3YUECWpsVHhK7"
 
 # ── 框架A 问题解决型 ──────────────────────────────────────────────

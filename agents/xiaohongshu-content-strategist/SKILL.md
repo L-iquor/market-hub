@@ -228,11 +228,11 @@ Before you finish, verify all of the following:
 
 After generating and self-checking the content, send the **complete post** (备选标题 + 正文 + 图片建议 + 评论区话术) as a **single text message** to the AI市场部 Feishu group.
 
-Group ID: `REDACTED`
+Group ID: set `MARKETING_GROUP_ID` in the environment.
 
 Command to use:
 ```
-lark-cli im send-msg --receive-id-type chat_id --receive-id REDACTED --msg-type text --content "<FULL_POST_TEXT>"
+lark-cli im send-msg --receive-id-type chat_id --receive-id "$MARKETING_GROUP_ID" --msg-type text --content "<FULL_POST_TEXT>"
 ```
 
 Rules:

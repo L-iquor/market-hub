@@ -44,10 +44,10 @@ module.exports = {
   // ── 飞书配置 ──────────────────────────────────────────────────────
   feishu: {
     // 群 ID（固定）
-    groupId: 'REDACTED',
+    groupId: process.env.MARKETING_GROUP_ID || '',
 
     // 小红书爆款文案分析制造 base
-    baseToken: 'REDACTED',
+    baseToken: process.env.FEISHU_BASE_TOKEN || '',
 
     tables: {
       // ① 优先级最高：金句修改对比（学习人工修改偏好）

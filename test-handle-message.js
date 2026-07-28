@@ -27,9 +27,9 @@ const path = require('path');
 const GIT_BASH_EXEC = 'D:/nodes/Git/bin/bash.exe';
 const GIT_BASH_ENV  = 'D:\\\\nodes\\\\Git\\\\bin\\\\bash.exe';
 const LARK_CMD = 'C:\\\\Users\\\\Aris\\\\AppData\\\\Roaming\\\\npm\\\\lark-cli.cmd';
-const BASE_TOKEN = 'REDACTED';
+const BASE_TOKEN = process.env.FEISHU_BASE_TOKEN || '';
 const TABLE_ID   = 'tbltqx50D84QXj6X';
-const CHAT_ID    = 'REDACTED';
+const CHAT_ID    = process.env.MARKETING_GROUP_ID || '';
 
 function lark(...args) {
   const r = spawnSync('lark-cli', args, {encoding:'utf8',timeout:30000,shell:true});

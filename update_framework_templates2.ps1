@@ -1,4 +1,4 @@
-$BASE_TOKEN = "REDACTED"
+$BASE_TOKEN = $env:FEISHU_BASE_TOKEN
 $TABLE_ID   = "tbl3YUECWpsVHhK7"
 $TMP        = "$env:TEMP\lark_fw"
 New-Item -ItemType Directory -Force $TMP | Out-Null

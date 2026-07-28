@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -17,7 +18,7 @@ except Exception:
 
 ROOT = Path(__file__).resolve().parents[1]
 XHS_CLI = ROOT.parent / "xiaohongshu-cli"
-BASE_TOKEN = "REDACTED"
+BASE_TOKEN = os.environ.get("FEISHU_BASE_TOKEN", "")
 TABLE_ID = "tblGpK7czdgjFZbi"
 ATTACHMENT_FIELD = "附件"
 COMMENT_ATTACHMENT_FIELD = "评论图片"
