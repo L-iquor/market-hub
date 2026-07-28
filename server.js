@@ -1559,9 +1559,9 @@ function parsePlan(text) {
   return { full: text.trim(), titles: titleLines, body };
 }
 
-// ─── 发送飞书群消息（cc-connect bot REDACTED）───────────
+// ─── 发送飞书群消息（cc-connect bot）────────────────────
 const https = require('https');
-const CC_APP_ID     = process.env.FEISHU_APP_ID     || 'REDACTED';
+const CC_APP_ID     = process.env.FEISHU_APP_ID     || '';
 const CC_APP_SECRET = process.env.FEISHU_APP_SECRET || '';
 
 function httpsPost(url, body, headers) {
